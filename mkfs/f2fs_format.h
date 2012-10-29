@@ -97,7 +97,7 @@ struct f2fs_global_parameters {
  * For superblock
  */
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
-#define F2FS_SUPER_OFFSET	0		/* start sector # for sb */
+#define F2FS_SUPER_OFFSET	1024		/* byte-size offset */
 #define F2FS_BLKSIZE		4096
 #define F2FS_MAX_EXTENSION	64
 

@@ -444,9 +444,8 @@ static int f2fs_prepare_super_block(void)
 
 	zone_align_start_offset =
 		(f2fs_params.start_sector * DEFAULT_SECTOR_SIZE +
-		F2FS_SUPER_OFFSET * F2FS_BLKSIZE +
-		sizeof(struct f2fs_super_block) * 2 +
-		zone_size_bytes - 1) / zone_size_bytes * zone_size_bytes -
+		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
+		zone_size_bytes * zone_size_bytes -
 		f2fs_params.start_sector * DEFAULT_SECTOR_SIZE;
 
 	if (f2fs_params.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
@@ -972,20 +971,20 @@ static int8_t f2fs_write_check_point_pack(void)
 static int8_t f2fs_write_super_block(void)
 {
 	u_int32_t index = 0;
-	u_int64_t super_blk_offset;
 	u_int8_t *zero_buff;
 
-	zero_buff = calloc(f2fs_params.sector_size, 1);
-	super_blk_offset = F2FS_SUPER_OFFSET * F2FS_BLKSIZE;
+	zero_buff = calloc(F2FS_BLKSIZE, 1);
+
+	memcpy(zero_buff + F2FS_SUPER_OFFSET, &super_block,
+						sizeof(super_block));
 
 	for (index = 0; index < 2; index++) {
-		if (writetodisk(f2fs_params.fd, &super_block, super_blk_offset,
-					sizeof(struct f2fs_super_block)) < 0) {
+		if (writetodisk(f2fs_params.fd, zero_buff,
+				index * F2FS_BLKSIZE, F2FS_BLKSIZE) < 0) {
 			printf("\n\tError: While while writing supe_blk \
 					on disk!!! index : %d\n", index);
 			return -1;
 		}
-		super_blk_offset += F2FS_BLKSIZE;
 	}
 
 	free(zero_buff);
