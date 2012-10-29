@@ -1021,13 +1021,16 @@ static int8_t f2fs_write_root_inode(void)
 	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes); /* dentry */
 	raw_node->i.i_blocks = cpu_to_le64(2);
 
+	raw_node->i.i_atime = cpu_to_le32(time(NULL));
+	raw_node->i.i_atime_nsec = 0;
 	raw_node->i.i_ctime = cpu_to_le32(time(NULL));
 	raw_node->i.i_ctime_nsec = 0;
 	raw_node->i.i_mtime = cpu_to_le32(time(NULL));
 	raw_node->i.i_mtime_nsec = 0;
+	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
 	raw_node->i.i_flags = 0;
-	raw_node->i.current_depth = cpu_to_le32(1);
+	raw_node->i.i_current_depth = cpu_to_le32(1);
 
 	data_blk_nor = le32_to_cpu(super_block.main_blkaddr) +
 		f2fs_params.cur_seg[CURSEG_HOT_DATA] * f2fs_params.blks_per_seg;

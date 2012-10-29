@@ -182,7 +182,7 @@ struct f2fs_extent {
 } __attribute__((packed));
 
 #define F2FS_MAX_NAME_LEN	256
-#define ADDRS_PER_INODE         927	/* Address Pointers in an Inode */
+#define ADDRS_PER_INODE         923	/* Address Pointers in an Inode */
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
 
@@ -195,11 +195,14 @@ struct f2fs_inode {
 	__le32 i_links;			/* Links count */
 	__le64 i_size;			/* File size in bytes */
 	__le64 i_blocks;		/* File size in bytes */
+	__le64 i_atime;			/* Inode access time */
 	__le64 i_ctime;			/* inode Change time */
 	__le64 i_mtime;			/* Modification time */
+	__le32 i_atime_nsec;
 	__le32 i_ctime_nsec;
 	__le32 i_mtime_nsec;
-	__le32 current_depth;
+	__le32 i_generation;		/* File version (for NFS) */
+	__le32 i_current_depth;		/* only for directory depth */
 	__le32 i_xattr_nid;
 	__le32 i_flags;			/* file attributes */
 	__le32 i_pino;			/* parent inode number */
