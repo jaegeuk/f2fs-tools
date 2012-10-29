@@ -59,8 +59,9 @@
 /*
  * For further optimization on multi-head logs, on-disk layout supports maximum
  * 16 logs by default. The number, 16, is expected to cover all the cases
- * enoughly.
-*/
+ * enoughly. The implementaion currently uses no more than 6 logs.
+ * Half the logs are used for nodes, and the other half are used for data.
+ */
 #define MAX_ACTIVE_LOGS	16
 #define MAX_ACTIVE_NODE_LOGS	8
 #define MAX_ACTIVE_DATA_LOGS	8
