@@ -807,7 +807,8 @@ static int8_t f2fs_write_check_point_pack(void)
 			((le32_to_cpu(ckp->free_segment_count) + 6 -
 			le32_to_cpu(ckp->overprov_segment_count)) *
 			 f2fs_params.blks_per_seg));
-	ckp->cp_pack_total_block_count = cpu_to_le32(5);
+	ckp->cp_pack_total_block_count = cpu_to_le32(8);
+	ckp->ckpt_flags |= CP_UMOUNT_FLAG;
 	ckp->cp_pack_start_sum = cpu_to_le32(1);
 	ckp->valid_node_count = cpu_to_le32(1);
 	ckp->valid_inode_count = cpu_to_le32(1);
@@ -840,6 +841,7 @@ static int8_t f2fs_write_check_point_pack(void)
 	}
 
 	/* 2. Prepare and write Segment summary for data blocks */
+	memset(sum, 0, sizeof(struct f2fs_summary_block));
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	sum->entries[0].nid = super_block.root_ino;
@@ -854,6 +856,7 @@ static int8_t f2fs_write_check_point_pack(void)
 
 	/* 3. Fill segment summary for data block to zero. */
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
+	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	cp_seg_blk_offset += blk_size_bytes;
 	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
@@ -864,6 +867,7 @@ static int8_t f2fs_write_check_point_pack(void)
 
 	/* 4. Fill segment summary for data block to zero. */
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
+	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	/* inode sit for root */
 	sum->n_sits = cpu_to_le16(6);
@@ -891,7 +895,42 @@ static int8_t f2fs_write_check_point_pack(void)
 		return -1;
 	}
 
-	/* 5. cp page2 */
+	/* 5. Prepare and write Segment summary for node blocks */
+	memset(sum, 0, sizeof(struct f2fs_summary_block));
+	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+
+	sum->entries[0].nid = super_block.root_ino;
+	sum->entries[0].ofs_in_node = 0;
+
+	cp_seg_blk_offset += blk_size_bytes;
+	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
+				sizeof(struct f2fs_summary_block)) < 0) {
+		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+		return -1;
+	}
+
+	/* 6. Fill segment summary for data block to zero. */
+	memset(sum, 0, sizeof(struct f2fs_summary_block));
+	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+
+	cp_seg_blk_offset += blk_size_bytes;
+	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
+				sizeof(struct f2fs_summary_block)) < 0) {
+		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+		return -1;
+	}
+
+	/* 7. Fill segment summary for data block to zero. */
+	memset(sum, 0, sizeof(struct f2fs_summary_block));
+	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+	cp_seg_blk_offset += blk_size_bytes;
+	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
+				sizeof(struct f2fs_summary_block)) < 0) {
+		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+		return -1;
+	}
+
+	/* 8. cp page2 */
 	cp_seg_blk_offset += blk_size_bytes;
 	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
 				F2FS_CP_BLOCK_SIZE) < 0) {
@@ -899,7 +938,7 @@ static int8_t f2fs_write_check_point_pack(void)
 		return -1;
 	}
 
-	/* 6. cp page 1 of check point pack 2
+	/* 9. cp page 1 of check point pack 2
 	 * Initiatialize other checkpoint pack with version zero
 	 */
 	ckp->checkpoint_ver = 0;
@@ -914,42 +953,6 @@ static int8_t f2fs_write_check_point_pack(void)
 				blk_size_bytes;
 	if (writetodisk(f2fs_params.fd, ckp,
 				cp_seg_blk_offset, F2FS_CP_BLOCK_SIZE) < 0) {
-		printf("\n\tError: While writing the ckp to disk!!!\n");
-		return -1;
-	}
-
-	/* 7. */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
-	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
-	}
-
-	/* 8. */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
-	}
-
-	/* 9. */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
-	}
-
-	/* 10. cp page 2 of check point pack 2 */
-	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
-				F2FS_CP_BLOCK_SIZE) < 0) {
 		printf("\n\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}

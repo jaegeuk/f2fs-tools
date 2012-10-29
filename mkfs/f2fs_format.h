@@ -143,6 +143,11 @@ struct f2fs_super_block {
 /*
  * For checkpoint
  */
+#define CP_ERROR_FLAG		0x00000008
+#define CP_COMPACT_SUM_FLAG	0x00000004
+#define CP_ORPHAN_PRESENT_FLAG	0x00000002
+#define CP_UMOUNT_FLAG		0x00000001
+
 struct f2fs_checkpoint {
 	__le64 checkpoint_ver;		/* Checkpoint block version number */
 	__le64 user_block_count;	/* # of user blocks */
