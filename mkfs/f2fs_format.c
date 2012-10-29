@@ -10,6 +10,7 @@
  */
 #define _LARGEFILE64_SOURCE
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -273,7 +274,8 @@ static int8_t f2fs_get_device_info()
 	}
 
 	printf("Info: sector size = %u\n", f2fs_params.sector_size);
-	printf("Info: total sectors = %llu (in 512bytes)\n", f2fs_params.total_sectors);
+	printf("Info: total sectors = %"PRIu64" (in 512bytes)\n",
+					f2fs_params.total_sectors);
 	if (f2fs_params.total_sectors <
 			(F2FS_MIN_VOLUME_SIZE / DEFAULT_SECTOR_SIZE)) {
 		printf("Error: Min volume size supported is %d\n",
