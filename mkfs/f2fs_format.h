@@ -56,6 +56,11 @@
 #define F2FS_CP_BLOCK_SIZE		(DEFAULT_SECTOR_SIZE * \
 					DEFAULT_SECTORS_PER_BLOCK)
 
+/*
+ * For further optimization on multi-head logs, on-disk layout supports maximum
+ * 16 logs by default. The number, 16, is expected to cover all the cases
+ * enoughly.
+*/
 #define MAX_ACTIVE_LOGS	16
 #define MAX_ACTIVE_NODE_LOGS	8
 #define MAX_ACTIVE_DATA_LOGS	8
@@ -129,7 +134,7 @@ struct f2fs_super_block {
 	__le32 root_ino;	/* Root directory inode number */
 	__le32 node_ino;	/* node inode number */
 	__le32 meta_ino;	/* meta inode number */
-	__le32 volume_serial_number;	/* VSN is optional field */
+	__u8 uuid[16];          /* 128-bit uuid for volume */
 	__le16 volume_name[512];	/* Volume Name */
 	__le32 extension_count;
 	__u8 extension_list[F2FS_MAX_EXTENSION][8]; /* extension array */
@@ -273,6 +278,11 @@ enum {
 #define SIT_VBLOCK_MAP_SIZE	64
 #define SIT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_sit_entry))
 
+/*
+ * Note that f2fs_sit_entry->vblocks has the following bit-field information.
+ * [15:10] : allocation type such as CURSEG_XXXX_TYPE
+ * [9:0] : valid block count
+ */
 struct f2fs_sit_entry {
 	__le16 vblocks;
 	__u8 valid_map[SIT_VBLOCK_MAP_SIZE];
@@ -283,13 +293,25 @@ struct f2fs_sit_block {
 	struct f2fs_sit_entry entries[SIT_ENTRY_PER_BLOCK];
 } __attribute__((packed));
 
+/**
+ * For segment summary
+ *
+ * NOTE : For initializing fields, you must use set_summary
+ *
+ * - If data page, nid represents dnode's nid
+ * - If node page, nid represents the node page's nid.
+ *
+ * The ofs_in_node is used by only data page. It represents offset
+ * from node's page's beginning to get a data block address.
+ * ex) data_blkaddr = (block_t)(nodepage_start_address + ofs_in_node)
+ */
 struct f2fs_summary {
 	__le32 nid;		/* parent node id */
 	union {
 		__u8 reserved[3];
 		struct {
 			__u8 version;		/* node version number */
-			__le16 bidx;		/* block index in parent node */
+			__le16 ofs_in_node;	/* block index in parent node */
 		} __attribute__((packed));
 	};
 } __attribute__((packed));
@@ -360,9 +382,14 @@ struct f2fs_summary_block {
 /*
  * For directory operations
  */
-#define F2FS_NAME_LEN		8	/* 256 Unicode */
-#define NR_DENTRY_IN_BLOCK	214	/* the number of dentry in a block */
-#define MAX_DIR_HASH_DEPTH	63 /* MAX level for dir lookup */
+/* One directory entry slot covers 8bytes-long file name */
+#define F2FS_NAME_LEN		8
+
+/* the number of dentry in a block */
+#define NR_DENTRY_IN_BLOCK	214
+
+/* MAX level for dir lookup */
+#define MAX_DIR_HASH_DEPTH	63
 
 #define SIZE_OF_DIR_ENTRY	11	/* by byte */
 #define SIZE_OF_DENTRY_BITMAP	((NR_DENTRY_IN_BLOCK + BITS_PER_BYTE - 1) / \

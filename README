@@ -4,6 +4,12 @@ F2FS format utilility
 To use f2fs filesystem, you should format the storage partition
 with this utilility. Otherwise, you cannot mount f2fs.
 
+Before compilation
+------------------
+
+Your should install the following packages.
+ - libuuid-devel or uuid-dev
+
 Initial compilation
 -------------------
 

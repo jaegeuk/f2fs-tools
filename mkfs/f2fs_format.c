@@ -24,6 +24,7 @@
 #include <linux/hdreg.h>
 #include <time.h>
 #include <linux/fs.h>
+#include <uuid/uuid.h>
 
 #include "f2fs_format.h"
 
@@ -561,7 +562,7 @@ static int f2fs_prepare_super_block(void)
 			/ f2fs_params.segs_per_sec);
 
 	super_block.segment_count_main = cpu_to_le32(
-			le32_to_cpu(super_block.section_count) * 
+			le32_to_cpu(super_block.section_count) *
 			f2fs_params.segs_per_sec);
 
 	if ((le32_to_cpu(super_block.segment_count_main) - 2) <
@@ -574,7 +575,7 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	super_block.failure_safe_block_distance = 0;
-	super_block.volume_serial_number = 0;
+	uuid_generate(super_block.uuid);
 
 	ASCIIToUNICODE(super_block.volume_name, f2fs_params.vol_label);
 
@@ -582,7 +583,7 @@ static int f2fs_prepare_super_block(void)
 	super_block.meta_ino = cpu_to_le32(2);
 	super_block.root_ino = cpu_to_le32(3);
 
-	total_zones = ((le32_to_cpu(super_block.segment_count_main) - 1) / 
+	total_zones = ((le32_to_cpu(super_block.segment_count_main) - 1) /
 			f2fs_params.segs_per_sec) /
 			f2fs_params.secs_per_zone;
 	if (total_zones <= 6) {
@@ -842,7 +843,7 @@ static int8_t f2fs_write_check_point_pack(void)
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	sum->entries[0].nid = super_block.root_ino;
-	sum->entries[0].bidx = 0;
+	sum->entries[0].ofs_in_node = 0;
 
 	cp_seg_blk_offset += blk_size_bytes;
 	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
