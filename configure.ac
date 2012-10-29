@@ -2,10 +2,18 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([F2FS tools], [1.0.0], [TBD])
+AC_INIT([F2FS tools], [1.0.0], [http://sourceforge.net/projects/f2fs-tools/])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([mkfs/f2fs_format.c])
-AC_CONFIG_HEADERS([config.h])
+AC_CHECK_HEADERS_ONCE(m4_flatten([
+	fcntl.h
+	mntent.h
+	stdlib.h
+	string.h
+	unistd.h
+	sys/ioctl.h
+	sys/mount.h
+]))
 
 # Checks for programs.
 AC_PROG_CC
@@ -27,9 +35,15 @@ AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_FUNC_GETMNTENT
-AC_CHECK_FUNCS([getmntent memset])
+AC_CHECK_FUNCS_ONCE(m4_flatten([
+	getmntent
+	memset
+]))
 
-AC_CONFIG_FILES([Makefile
-                 man/Makefile
-                 mkfs/Makefile])
+AC_CONFIG_FILES(m4_flatten([
+	Makefile
+	man/Makefile
+	mkfs/Makefile
+]))
+
 AC_OUTPUT
