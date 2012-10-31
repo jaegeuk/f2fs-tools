@@ -462,16 +462,16 @@ static int f2fs_prepare_super_block(void)
 
 	super_block.segment0_blkaddr =
 		cpu_to_le32(zone_align_start_offset / blk_size_bytes);
+	super_block.cp_blkaddr = super_block.segment0_blkaddr;
 
 	printf("Info: zone aligned segment0 blkaddr: %u\n",
 				le32_to_cpu(super_block.segment0_blkaddr));
 
-	super_block.start_segment_checkpoint = super_block.segment0_blkaddr;
 	super_block.segment_count_ckpt =
 				cpu_to_le32(F2FS_NUMBER_OF_CHECKPOINT_PACK);
 
 	super_block.sit_blkaddr = cpu_to_le32(
-		le32_to_cpu(super_block.start_segment_checkpoint) +
+		le32_to_cpu(super_block.segment0_blkaddr) +
 		(le32_to_cpu(super_block.segment_count_ckpt) *
 		(1 << log_blks_per_seg)));
 
@@ -575,7 +575,6 @@ static int f2fs_prepare_super_block(void)
 		return -1;
 	}
 
-	super_block.failure_safe_block_distance = 0;
 	uuid_generate(super_block.uuid);
 
 	ASCIIToUNICODE(super_block.volume_name, f2fs_params.vol_label);
@@ -789,7 +788,6 @@ static int8_t f2fs_write_check_point_pack(void)
 	}
 
 	ckp->cur_node_blkoff[0] = cpu_to_le16(1);
-	ckp->nat_upd_blkoff[0] = cpu_to_le16(1);
 	ckp->cur_data_blkoff[0] = cpu_to_le16(1);
 	ckp->valid_block_count = cpu_to_le64(2);
 	ckp->rsvd_segment_count = cpu_to_le32(f2fs_params.reserved_segments);
@@ -833,7 +831,7 @@ static int8_t f2fs_write_check_point_pack(void)
 
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
 	cp_seg_blk_offset =
-		le32_to_cpu(super_block.start_segment_checkpoint) * blk_size_bytes;
+		le32_to_cpu(super_block.segment0_blkaddr) * blk_size_bytes;
 
 	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
 				F2FS_CP_BLOCK_SIZE) < 0) {
@@ -949,7 +947,7 @@ static int8_t f2fs_write_check_point_pack(void)
 	*((u_int32_t *)((unsigned char *)ckp +
 				le32_to_cpu(ckp->checksum_offset))) = crc;
 
-	cp_seg_blk_offset = (le32_to_cpu(super_block.start_segment_checkpoint) +
+	cp_seg_blk_offset = (le32_to_cpu(super_block.segment0_blkaddr) +
 				f2fs_params.blks_per_seg) *
 				blk_size_bytes;
 	if (writetodisk(f2fs_params.fd, ckp,
