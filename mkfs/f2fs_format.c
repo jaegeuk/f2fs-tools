@@ -709,8 +709,8 @@ static int8_t f2fs_init_nat_area(void)
 		return -1;
 	}
 
-	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr) *
-							blk_size_bytes;
+	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
+	nat_seg_blk_offset *= blk_size_bytes;
 
 	for (index = 0;
 		index < (le32_to_cpu(super_block.segment_count_nat) / 2);
@@ -830,8 +830,8 @@ static int8_t f2fs_write_check_point_pack(void)
 				le32_to_cpu(ckp->checksum_offset))) = crc;
 
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
-	cp_seg_blk_offset =
-		le32_to_cpu(super_block.segment0_blkaddr) * blk_size_bytes;
+	cp_seg_blk_offset = le32_to_cpu(super_block.segment0_blkaddr);
+	cp_seg_blk_offset *= blk_size_bytes;
 
 	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
 				F2FS_CP_BLOCK_SIZE) < 0) {
@@ -997,8 +997,7 @@ static int8_t f2fs_write_super_block(void)
 static int8_t f2fs_write_root_inode(void)
 {
 	struct f2fs_node *raw_node = NULL;
-	u_int32_t blk_size_bytes;
-	u_int64_t data_blk_nor;
+	u_int64_t blk_size_bytes, data_blk_nor;
 	u_int64_t main_area_node_seg_blk_offset = 0;
 
 	raw_node = calloc(sizeof(struct f2fs_node), 1);
@@ -1074,8 +1073,7 @@ static int8_t f2fs_write_root_inode(void)
 static int8_t f2fs_update_nat_root(void)
 {
 	struct f2fs_nat_block *nat_blk = NULL;
-	u_int32_t blk_size_bytes;
-	u_int64_t nat_seg_blk_offset = 0;
+	u_int64_t blk_size_bytes, nat_seg_blk_offset = 0;
 
 	nat_blk = calloc(sizeof(struct f2fs_nat_block), 1);
 	if(nat_blk == NULL) {
@@ -1098,9 +1096,8 @@ static int8_t f2fs_update_nat_root(void)
 	nat_blk->entries[super_block.meta_ino].ino = super_block.meta_ino;
 
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
-
-	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr) *
-							blk_size_bytes;
+	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
+	nat_seg_blk_offset *= blk_size_bytes;
 
 	if (writetodisk(f2fs_params.fd, nat_blk, nat_seg_blk_offset,
 				sizeof(struct f2fs_nat_block)) < 0) {
@@ -1120,8 +1117,7 @@ static int8_t f2fs_update_nat_root(void)
 static int8_t f2fs_add_default_dentry_root(void)
 {
 	struct f2fs_dentry_block *dent_blk = NULL;
-	u_int32_t blk_size_bytes;
-	u_int64_t data_blk_offset = 0;
+	u_int64_t blk_size_bytes, data_blk_offset = 0;
 
 	dent_blk = calloc(sizeof(struct f2fs_dentry_block), 1);
 	if(dent_blk == NULL) {
@@ -1144,9 +1140,10 @@ static int8_t f2fs_add_default_dentry_root(void)
 	/* bitmap for . and .. */
 	dent_blk->dentry_bitmap[0] = (1 << 1) | (1 << 0);
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
-	data_blk_offset = (le32_to_cpu(super_block.main_blkaddr) +
-			f2fs_params.cur_seg[CURSEG_HOT_DATA] *
-			f2fs_params.blks_per_seg) * blk_size_bytes;
+	data_blk_offset = le32_to_cpu(super_block.main_blkaddr);
+	data_blk_offset += f2fs_params.cur_seg[CURSEG_HOT_DATA] *
+				f2fs_params.blks_per_seg;
+	data_blk_offset *= blk_size_bytes;
 
 	if (writetodisk(f2fs_params.fd, dent_blk, data_blk_offset,
 				sizeof(struct f2fs_dentry_block)) < 0) {
