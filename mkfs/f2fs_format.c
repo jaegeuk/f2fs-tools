@@ -28,6 +28,7 @@
 #include <uuid/uuid.h>
 
 #include "f2fs_format.h"
+#include "../version.h"
 
 struct f2fs_global_parameters f2fs_params;
 struct f2fs_super_block super_block;
@@ -1284,6 +1285,9 @@ exit:
  */
 int main(int argc, char *argv[])
 {
+	printf("\nF2FS-tools: Ver: %s (%s)\n",
+				F2FS_TOOLS_VERSION,
+				F2FS_TOOLS_DATE);
 	f2fs_init_global_parameters();
 
 	f2fs_parse_options(argc, argv);
