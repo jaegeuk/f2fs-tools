@@ -1,5 +1,7 @@
 *~
 *.[ao]
+*.orig
+*.tar.*
 
 .deps
 .libs
@@ -13,6 +15,8 @@ Makefile.in
 /config.h.in
 /config.log
 /config.status
+/config.status.lineno
+/config.cache
 /configure
 /configure.lineno
 /depcomp
