@@ -2,7 +2,35 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([F2FS tools], [1.0.0], [http://sourceforge.net/projects/f2fs-tools/])
+
+# Get version from file VERSION
+m4_define([f2fs_tools_version], m4_esyscmd([sed -n '1p' VERSION | tr -d '\n']))
+m4_define([f2fs_tools_date], m4_esyscmd([sed -n '2p' VERSION | tr -d '\n']))
+m4_define([f2fs_tools_gitdate],
+		m4_esyscmd([git log -1 --pretty=format:%ci 2> /dev/null]))
+
+AC_INIT([F2FS tools], [f2fs_tools_version],
+			[linux-f2fs-devel@lists.sourceforge.net])
+
+AC_DEFINE([F2FS_TOOLS_VERSION], "f2fs_tools_version", [f2fs-tools version])
+AC_DEFINE([F2FS_MAJOR_VERSION], m4_bpatsubst(f2fs_tools_version,
+				[\([0-9]*\)\(\w\|\W\)*], [\1]),
+				[Major version for f2fs-tools])
+AC_DEFINE([F2FS_MINOR_VERSION], m4_bpatsubst(f2fs_tools_version,
+				[\([0-9]*\).\([0-9]*\)\(\w\|\W\)*], [\2]),
+				[Minor version for f2fs-tools])
+
+AC_CHECK_FILE(.git,
+	AC_DEFINE([F2FS_TOOLS_DATE],
+		"m4_bpatsubst(f2fs_tools_gitdate,
+		[\([0-9-]*\)\(\w\|\W\)*], [\1])",
+		[f2fs-tools date based on Git commits]),
+	AC_DEFINE([F2FS_TOOLS_DATE],
+		"f2fs_tools_date",
+		[f2fs-tools date based on Source releases]))
+
+AM_CONFIG_HEADER([config.h])
+
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([mkfs/f2fs_format.c])
 AC_CHECK_HEADERS_ONCE(m4_flatten([
@@ -25,7 +53,8 @@ AC_CHECK_LIB([uuid], [uuid_generate],
 	[AC_MSG_ERROR([UUID library not found])])
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h mntent.h stdlib.h string.h sys/ioctl.h sys/mount.h unistd.h])
+AC_CHECK_HEADERS([fcntl.h mntent.h stdlib.h string.h \
+		sys/ioctl.h sys/mount.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE

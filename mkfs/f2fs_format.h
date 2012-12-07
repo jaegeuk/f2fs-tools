@@ -15,6 +15,10 @@
 #include <endian.h>
 #include <byteswap.h>
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define le16_to_cpu(x)	((__u16)(x))
 #define le32_to_cpu(x)	((__u32)(x))
@@ -38,9 +42,6 @@
 
 /* for mkfs */
 #define F2FS_MIN_VOLUME_SIZE	104857600
-
-#define	F2FS_MAJOR_VERSION	1
-#define	F2FS_MINOR_VERSION	0
 
 #define	F2FS_O_DIRECTORY	0x00004000
 #define	F2FS_O_EONLY		0x00000040
