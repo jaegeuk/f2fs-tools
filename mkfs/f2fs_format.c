@@ -262,11 +262,10 @@ static int8_t f2fs_get_device_info()
 			return -1;
 		}
 
-		if (ioctl(fd, HDIO_GETGEO, &geom) < 0) {
-			printf("\n\tError: Cannot get the device geometry\n");
-			return -1;
-		}
-		f2fs_params.start_sector = geom.start;
+		if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
+			f2fs_params.start_sector = 0;
+		else
+			f2fs_params.start_sector = geom.start;
 	}
 	else {
 		printf("\n\n\tError: Volume type is not supported!!!\n");
