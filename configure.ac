@@ -33,7 +33,7 @@ AM_CONFIG_HEADER([config.h])
 
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([mkfs/f2fs_format.c])
-AC_CHECK_HEADERS_ONCE(m4_flatten([
+AC_CHECK_HEADERS_ONCE([
 	fcntl.h
 	mntent.h
 	stdlib.h
@@ -41,7 +41,7 @@ AC_CHECK_HEADERS_ONCE(m4_flatten([
 	unistd.h
 	sys/ioctl.h
 	sys/mount.h
-]))
+])
 
 # Checks for programs.
 AC_PROG_CC
@@ -64,15 +64,15 @@ AC_TYPE_SIZE_T
 
 # Checks for library functions.
 AC_FUNC_GETMNTENT
-AC_CHECK_FUNCS_ONCE(m4_flatten([
+AC_CHECK_FUNCS_ONCE([
 	getmntent
 	memset
-]))
+])
 
-AC_CONFIG_FILES(m4_flatten([
+AC_CONFIG_FILES([
 	Makefile
 	man/Makefile
 	mkfs/Makefile
-]))
+])
 
 AC_OUTPUT
