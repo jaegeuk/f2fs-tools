@@ -31,6 +31,7 @@ AC_CHECK_FILE(.git,
 
 AM_CONFIG_HEADER([config.h])
 
+AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([mkfs/f2fs_format.c])
 AC_CHECK_HEADERS_ONCE([

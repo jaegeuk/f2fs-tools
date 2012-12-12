@@ -11,17 +11,9 @@ Makefile.in
 
 /aclocal.m4
 /autom4te.cache/
-/config.h
-/config.h.in
-/config.log
-/config.status
-/config.status.lineno
-/config.cache
-/configure
-/configure.lineno
-/depcomp
-/install-sh
-/missing
+/build-aux/
+/config.*
+/configure*
 /stamp-h1
 
 /mkfs/mkfs.f2fs
