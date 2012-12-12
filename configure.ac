@@ -29,7 +29,7 @@ AC_CHECK_FILE(.git,
 		"f2fs_tools_date",
 		[f2fs-tools date based on Source releases]))
 
-AM_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADER([config.h])
 
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign tar-pax dist-xz])
