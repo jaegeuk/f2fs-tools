@@ -65,7 +65,7 @@ static void f2fs_init_global_parameters(void)
 	f2fs_params.sector_size = DEFAULT_SECTOR_SIZE;
 	f2fs_params.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	f2fs_params.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
-	f2fs_params.reserved_segments = 20; /* calculated by overprovision ratio */
+	f2fs_params.reserved_segments = 48; /* calculated by overprovision ratio */
 	f2fs_params.overprovision = 5;
 	f2fs_params.segs_per_sec = 1;
 	f2fs_params.secs_per_zone = 1;
@@ -184,7 +184,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	f2fs_params.reserved_segments  =
-			(100 / f2fs_params.overprovision + 5)
+			(2 * (100 / f2fs_params.overprovision + 1) + 6)
 			* f2fs_params.segs_per_sec;
 	f2fs_params.device_name = argv[optind];
 }
