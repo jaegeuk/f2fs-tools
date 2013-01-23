@@ -9,6 +9,8 @@ Before compilation
 
 Your should install the following packages.
  - libuuid-devel or uuid-dev
+ - pkg-config
+ - autoconf
 
 Initial compilation
 -------------------
