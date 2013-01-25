@@ -39,23 +39,86 @@
 #define PAGE_SIZE		4096
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
+#define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 
 /* for mkfs */
 #define F2FS_MIN_VOLUME_SIZE	104857600
-
-#define	F2FS_O_DIRECTORY	0x00004000
-#define	F2FS_O_EONLY		0x00000040
-#define	F2FS_O_WRONLY		0x00000080
-#define	F2FS_O_RDONLY		0x00000100
-
 #define	F2FS_NUMBER_OF_CHECKPOINT_PACK	2
-
 #define	DEFAULT_SECTOR_SIZE		512
 #define	DEFAULT_SECTORS_PER_BLOCK	8
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
 #define F2FS_CP_BLOCK_SIZE		(DEFAULT_SECTOR_SIZE * \
 					DEFAULT_SECTORS_PER_BLOCK)
+
+struct f2fs_global_parameters {
+	u_int32_t sector_size;
+	u_int32_t reserved_segments;
+	u_int32_t overprovision;
+	u_int32_t cur_seg[6];
+	u_int32_t segs_per_sec;
+	u_int32_t secs_per_zone;
+	u_int32_t start_sector;
+	u_int64_t total_sectors;
+	u_int32_t sectors_per_blk;
+	u_int32_t blks_per_seg;
+	u_int8_t vol_label[16];
+	int heap;
+	int32_t fd;
+	char *device_name;
+	char *extension_list;
+} __attribute__((packed));
+
+#ifdef CONFIG_64BIT
+#define BITS_PER_LONG	64
+#else
+#define BITS_PER_LONG	32
+#endif
+
+#define BIT_MASK(nr)	(1 << (nr % BITS_PER_LONG))
+#define BIT_WORD(nr)	(nr / BITS_PER_LONG)
+
+/*
+ * Copied from fs/f2fs/f2fs.h
+ */
+#define	NR_CURSEG_DATA_TYPE	(3)
+#define NR_CURSEG_NODE_TYPE	(3)
+#define NR_CURSEG_TYPE	(NR_CURSEG_DATA_TYPE + NR_CURSEG_NODE_TYPE)
+
+enum {
+	CURSEG_HOT_DATA	= 0,	/* directory entry blocks */
+	CURSEG_WARM_DATA,	/* data blocks */
+	CURSEG_COLD_DATA,	/* multimedia or GCed data blocks */
+	CURSEG_HOT_NODE,	/* direct node blocks of directory files */
+	CURSEG_WARM_NODE,	/* direct node blocks of normal files */
+	CURSEG_COLD_NODE,	/* indirect node blocks */
+	NO_CHECK_TYPE
+};
+
+/*
+ * Copied from fs/f2fs/segment.h
+ */
+#define GET_SUM_TYPE(footer) ((footer)->entry_type)
+#define SET_SUM_TYPE(footer, type) ((footer)->entry_type = type)
+
+/*
+ * Copied from include/linux/f2fs_sb.h
+ */
+#define F2FS_SUPER_OFFSET		1024	/* byte-size offset */
+#define F2FS_LOG_SECTOR_SIZE		9	/* 9 bits for 512 byte */
+#define F2FS_LOG_SECTORS_PER_BLOCK	3	/* 4KB: F2FS_BLKSIZE */
+#define F2FS_BLKSIZE			4096	/* support only 4KB block */
+#define F2FS_MAX_EXTENSION		64	/* # of extension entries */
+
+#define NULL_ADDR		0x0U
+#define NEW_ADDR		-1U
+
+#define F2FS_ROOT_INO(sbi)	(sbi->root_ino_num)
+#define F2FS_NODE_INO(sbi)	(sbi->node_ino_num)
+#define F2FS_META_INO(sbi)	(sbi->meta_ino_num)
+
+/* This flag is used by node and meta inodes, and by recovery */
+#define GFP_F2FS_ZERO	(GFP_NOFS | __GFP_ZERO)
 
 /*
  * For further optimization on multi-head logs, on-disk layout supports maximum
@@ -67,41 +130,9 @@
 #define MAX_ACTIVE_NODE_LOGS	8
 #define MAX_ACTIVE_DATA_LOGS	8
 
-struct f2fs_global_parameters {
-	u_int32_t       sector_size;
-	u_int32_t       reserved_segments;
-	u_int32_t       overprovision;
-	u_int32_t	cur_seg[6];
-	u_int32_t       segs_per_sec;
-	u_int32_t       secs_per_zone;
-	u_int32_t       start_sector;
-	u_int64_t	total_sectors;
-	u_int32_t       sectors_per_blk;
-	u_int32_t       blks_per_seg;
-	u_int8_t        vol_label[16];
-	int		heap;
-	int32_t         fd;
-	char   *device_name;
-	char   *extension_list;
-} __attribute__((packed));
-
-#ifdef CONFIG_64BIT
-#define BITS_PER_LONG	64
-#else
-#define BITS_PER_LONG	32
-#endif
-
-#define BIT_MASK(nr)    (1 << (nr % BITS_PER_LONG))
-#define BIT_WORD(nr)    (nr / BITS_PER_LONG)
-
 /*
  * For superblock
  */
-#define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
-#define F2FS_SUPER_OFFSET	1024		/* byte-size offset */
-#define F2FS_BLKSIZE		4096
-#define F2FS_MAX_EXTENSION	64
-
 struct f2fs_super_block {
 	__le32 magic;			/* Magic Number */
 	__le16 major_ver;		/* Major Version */
@@ -176,6 +207,20 @@ struct f2fs_checkpoint {
 } __attribute__((packed));
 
 /*
+ * For orphan inode management
+ */
+#define F2FS_ORPHANS_PER_BLOCK	1020
+
+struct f2fs_orphan_block {
+	__le32 ino[F2FS_ORPHANS_PER_BLOCK];	/* inode numbers */
+	__le32 reserved;	/* reserved */
+	__le16 blk_addr;	/* block index in current CP */
+	__le16 blk_count;	/* Number of orphan inode blocks in CP */
+	__le32 entry_count;	/* Total number of orphan nodes in current CP */
+	__le32 check_sum;	/* CRC32 for orphan inode block */
+} __attribute__((packed));
+
+/*
  * For NODE structure
  */
 struct f2fs_extent {
@@ -221,12 +266,19 @@ struct f2fs_inode {
 } __attribute__((packed));
 
 struct direct_node {
-	__le32 addr[ADDRS_PER_BLOCK];	/* aray of data block address */
+	__le32 addr[ADDRS_PER_BLOCK];	/* array of data block address */
 } __attribute__((packed));
 
 struct indirect_node {
-	__le32 nid[NIDS_PER_BLOCK];	/* aray of data block address */
+	__le32 nid[NIDS_PER_BLOCK];	/* array of data block address */
 } __attribute__((packed));
+
+enum {
+	COLD_BIT_SHIFT = 0,
+	FSYNC_BIT_SHIFT,
+	DENT_BIT_SHIFT,
+	OFFSET_BIT_SHIFT
+};
 
 struct node_footer {
 	__le32 nid;		/* node id */
@@ -249,7 +301,7 @@ struct f2fs_node {
 /*
  * For NAT entries
  */
-#define NAT_ENTRY_PER_BLOCK	(PAGE_CACHE_SIZE / sizeof(struct f2fs_nat_entry))
+#define NAT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_nat_entry))
 
 struct f2fs_nat_entry {
 	__u8 version;		/* latest version of cached nat entry */
@@ -268,24 +320,21 @@ struct f2fs_nat_block {
  * there-in blocks should occupy 64 bytes, 512 bits.
  * Not allow to change this.
  */
-#define SIT_VBLOCK_MAP_SIZE	64
+#define SIT_VBLOCK_MAP_SIZE 64
 #define SIT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_sit_entry))
-
-enum {
-	CURSEG_HOT_DATA	= 0,	/* directory entry blocks */
-	CURSEG_WARM_DATA,	/* data blocks */
-	CURSEG_COLD_DATA,	/* multimedia or GCed data blocks */
-	CURSEG_HOT_NODE,	/* direct node blocks of directory files */
-	CURSEG_WARM_NODE,	/* direct node blocks of normal files */
-	CURSEG_COLD_NODE,	/* indirect node blocks */
-};
 
 /*
  * Note that f2fs_sit_entry->vblocks has the following bit-field information.
  * [15:10] : allocation type such as CURSEG_XXXX_TYPE
  * [9:0] : valid block count
  */
-#define CURSEG_NULL	((-1 << 10) >> 10)	/* use 6bit - 0x3f */
+#define SIT_VBLOCKS_SHIFT	10
+#define SIT_VBLOCKS_MASK	((1 << SIT_VBLOCKS_SHIFT) - 1)
+#define GET_SIT_VBLOCKS(raw_sit)				\
+	(le16_to_cpu((raw_sit)->vblocks) & SIT_VBLOCKS_MASK)
+#define GET_SIT_TYPE(raw_sit)					\
+	((le16_to_cpu((raw_sit)->vblocks) & ~SIT_VBLOCKS_MASK)	\
+	 >> SIT_VBLOCKS_SHIFT)
 
 struct f2fs_sit_entry {
 	__le16 vblocks;				/* reference above */
@@ -297,13 +346,13 @@ struct f2fs_sit_block {
 	struct f2fs_sit_entry entries[SIT_ENTRY_PER_BLOCK];
 } __attribute__((packed));
 
-/**
+/*
  * For segment summary
  *
  * One summary block contains exactly 512 summary entries, which represents
  * exactly 2MB segment by default. Not allow to change the basic units.
  *
- * NOTE : For initializing fields, you must use set_summary
+ * NOTE: For initializing fields, you must use set_summary
  *
  * - If data page, nid represents dnode's nid
  * - If node page, nid represents the node page's nid.
@@ -313,8 +362,8 @@ struct f2fs_sit_block {
  * ex) data_blkaddr = (block_t)(nodepage_start_address + ofs_in_node)
  */
 #define ENTRIES_IN_SUM		512
-#define	SUMMARY_SIZE		(sizeof(struct f2fs_summary))
-#define	SUM_FOOTER_SIZE		(sizeof(struct summary_footer))
+#define	SUMMARY_SIZE		(7)	/* sizeof(struct summary) */
+#define	SUM_FOOTER_SIZE		(5)	/* sizeof(struct summary_footer) */
 #define SUM_ENTRY_SIZE		(SUMMARY_SIZE * ENTRIES_IN_SUM)
 
 /* a summary entry for a 4KB-sized block in a segment */
@@ -332,15 +381,13 @@ struct f2fs_summary {
 /* summary block type, node or data, is stored to the summary_footer */
 #define SUM_TYPE_NODE		(1)
 #define SUM_TYPE_DATA		(0)
-#define GET_SUM_TYPE(footer) (footer->entry_type)
-#define SET_SUM_TYPE(footer, type) (footer->entry_type = type)
 
 struct summary_footer {
 	unsigned char entry_type;	/* SUM_TYPE_XXX */
 	__u32 check_sum;		/* summary checksum */
 } __attribute__((packed));
 
-#define SUM_JOURNAL_SIZE	(PAGE_CACHE_SIZE - SUM_FOOTER_SIZE -\
+#define SUM_JOURNAL_SIZE	(F2FS_BLKSIZE - SUM_FOOTER_SIZE -\
 				SUM_ENTRY_SIZE)
 #define NAT_JOURNAL_ENTRIES	((SUM_JOURNAL_SIZE - 2) /\
 				sizeof(struct nat_journal_entry))
@@ -397,8 +444,18 @@ struct f2fs_summary_block {
 /*
  * For directory operations
  */
+#define F2FS_DOT_HASH		0
+#define F2FS_DDOT_HASH		F2FS_DOT_HASH
+#define F2FS_MAX_HASH		(~((0x3ULL) << 62))
+#define F2FS_HASH_COL_BIT	((0x1ULL) << 63)
+
+typedef __le32	f2fs_hash_t;
+
 /* One directory entry slot covers 8bytes-long file name */
 #define F2FS_NAME_LEN		8
+#define F2FS_NAME_LEN_BITS	3
+
+#define GET_DENTRY_SLOTS(x)	((x + F2FS_NAME_LEN - 1) >> F2FS_NAME_LEN_BITS)
 
 /* the number of dentry in a block */
 #define NR_DENTRY_IN_BLOCK	214
@@ -408,7 +465,7 @@ struct f2fs_summary_block {
 
 #define SIZE_OF_DIR_ENTRY	11	/* by byte */
 #define SIZE_OF_DENTRY_BITMAP	((NR_DENTRY_IN_BLOCK + BITS_PER_BYTE - 1) / \
-				BITS_PER_BYTE)
+					BITS_PER_BYTE)
 #define SIZE_OF_RESERVED	(PAGE_SIZE - ((SIZE_OF_DIR_ENTRY + \
 				F2FS_NAME_LEN) * \
 				NR_DENTRY_IN_BLOCK + SIZE_OF_DENTRY_BITMAP))
