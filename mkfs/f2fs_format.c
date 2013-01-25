@@ -10,279 +10,95 @@
  */
 #define _LARGEFILE64_SOURCE
 
-#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
-#include <mntent.h>
-#include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <sys/mount.h>
-#include <linux/hdreg.h>
 #include <time.h>
 #include <linux/fs.h>
 #include <uuid/uuid.h>
 
 #include "f2fs_fs.h"
 
-struct f2fs_global_parameters f2fs_params;
+extern struct f2fs_configuration config;
 struct f2fs_super_block super_block;
 
-/**
- * @brief     	This function will change a given string from ASCII to UNICODE
- * @param	out_buf Output UNICODE string
- * @param	in_buf Input ASCII string
- * @return	None
- */
-void ASCIIToUNICODE(u_int16_t *out_buf, u_int8_t *in_buf)
+static void mkfs_usage()
 {
-	u_int8_t *pchTempPtr = in_buf;
-	u_int16_t *pwTempPtr = out_buf;
-
-	while (*pchTempPtr != '\0') {
-		/* Copy the string elements character by character
-		 * to the output string with typecasting the source.
-		 */
-		*pwTempPtr = (u_int16_t)*pchTempPtr;
-		pchTempPtr++;
-		pwTempPtr++;
-	}
-	*pwTempPtr = '\0';
-	return;
-}
-
-/**
- * @brief     	This function will ntitlize f2fs global paramenters
- * @param	None
- * @return	None
- */
-static void f2fs_init_global_parameters(void)
-{
-	f2fs_params.sector_size = DEFAULT_SECTOR_SIZE;
-	f2fs_params.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
-	f2fs_params.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
-	f2fs_params.reserved_segments = 48; /* calculated by overprovision ratio */
-	f2fs_params.overprovision = 5;
-	f2fs_params.segs_per_sec = 1;
-	f2fs_params.secs_per_zone = 1;
-	f2fs_params.heap = 1;
-	memset(f2fs_params.vol_label, 0, sizeof(f2fs_params.vol_label));
-
-	f2fs_params.vol_label[0] = 'F';
-	f2fs_params.vol_label[1] = '2';
-	f2fs_params.vol_label[2] = 'F';
-	f2fs_params.vol_label[3] = 'S';
-	f2fs_params.vol_label[4] = '\0';
-	f2fs_params.device_name = NULL;
-}
-
-static inline int f2fs_set_bit(unsigned int nr, unsigned char *addr)
-{
-	int mask;
-	int ret;
-
-	addr += (nr >> 3);
-	mask = 1 << (7 - (nr & 0x07));
-	ret = mask & *addr;
-	*addr |= mask;
-	return ret;
-}
-
-/**
- * @brief     	This function calculates log base 2 of given number
- * @param	num an integer number
- * @return	an int log base 2 of given number
- */
-static int8_t log_base_2(u_int32_t num)
-{
-	int8_t ret = 0;
-
-	if (num <= 0 || (num & (num - 1)) != 0) {
-		return -1;
-	}
-
-	while (num >>= 1) {
-		ret++;
-	}
-
-	return ret;
-}
-
-/**
- * @brief     	This function shows error if user gives wrong parameters
- * @param	None
- * @return	None
- */
-static void f2fs_usage(void)
-{
-	fprintf(stderr, "Usage: f2fs_format [options] device\n");
-	fprintf(stderr, "[options]\n");
-	fprintf(stderr, "-l label\n");
-	fprintf(stderr, "-a heap-based allocation [default:1]\n");
-	fprintf(stderr, "-o overprovision ratio [default:5]\n");
-	fprintf(stderr, "-s # of segments per section [default:1]\n");
-	fprintf(stderr, "-z # of sections per zone [default:1]\n");
-	fprintf(stderr, "-e [extension list] e.g. \"mp3,gif,mov\"\n");
+	MSG(0, "\nUsage: mkfs.f2fs [options] device\n");
+	MSG(0, "[options]:\n");
+	MSG(0, "  -a heap-based allocation [default:1]\n");
+	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
+	MSG(0, "  -l label\n");
+	MSG(0, "  -o overprovision ratio [default:5]\n");
+	MSG(0, "  -s # of segments per section [default:1]\n");
+	MSG(0, "  -z # of sections per zone [default:1]\n");
 	exit(1);
 }
 
-/**
- * @brief     	This function calculates log base 2 of given number
- * @param	argc number of arguments
- * @param	argv an array of arguments
- * @return	None
- */
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "l:o:z:a:s:e:";
+	static const char *option_string = "a:d:e:l:o:s:z:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
 		switch (option) {
-		case 'l':		/*v: volume label */
-			if (strlen(optarg) > 512) {
-				printf("Error: Volume Label should be less than \
-						512 characters\n");
-				f2fs_usage();
-			}
-			sprintf((char *)f2fs_params.vol_label, "%s", optarg);
-			break;
-		case 'o':
-			f2fs_params.overprovision = atoi(optarg);
-			printf("Info: Overprovision ratio = %u%%\n", atoi(optarg));
-			break;
-		case 's':
-			f2fs_params.segs_per_sec = atoi(optarg);
-			printf("Info: segments per section = %d\n", atoi(optarg));
-			break;
 		case 'a':
-			f2fs_params.heap = atoi(optarg);
-			if (f2fs_params.heap == 0)
-				printf("Info: Allocate without heap-based policy\n");
+			config.heap = atoi(optarg);
+			if (config.heap == 0)
+				MSG(0, "Info: Disable heap-based policy\n");
 			break;
-		case 'z':
-			f2fs_params.secs_per_zone = atoi(optarg);
-			printf("Info: sections per zone = %d\n", atoi(optarg));
+		case 'd':
+			config.dbg_lv = atoi(optarg);
+			MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
 			break;
 		case 'e':
-			f2fs_params.extension_list = strdup(optarg);
+			config.extension_list = strdup(optarg);
+			MSG(0, "Info: Add new extension list\n");
+			break;
+		case 'l':		/*v: volume label */
+			if (strlen(optarg) > 512) {
+				MSG(0, "Error: Volume Label should be less than\
+						512 characters\n");
+				mkfs_usage();
+			}
+			sprintf((char *)config.vol_label, "%s", optarg);
+			MSG(0, "Info: Label = %s\n", config.vol_label);
+			break;
+		case 'o':
+			config.overprovision = atoi(optarg);
+			MSG(0, "Info: Overprovision ratio = %u%%\n",
+								atoi(optarg));
+			break;
+		case 's':
+			config.segs_per_sec = atoi(optarg);
+			MSG(0, "Info: Segments per section = %d\n",
+								atoi(optarg));
+			break;
+		case 'z':
+			config.secs_per_zone = atoi(optarg);
+			MSG(0, "Info: Sections per zone = %d\n", atoi(optarg));
 			break;
 		default:
-			printf("Error: Unknown option %c\n",option);
-			f2fs_usage();
+			MSG(0, "\tError: Unknown option %c\n",option);
+			mkfs_usage();
 			break;
 		}
 	}
 
 	if ((optind + 1) != argc) {
-		printf("Error: Device not specified\n");
-		f2fs_usage();
+		MSG(0, "\tError: Device not specified\n");
+		mkfs_usage();
 	}
 
-	f2fs_params.reserved_segments  =
-			(2 * (100 / f2fs_params.overprovision + 1) + 6)
-			* f2fs_params.segs_per_sec;
-	f2fs_params.device_name = argv[optind];
-}
-
-/**
- * @brief     	Routine to  check if the device is already mounted
- * @param	None
- * @return	0 if device is not mounted
- * 		-1 if already mounted
- */
-static int8_t f2fs_is_device_mounted()
-{
-	FILE *file;
-	struct mntent *mnt; /* mntent structure to retrieve mount info */
-
-	if ((file = setmntent(MOUNTED, "r")) == NULL)
-		return 0;
-
-	while ((mnt = getmntent(file)) != NULL) {
-		if (!strcmp(f2fs_params.device_name, mnt->mnt_fsname)) {
-			printf("Error: %s is already mounted\n",
-					f2fs_params.device_name);
-			return -1;
-		}
-	}
-	endmntent(file);
-	return 0;
-}
-
-/**
- * @brief     	Get device info - sector size, number of sectors etc
- * @param	None
- * @return	0 if successfully got device info
- */
-static int8_t f2fs_get_device_info()
-{
-	int32_t fd = 0;
-	int32_t sector_size;
-	struct stat stat_buf;
-	struct hd_geometry geom;
-
-	fd = open(f2fs_params.device_name, O_RDWR);
-	if (fd < 0) {
-		printf("\n\tError: Failed to open the device!!!\n");
-		return -1;
-	}
-	f2fs_params.fd = fd;
-
-	if (fstat(fd, &stat_buf) < 0 ) {
-		printf("\n\tError: Failed to get the device stat!!!\n");
-		return -1;
-	}
-
-	if (S_ISREG(stat_buf.st_mode)) {
-		f2fs_params.total_sectors = stat_buf.st_size /
-			f2fs_params.sector_size;
-	}
-	else if (S_ISBLK(stat_buf.st_mode)) {
-		if (ioctl(fd, BLKSSZGET, &sector_size) < 0 )
-			printf("\n\tError: Cannot get the sector size!!! \
-					Using the default Sector Size\n");
-		else {
-			if (f2fs_params.sector_size < sector_size) {
-				printf("\n\tError: Cannot set the sector size to: %d"
-					" as the device does not support"
-					"\nSetting the sector size to : %d\n",
-					f2fs_params.sector_size, sector_size);
-				f2fs_params.sector_size = sector_size;
-				f2fs_params.sectors_per_blk = PAGE_SIZE / sector_size;
-			}
-		}
-
-		if (ioctl(fd, BLKGETSIZE, &f2fs_params.total_sectors) < 0) {
-			printf("\n\tError: Cannot get the device size\n");
-			return -1;
-		}
-
-		if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
-			f2fs_params.start_sector = 0;
-		else
-			f2fs_params.start_sector = geom.start;
-	}
-	else {
-		printf("\n\n\tError: Volume type is not supported!!!\n");
-		return -1;
-	}
-
-	printf("Info: sector size = %u\n", f2fs_params.sector_size);
-	printf("Info: total sectors = %"PRIu64" (in 512bytes)\n",
-					f2fs_params.total_sectors);
-	if (f2fs_params.total_sectors <
-			(F2FS_MIN_VOLUME_SIZE / DEFAULT_SECTOR_SIZE)) {
-		printf("Error: Min volume size supported is %d\n",
-				F2FS_MIN_VOLUME_SIZE);
-		return -1;
-	}
-
-	return 0;
+	config.reserved_segments  =
+			(2 * (100 / config.overprovision + 1) + 6)
+			* config.segs_per_sec;
+	config.device_name = argv[optind];
 }
 
 const char *media_ext_lists[] = {
@@ -315,7 +131,7 @@ const char *media_ext_lists[] = {
 static void configure_extension_list(void)
 {
 	const char **extlist = media_ext_lists;
-	char *ext_str = f2fs_params.extension_list;
+	char *ext_str = config.extension_list;
 	char *ue;
 	int name_len;
 	int i = 0;
@@ -346,40 +162,9 @@ static void configure_extension_list(void)
 
 	super_block.extension_count = i - 1;
 
-	free(f2fs_params.extension_list);
+	free(config.extension_list);
 }
 
-
-/**
- * @brief     	It writes buffer to disk or storage meant to be formatted
- *		with F2FS.
- * @param	fd File descriptor for device
- * @param	buf buffer to be written
- * @param	offset where to bw written on the device
- * @param	length length of the device
- * @return	0 if success
- */
-static int writetodisk(int32_t fd, void *buf, u_int64_t offset, size_t length)
-{
-	if (lseek64(fd, offset, SEEK_SET) < 0) {
-		printf("\n\tError: While lseek to the derised location!!!\n");
-		return -1;
-	}
-
-	if (write(fd, buf, length) < 0) {
-		printf("\n\tError: While writing data to the disk!!! Error Num : \
-				%d\n", errno);
-		return -1;
-	}
-
-	return 0;
-}
-
-/**
- * @brief     	It initialize F2FS super block
- * @param	None
- * @return	None
- */
 static int f2fs_prepare_super_block(void)
 {
 	u_int32_t blk_size_bytes;
@@ -397,24 +182,24 @@ static int f2fs_prepare_super_block(void)
 	super_block.major_ver = cpu_to_le16(F2FS_MAJOR_VERSION);
 	super_block.minor_ver = cpu_to_le16(F2FS_MINOR_VERSION);
 
-	log_sectorsize = log_base_2(f2fs_params.sector_size);
-	log_sectors_per_block = log_base_2(f2fs_params.sectors_per_blk);
+	log_sectorsize = log_base_2(config.sector_size);
+	log_sectors_per_block = log_base_2(config.sectors_per_blk);
 	log_blocksize = log_sectorsize + log_sectors_per_block;
-	log_blks_per_seg = log_base_2(f2fs_params.blks_per_seg);
+	log_blks_per_seg = log_base_2(config.blks_per_seg);
 
 	super_block.log_sectorsize = cpu_to_le32(log_sectorsize);
 
 	if (log_sectorsize < 0) {
-		printf("\n\tError: Failed to get the sector size: %u!\n",
-				f2fs_params.sector_size);
+		MSG(1, "\tError: Failed to get the sector size: %u!\n",
+				config.sector_size);
 		return -1;
 	}
 
 	super_block.log_sectors_per_block = cpu_to_le32(log_sectors_per_block);
 
 	if (log_sectors_per_block < 0) {
-		printf("\n\tError: Failed to get sectors per block: %u!\n",
-				f2fs_params.sectors_per_blk);
+		MSG(1, "\tError: Failed to get sectors per block: %u!\n",
+				config.sectors_per_blk);
 		return -1;
 	}
 
@@ -422,48 +207,48 @@ static int f2fs_prepare_super_block(void)
 	super_block.log_blocks_per_seg = cpu_to_le32(log_blks_per_seg);
 
 	if (log_blks_per_seg < 0) {
-		printf("\n\tError: Failed to get block per segment: %u!\n",
-				f2fs_params.blks_per_seg);
+		MSG(1, "\tError: Failed to get block per segment: %u!\n",
+				config.blks_per_seg);
 		return -1;
 	}
 
-	super_block.segs_per_sec = cpu_to_le32(f2fs_params.segs_per_sec);
-	super_block.secs_per_zone = cpu_to_le32(f2fs_params.secs_per_zone);
+	super_block.segs_per_sec = cpu_to_le32(config.segs_per_sec);
+	super_block.secs_per_zone = cpu_to_le32(config.secs_per_zone);
 	blk_size_bytes = 1 << log_blocksize;
-	segment_size_bytes = blk_size_bytes * f2fs_params.blks_per_seg;
+	segment_size_bytes = blk_size_bytes * config.blks_per_seg;
 	zone_size_bytes =
-		blk_size_bytes * f2fs_params.secs_per_zone *
-		f2fs_params.segs_per_sec * f2fs_params.blks_per_seg;
+		blk_size_bytes * config.secs_per_zone *
+		config.segs_per_sec * config.blks_per_seg;
 
 	super_block.checksum_offset = 0;
 
 	super_block.block_count = cpu_to_le64(
-		(f2fs_params.total_sectors * DEFAULT_SECTOR_SIZE) /
+		(config.total_sectors * DEFAULT_SECTOR_SIZE) /
 			blk_size_bytes);
 
 	zone_align_start_offset =
-		(f2fs_params.start_sector * DEFAULT_SECTOR_SIZE +
+		(config.start_sector * DEFAULT_SECTOR_SIZE +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		f2fs_params.start_sector * DEFAULT_SECTOR_SIZE;
+		config.start_sector * DEFAULT_SECTOR_SIZE;
 
-	if (f2fs_params.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
-		printf("WARN: Align start sector number in a unit of pages\n");
-		printf("\ti.e., start sector: %d, ofs:%d (sectors per page: %d)\n",
-				f2fs_params.start_sector,
-				f2fs_params.start_sector % DEFAULT_SECTORS_PER_BLOCK,
+	if (config.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
+		MSG(1, "\tWARN: Align start sector number to the page unit\n");
+		MSG(1, "\ti.e., start sector: %d, ofs:%d (sects/page: %d)\n",
+				config.start_sector,
+				config.start_sector % DEFAULT_SECTORS_PER_BLOCK,
 				DEFAULT_SECTORS_PER_BLOCK);
 	}
 
 	super_block.segment_count = cpu_to_le32(
-		((f2fs_params.total_sectors * DEFAULT_SECTOR_SIZE) -
+		((config.total_sectors * DEFAULT_SECTOR_SIZE) -
 		zone_align_start_offset) / segment_size_bytes);
 
 	super_block.segment0_blkaddr =
 		cpu_to_le32(zone_align_start_offset / blk_size_bytes);
 	super_block.cp_blkaddr = super_block.segment0_blkaddr;
 
-	printf("Info: zone aligned segment0 blkaddr: %u\n",
+	MSG(0, "Info: zone aligned segment0 blkaddr: %u\n",
 				le32_to_cpu(super_block.segment0_blkaddr));
 
 	super_block.segment_count_ckpt =
@@ -477,27 +262,27 @@ static int f2fs_prepare_super_block(void)
 	blocks_for_sit = (le32_to_cpu(super_block.segment_count) +
 			SIT_ENTRY_PER_BLOCK - 1) / SIT_ENTRY_PER_BLOCK;
 
-	sit_segments = (blocks_for_sit + f2fs_params.blks_per_seg - 1)
-			/ f2fs_params.blks_per_seg;
+	sit_segments = (blocks_for_sit + config.blks_per_seg - 1)
+			/ config.blks_per_seg;
 
 	super_block.segment_count_sit = cpu_to_le32(sit_segments * 2);
 
 	super_block.nat_blkaddr = cpu_to_le32(
 			le32_to_cpu(super_block.sit_blkaddr) +
 			(le32_to_cpu(super_block.segment_count_sit) *
-			 f2fs_params.blks_per_seg));
+			 config.blks_per_seg));
 
 	total_valid_blks_available = (le32_to_cpu(super_block.segment_count) -
 			(le32_to_cpu(super_block.segment_count_ckpt) +
 			 le32_to_cpu(super_block.segment_count_sit))) *
-			f2fs_params.blks_per_seg;
+			config.blks_per_seg;
 
 	blocks_for_nat = (total_valid_blks_available + NAT_ENTRY_PER_BLOCK - 1)
 				/ NAT_ENTRY_PER_BLOCK;
 
 	super_block.segment_count_nat = cpu_to_le32(
-				(blocks_for_nat + f2fs_params.blks_per_seg - 1) /
-				f2fs_params.blks_per_seg);
+				(blocks_for_nat + config.blks_per_seg - 1) /
+				config.blks_per_seg);
 	/*
 	 * The number of node segments should not be exceeded a "Threshold".
 	 * This number resizes NAT bitmap area in a CP page.
@@ -518,37 +303,37 @@ static int f2fs_prepare_super_block(void)
 	super_block.ssa_blkaddr = cpu_to_le32(
 			le32_to_cpu(super_block.nat_blkaddr) +
 			le32_to_cpu(super_block.segment_count_nat) *
-			f2fs_params.blks_per_seg);
+			config.blks_per_seg);
 
 	total_valid_blks_available = (le32_to_cpu(super_block.segment_count) -
 			(le32_to_cpu(super_block.segment_count_ckpt) +
 			le32_to_cpu(super_block.segment_count_sit) +
 			le32_to_cpu(super_block.segment_count_nat))) *
-			f2fs_params.blks_per_seg;
+			config.blks_per_seg;
 
 	blocks_for_ssa = total_valid_blks_available /
-				f2fs_params.blks_per_seg + 1;
+				config.blks_per_seg + 1;
 
 	super_block.segment_count_ssa = cpu_to_le32(
-			(blocks_for_ssa + f2fs_params.blks_per_seg - 1) /
-			f2fs_params.blks_per_seg);
+			(blocks_for_ssa + config.blks_per_seg - 1) /
+			config.blks_per_seg);
 
 	total_meta_segments = le32_to_cpu(super_block.segment_count_ckpt) +
 		le32_to_cpu(super_block.segment_count_sit) +
 		le32_to_cpu(super_block.segment_count_nat) +
 		le32_to_cpu(super_block.segment_count_ssa);
-	diff = total_meta_segments % (f2fs_params.segs_per_sec *
-						f2fs_params.secs_per_zone);
+	diff = total_meta_segments % (config.segs_per_sec *
+						config.secs_per_zone);
 	if (diff)
 		super_block.segment_count_ssa = cpu_to_le32(
 			le32_to_cpu(super_block.segment_count_ssa) +
-			(f2fs_params.segs_per_sec * f2fs_params.secs_per_zone -
+			(config.segs_per_sec * config.secs_per_zone -
 			 diff));
 
 	super_block.main_blkaddr = cpu_to_le32(
 			le32_to_cpu(super_block.ssa_blkaddr) +
 			(le32_to_cpu(super_block.segment_count_ssa) *
-			 f2fs_params.blks_per_seg));
+			 config.blks_per_seg));
 
 	super_block.segment_count_main = cpu_to_le32(
 			le32_to_cpu(super_block.segment_count) -
@@ -559,83 +344,83 @@ static int f2fs_prepare_super_block(void)
 
 	super_block.section_count = cpu_to_le32(
 			le32_to_cpu(super_block.segment_count_main)
-			/ f2fs_params.segs_per_sec);
+			/ config.segs_per_sec);
 
 	super_block.segment_count_main = cpu_to_le32(
 			le32_to_cpu(super_block.section_count) *
-			f2fs_params.segs_per_sec);
+			config.segs_per_sec);
 
 	if ((le32_to_cpu(super_block.segment_count_main) - 2) <
-					f2fs_params.reserved_segments) {
-		printf("Error: Device size is not sufficient for F2FS volume, \
+					config.reserved_segments) {
+		MSG(1, "\tError: Device size is not sufficient for F2FS volume,\
 			more segment needed =%u",
-			f2fs_params.reserved_segments -
+			config.reserved_segments -
 			(le32_to_cpu(super_block.segment_count_main) - 2));
 		return -1;
 	}
 
 	uuid_generate(super_block.uuid);
 
-	ASCIIToUNICODE(super_block.volume_name, f2fs_params.vol_label);
+	ASCIIToUNICODE(super_block.volume_name, config.vol_label);
 
 	super_block.node_ino = cpu_to_le32(1);
 	super_block.meta_ino = cpu_to_le32(2);
 	super_block.root_ino = cpu_to_le32(3);
 
 	total_zones = ((le32_to_cpu(super_block.segment_count_main) - 1) /
-			f2fs_params.segs_per_sec) /
-			f2fs_params.secs_per_zone;
+			config.segs_per_sec) /
+			config.secs_per_zone;
 	if (total_zones <= 6) {
-		printf("\n\tError: %d zones: Need more zones \
+		MSG(1, "\tError: %d zones: Need more zones \
 			by shrinking zone size\n", total_zones);
 		return -1;
 	}
 
-	if (f2fs_params.heap) {
-		f2fs_params.cur_seg[CURSEG_HOT_NODE] = (total_zones - 1) *
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone +
-					((f2fs_params.secs_per_zone - 1) *
-					f2fs_params.segs_per_sec);
-		f2fs_params.cur_seg[CURSEG_WARM_NODE] =
-					f2fs_params.cur_seg[CURSEG_HOT_NODE] -
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_COLD_NODE] =
-					f2fs_params.cur_seg[CURSEG_WARM_NODE] -
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_HOT_DATA] =
-					f2fs_params.cur_seg[CURSEG_COLD_NODE] -
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_COLD_DATA] = 0;
-		f2fs_params.cur_seg[CURSEG_WARM_DATA] =
-					f2fs_params.cur_seg[CURSEG_COLD_DATA] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
+	if (config.heap) {
+		config.cur_seg[CURSEG_HOT_NODE] = (total_zones - 1) *
+					config.segs_per_sec *
+					config.secs_per_zone +
+					((config.secs_per_zone - 1) *
+					config.segs_per_sec);
+		config.cur_seg[CURSEG_WARM_NODE] =
+					config.cur_seg[CURSEG_HOT_NODE] -
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_COLD_NODE] =
+					config.cur_seg[CURSEG_WARM_NODE] -
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_HOT_DATA] =
+					config.cur_seg[CURSEG_COLD_NODE] -
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_COLD_DATA] = 0;
+		config.cur_seg[CURSEG_WARM_DATA] =
+					config.cur_seg[CURSEG_COLD_DATA] +
+					config.segs_per_sec *
+					config.secs_per_zone;
 	} else {
-		f2fs_params.cur_seg[CURSEG_HOT_NODE] = 0;
-		f2fs_params.cur_seg[CURSEG_WARM_NODE] =
-					f2fs_params.cur_seg[CURSEG_HOT_NODE] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_COLD_NODE] =
-					f2fs_params.cur_seg[CURSEG_WARM_NODE] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_HOT_DATA] =
-					f2fs_params.cur_seg[CURSEG_COLD_NODE] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_COLD_DATA] =
-					f2fs_params.cur_seg[CURSEG_HOT_DATA] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
-		f2fs_params.cur_seg[CURSEG_WARM_DATA] =
-					f2fs_params.cur_seg[CURSEG_COLD_DATA] +
-					f2fs_params.segs_per_sec *
-					f2fs_params.secs_per_zone;
+		config.cur_seg[CURSEG_HOT_NODE] = 0;
+		config.cur_seg[CURSEG_WARM_NODE] =
+					config.cur_seg[CURSEG_HOT_NODE] +
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_COLD_NODE] =
+					config.cur_seg[CURSEG_WARM_NODE] +
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_HOT_DATA] =
+					config.cur_seg[CURSEG_COLD_NODE] +
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_COLD_DATA] =
+					config.cur_seg[CURSEG_HOT_DATA] +
+					config.segs_per_sec *
+					config.secs_per_zone;
+		config.cur_seg[CURSEG_WARM_DATA] =
+					config.cur_seg[CURSEG_COLD_DATA] +
+					config.segs_per_sec *
+					config.secs_per_zone;
 	}
 
 	configure_extension_list();
@@ -643,110 +428,77 @@ static int f2fs_prepare_super_block(void)
 	return 0;
 }
 
-/**
- * @brief     	It initialize SIT Data structure
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_init_sit_area(void)
+static int f2fs_init_sit_area(void)
 {
-	u_int32_t blk_size_bytes;
-	u_int32_t seg_size_bytes;
+	u_int32_t blk_size, seg_size;
 	u_int32_t index = 0;
-	u_int64_t sit_seg_blk_offset = 0;
+	u_int64_t sit_seg_addr = 0;
 	u_int8_t *zero_buf = NULL;
 
-	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
-	seg_size_bytes = (1 << le32_to_cpu(super_block.log_blocks_per_seg)) *
-				blk_size_bytes;
+	blk_size = 1 << le32_to_cpu(super_block.log_blocksize);
+	seg_size = (1 << le32_to_cpu(super_block.log_blocks_per_seg)) *
+							blk_size;
 
-	zero_buf = calloc(sizeof(u_int8_t), seg_size_bytes);
+	zero_buf = calloc(sizeof(u_int8_t), seg_size);
 	if(zero_buf == NULL) {
-		printf("\n\tError: Calloc Failed for sit_zero_buf!!!\n");
+		MSG(1, "\tError: Calloc Failed for sit_zero_buf!!!\n");
 		return -1;
 	}
 
-	sit_seg_blk_offset = le32_to_cpu(super_block.sit_blkaddr) *
-						blk_size_bytes;
+	sit_seg_addr = le32_to_cpu(super_block.sit_blkaddr);
+	sit_seg_addr *= blk_size;
 
 	for (index = 0;
 		index < (le32_to_cpu(super_block.segment_count_sit) / 2);
 								index++) {
-		if (writetodisk(f2fs_params.fd, zero_buf, sit_seg_blk_offset,
-					seg_size_bytes) < 0) {
-			printf("\n\tError: While zeroing out the sit area \
+		if (dev_write(config.fd, zero_buf, sit_seg_addr, seg_size)) {
+			MSG(1, "\tError: While zeroing out the sit area \
 					on disk!!!\n");
 			return -1;
 		}
-		sit_seg_blk_offset = sit_seg_blk_offset + seg_size_bytes;
+		sit_seg_addr += seg_size;
 	}
 
 	free(zero_buf);
 	return 0 ;
 }
 
-/**
- * @brief     	It initialize NAT Area
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_init_nat_area(void)
+static int f2fs_init_nat_area(void)
 {
-	u_int32_t blk_size_bytes;
-	u_int32_t seg_size_bytes;
+	u_int32_t blk_size, seg_size;
 	u_int32_t index = 0;
-	u_int64_t nat_seg_blk_offset = 0;
+	u_int64_t nat_seg_addr = 0;
 	u_int8_t *nat_buf = NULL;
 
-	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
-	seg_size_bytes = (1 << le32_to_cpu(super_block.log_blocks_per_seg)) *
-					blk_size_bytes;
+	blk_size = 1 << le32_to_cpu(super_block.log_blocksize);
+	seg_size = (1 << le32_to_cpu(super_block.log_blocks_per_seg)) *
+							blk_size;
 
-	nat_buf = calloc(sizeof(u_int8_t), seg_size_bytes);
+	nat_buf = calloc(sizeof(u_int8_t), seg_size);
 	if (nat_buf == NULL) {
-		printf("\n\tError: Calloc Failed for nat_zero_blk!!!\n");
+		MSG(1, "\tError: Calloc Failed for nat_zero_blk!!!\n");
 		return -1;
 	}
 
-	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
-	nat_seg_blk_offset *= blk_size_bytes;
+	nat_seg_addr = le32_to_cpu(super_block.nat_blkaddr);
+	nat_seg_addr *= blk_size;
 
 	for (index = 0;
 		index < (le32_to_cpu(super_block.segment_count_nat) / 2);
 								index++) {
-		if (writetodisk(f2fs_params.fd, nat_buf, nat_seg_blk_offset,
-					seg_size_bytes) < 0) {
-			printf("\n\tError: While zeroing out the nat area \
+		if (dev_write(config.fd, nat_buf, nat_seg_addr, seg_size)) {
+			MSG(1, "\tError: While zeroing out the nat area \
 					on disk!!!\n");
 			return -1;
 		}
-		nat_seg_blk_offset = nat_seg_blk_offset + (2 * seg_size_bytes);
+		nat_seg_addr = nat_seg_addr + (2 * seg_size);
 	}
 
 	free(nat_buf);
 	return 0 ;
 }
 
-#define CRCPOLY_LE 0xedb88320
-
-unsigned int f2fs_cal_crc32(unsigned int crc, void *buff, unsigned int len)
-{
-	int i;
-	unsigned char *p = (unsigned char *)buff;
-	while (len--) {
-		crc ^= *p++;
-		for (i = 0; i < 8; i++)
-			crc = (crc >> 1) ^ ((crc & 1) ? CRCPOLY_LE : 0);
-	}
-	return crc;
-}
-
-/**
- * @brief     	It writes check poiint pack on Check point Area
- * @param	None
- * @return	0 if succes
- */
-static int8_t f2fs_write_check_point_pack(void)
+static int f2fs_write_check_point_pack(void)
 {
 	struct f2fs_checkpoint *ckp = NULL;
 	struct f2fs_summary_block *sum = NULL;
@@ -755,32 +507,32 @@ static int8_t f2fs_write_check_point_pack(void)
 	u_int32_t crc = 0;
 	int i;
 
-	ckp = calloc(F2FS_CP_BLOCK_SIZE, 1);
+	ckp = calloc(F2FS_BLKSIZE, 1);
 	if (ckp == NULL) {
-		printf("\n\tError: Calloc Failed for f2fs_checkpoint!!!\n");
+		MSG(1, "\tError: Calloc Failed for f2fs_checkpoint!!!\n");
 		return -1;
 	}
 
-	sum = calloc(sizeof(struct f2fs_summary_block), 1);
+	sum = calloc(F2FS_BLKSIZE, 1);
 	if (sum == NULL) {
-		printf("\n\tError: Calloc Failed for summay_node!!!\n");
+		MSG(1, "\tError: Calloc Failed for summay_node!!!\n");
 		return -1;
 	}
 
 	/* 1. cp page 1 of checkpoint pack 1 */
 	ckp->checkpoint_ver = 1;
 	ckp->cur_node_segno[0] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_HOT_NODE]);
+		cpu_to_le32(config.cur_seg[CURSEG_HOT_NODE]);
 	ckp->cur_node_segno[1] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_WARM_NODE]);
+		cpu_to_le32(config.cur_seg[CURSEG_WARM_NODE]);
 	ckp->cur_node_segno[2] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_COLD_NODE]);
+		cpu_to_le32(config.cur_seg[CURSEG_COLD_NODE]);
 	ckp->cur_data_segno[0] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_HOT_DATA]);
+		cpu_to_le32(config.cur_seg[CURSEG_HOT_DATA]);
 	ckp->cur_data_segno[1] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_WARM_DATA]);
+		cpu_to_le32(config.cur_seg[CURSEG_WARM_DATA]);
 	ckp->cur_data_segno[2] =
-		cpu_to_le32(f2fs_params.cur_seg[CURSEG_COLD_DATA]);
+		cpu_to_le32(config.cur_seg[CURSEG_COLD_DATA]);
 	for (i = 3; i < MAX_ACTIVE_NODE_LOGS; i++) {
 		ckp->cur_node_segno[i] = 0xffffffff;
 		ckp->cur_data_segno[i] = 0xffffffff;
@@ -789,11 +541,11 @@ static int8_t f2fs_write_check_point_pack(void)
 	ckp->cur_node_blkoff[0] = cpu_to_le16(1);
 	ckp->cur_data_blkoff[0] = cpu_to_le16(1);
 	ckp->valid_block_count = cpu_to_le64(2);
-	ckp->rsvd_segment_count = cpu_to_le32(f2fs_params.reserved_segments);
+	ckp->rsvd_segment_count = cpu_to_le32(config.reserved_segments);
 	ckp->overprov_segment_count = cpu_to_le32(
 			(le32_to_cpu(super_block.segment_count_main) -
 			le32_to_cpu(ckp->rsvd_segment_count)) *
-			f2fs_params.overprovision / 100);
+			config.overprovision / 100);
 	ckp->overprov_segment_count = cpu_to_le32(
 			le32_to_cpu(ckp->overprov_segment_count) +
 			le32_to_cpu(ckp->rsvd_segment_count));
@@ -804,7 +556,7 @@ static int8_t f2fs_write_check_point_pack(void)
 	ckp->user_block_count = cpu_to_le64(
 			((le32_to_cpu(ckp->free_segment_count) + 6 -
 			le32_to_cpu(ckp->overprov_segment_count)) *
-			 f2fs_params.blks_per_seg));
+			 config.blks_per_seg));
 	ckp->cp_pack_total_block_count = cpu_to_le32(8);
 	ckp->ckpt_flags |= CP_UMOUNT_FLAG;
 	ckp->cp_pack_start_sum = cpu_to_le32(1);
@@ -832,9 +584,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	cp_seg_blk_offset = le32_to_cpu(super_block.segment0_blkaddr);
 	cp_seg_blk_offset *= blk_size_bytes;
 
-	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
-				F2FS_CP_BLOCK_SIZE) < 0) {
-		printf("\n\tError: While writing the ckp to disk!!!\n");
+	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
 
@@ -846,9 +597,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	sum->entries[0].ofs_in_node = 0;
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -857,9 +607,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -887,9 +636,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	sum->sit_j.entries[5].se.vblocks = cpu_to_le16((CURSEG_COLD_DATA << 10));
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -901,9 +649,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	sum->entries[0].ofs_in_node = 0;
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -912,9 +659,8 @@ static int8_t f2fs_write_check_point_pack(void)
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -922,17 +668,15 @@ static int8_t f2fs_write_check_point_pack(void)
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, sum, cp_seg_blk_offset,
-				sizeof(struct f2fs_summary_block)) < 0) {
-		printf("\n\tError: While writing the sum_blk to disk!!!\n");
+	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
 	/* 8. cp page2 */
 	cp_seg_blk_offset += blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, ckp, cp_seg_blk_offset,
-				F2FS_CP_BLOCK_SIZE) < 0) {
-		printf("\n\tError: While writing the ckp to disk!!!\n");
+	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
 
@@ -947,11 +691,10 @@ static int8_t f2fs_write_check_point_pack(void)
 				le32_to_cpu(ckp->checksum_offset))) = crc;
 
 	cp_seg_blk_offset = (le32_to_cpu(super_block.segment0_blkaddr) +
-				f2fs_params.blks_per_seg) *
+				config.blks_per_seg) *
 				blk_size_bytes;
-	if (writetodisk(f2fs_params.fd, ckp,
-				cp_seg_blk_offset, F2FS_CP_BLOCK_SIZE) < 0) {
-		printf("\n\tError: While writing the ckp to disk!!!\n");
+	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
 
@@ -960,25 +703,19 @@ static int8_t f2fs_write_check_point_pack(void)
 	return	0;
 }
 
-/**
- * @brief     	It writes super block on device
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_write_super_block(void)
+static int f2fs_write_super_block(void)
 {
-	u_int32_t index = 0;
+	int index;
 	u_int8_t *zero_buff;
 
 	zero_buff = calloc(F2FS_BLKSIZE, 1);
 
 	memcpy(zero_buff + F2FS_SUPER_OFFSET, &super_block,
 						sizeof(super_block));
-
 	for (index = 0; index < 2; index++) {
-		if (writetodisk(f2fs_params.fd, zero_buff,
-				index * F2FS_BLKSIZE, F2FS_BLKSIZE) < 0) {
-			printf("\n\tError: While while writing supe_blk \
+		if (dev_write(config.fd, zero_buff,
+				index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
+			MSG(1, "\tError: While while writing supe_blk \
 					on disk!!! index : %d\n", index);
 			return -1;
 		}
@@ -988,20 +725,15 @@ static int8_t f2fs_write_super_block(void)
 	return 0;
 }
 
-/**
- * @brief     	It initializes and writes root inode on device.
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_write_root_inode(void)
+static int f2fs_write_root_inode(void)
 {
 	struct f2fs_node *raw_node = NULL;
 	u_int64_t blk_size_bytes, data_blk_nor;
 	u_int64_t main_area_node_seg_blk_offset = 0;
 
-	raw_node = calloc(sizeof(struct f2fs_node), 1);
+	raw_node = calloc(F2FS_BLKSIZE, 1);
 	if (raw_node == NULL) {
-		printf("\n\tError: Calloc Failed for raw_node!!!\n");
+		MSG(1, "\tError: Calloc Failed for raw_node!!!\n");
 		return -1;
 	}
 
@@ -1010,8 +742,8 @@ static int8_t f2fs_write_root_inode(void)
 	raw_node->footer.cp_ver = cpu_to_le64(1);
 	raw_node->footer.next_blkaddr = cpu_to_le32(
 			le32_to_cpu(super_block.main_blkaddr) +
-			f2fs_params.cur_seg[CURSEG_HOT_NODE] *
-			f2fs_params.blks_per_seg + 1);
+			config.cur_seg[CURSEG_HOT_NODE] *
+			config.blks_per_seg + 1);
 
 	raw_node->i.i_mode = cpu_to_le16(0x41ed);
 	raw_node->i.i_links = cpu_to_le32(2);
@@ -1034,7 +766,7 @@ static int8_t f2fs_write_root_inode(void)
 	raw_node->i.i_current_depth = cpu_to_le32(1);
 
 	data_blk_nor = le32_to_cpu(super_block.main_blkaddr) +
-		f2fs_params.cur_seg[CURSEG_HOT_DATA] * f2fs_params.blks_per_seg;
+		config.cur_seg[CURSEG_HOT_DATA] * config.blks_per_seg;
 	raw_node->i.i_addr[0] = cpu_to_le32(data_blk_nor);
 
 	raw_node->i.i_ext.fofs = 0;
@@ -1042,48 +774,43 @@ static int8_t f2fs_write_root_inode(void)
 	raw_node->i.i_ext.len = cpu_to_le32(1);
 
 	main_area_node_seg_blk_offset = le32_to_cpu(super_block.main_blkaddr);
-	main_area_node_seg_blk_offset += f2fs_params.cur_seg[CURSEG_HOT_NODE] *
-					f2fs_params.blks_per_seg;
+	main_area_node_seg_blk_offset += config.cur_seg[CURSEG_HOT_NODE] *
+					config.blks_per_seg;
         main_area_node_seg_blk_offset *= blk_size_bytes;
 
-	if (writetodisk(f2fs_params.fd, raw_node, main_area_node_seg_blk_offset,
-				sizeof(struct f2fs_node)) < 0) {
-		printf("\n\tError: While writing the raw_node to disk!!!\n");
+	if (dev_write(config.fd, raw_node,
+				main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
 
 	memset(raw_node, 0xff, sizeof(struct f2fs_node));
 
-	if (writetodisk(f2fs_params.fd, raw_node,
-				main_area_node_seg_blk_offset + 4096,
-				sizeof(struct f2fs_node)) < 0) {
-		printf("\n\tError: While writing the raw_node to disk!!!\n");
+	if (dev_write(config.fd, raw_node,
+				main_area_node_seg_blk_offset + F2FS_BLKSIZE,
+				F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
 	free(raw_node);
 	return 0;
 }
 
-/**
- * @brief     	It updates NAT for root Inode
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_update_nat_root(void)
+static int f2fs_update_nat_root(void)
 {
 	struct f2fs_nat_block *nat_blk = NULL;
 	u_int64_t blk_size_bytes, nat_seg_blk_offset = 0;
 
-	nat_blk = calloc(sizeof(struct f2fs_nat_block), 1);
+	nat_blk = calloc(F2FS_BLKSIZE, 1);
 	if(nat_blk == NULL) {
-		printf("\n\tError: Calloc Failed for nat_blk!!!\n");
+		MSG(1, "\tError: Calloc Failed for nat_blk!!!\n");
 		return -1;
 	}
 
 	/* update root */
 	nat_blk->entries[super_block.root_ino].block_addr = cpu_to_le32(
 		le32_to_cpu(super_block.main_blkaddr) +
-		f2fs_params.cur_seg[CURSEG_HOT_NODE] * f2fs_params.blks_per_seg);
+		config.cur_seg[CURSEG_HOT_NODE] * config.blks_per_seg);
 	nat_blk->entries[super_block.root_ino].ino = super_block.root_ino;
 
 	/* update node nat */
@@ -1098,9 +825,8 @@ static int8_t f2fs_update_nat_root(void)
 	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
 	nat_seg_blk_offset *= blk_size_bytes;
 
-	if (writetodisk(f2fs_params.fd, nat_blk, nat_seg_blk_offset,
-				sizeof(struct f2fs_nat_block)) < 0) {
-		printf("\n\tError: While writing the nat_blk set0 to disk!!!\n");
+	if (dev_write(config.fd, nat_blk, nat_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the nat_blk set0 to disk!\n");
 		return -1;
 	}
 
@@ -1108,19 +834,14 @@ static int8_t f2fs_update_nat_root(void)
 	return 0;
 }
 
-/**
- * @brief     	It updates default dentries in Root Inode
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_add_default_dentry_root(void)
+static int f2fs_add_default_dentry_root(void)
 {
 	struct f2fs_dentry_block *dent_blk = NULL;
 	u_int64_t blk_size_bytes, data_blk_offset = 0;
 
-	dent_blk = calloc(sizeof(struct f2fs_dentry_block), 1);
+	dent_blk = calloc(F2FS_BLKSIZE, 1);
 	if(dent_blk == NULL) {
-		printf("\n\tError: Calloc Failed for dent_blk!!!\n");
+		MSG(1, "\tError: Calloc Failed for dent_blk!!!\n");
 		return -1;
 	}
 
@@ -1140,13 +861,12 @@ static int8_t f2fs_add_default_dentry_root(void)
 	dent_blk->dentry_bitmap[0] = (1 << 1) | (1 << 0);
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
 	data_blk_offset = le32_to_cpu(super_block.main_blkaddr);
-	data_blk_offset += f2fs_params.cur_seg[CURSEG_HOT_DATA] *
-				f2fs_params.blks_per_seg;
+	data_blk_offset += config.cur_seg[CURSEG_HOT_DATA] *
+				config.blks_per_seg;
 	data_blk_offset *= blk_size_bytes;
 
-	if (writetodisk(f2fs_params.fd, dent_blk, data_blk_offset,
-				sizeof(struct f2fs_dentry_block)) < 0) {
-		printf("\n\tError: While writing the dentry_blk to disk!!!\n");
+	if (dev_write(config.fd, dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
 		return -1;
 	}
 
@@ -1154,35 +874,30 @@ static int8_t f2fs_add_default_dentry_root(void)
 	return 0;
 }
 
-/**
- * @brief     	It creates root directory on device.
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_create_root_dir(void)
+static int f2fs_create_root_dir(void)
 {
-	int8_t err = 0;
+	int err = 0;
 
 	err = f2fs_write_root_inode();
 	if (err < 0) {
-		printf("\n\tError: Failed to write root inode!!!\n");
+		MSG(1, "\tError: Failed to write root inode!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_update_nat_root();
 	if (err < 0) {
-		printf("\n\tError: Failed to update NAT for root!!!\n");
+		MSG(1, "\tError: Failed to update NAT for root!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_add_default_dentry_root();
 	if (err < 0) {
-		printf("\n\tError: Failed to add default dentries for root!!!\n");
+		MSG(1, "\tError: Failed to add default dentries for root!!!\n");
 		goto exit;
 	}
 exit:
 	if (err)
-		printf("\n\tError: Could not create the root directory!!!\n");
+		MSG(1, "\tError: Could not create the root directory!!!\n");
 
 	return err;
 }
@@ -1193,113 +908,104 @@ int f2fs_trim_device()
 	struct stat stat_buf;
 
 	range[0] = 0;
-	range[1] = f2fs_params.total_sectors * DEFAULT_SECTOR_SIZE;
+	range[1] = config.total_sectors * DEFAULT_SECTOR_SIZE;
 
-	if (fstat(f2fs_params.fd, &stat_buf) < 0 ) {
-		printf("\n\tError: Failed to get the device stat!!!\n");
+	if (fstat(config.fd, &stat_buf) < 0 ) {
+		MSG(1, "\tError: Failed to get the device stat!!!\n");
 		return -1;
 	}
 
 	if (S_ISREG(stat_buf.st_mode))
 		return 0;
 	else if (S_ISBLK(stat_buf.st_mode)) {
-		if (ioctl(f2fs_params.fd, BLKDISCARD, &range) < 0)
-			printf("Info: This device doesn't support TRIM\n");
+		if (ioctl(config.fd, BLKDISCARD, &range) < 0)
+			MSG(0, "Info: This device doesn't support TRIM\n");
 	} else
 		return -1;
 	return 0;
 }
 
-/**
- * @brief     	It s a routine to fromat device with F2FS on-disk layout
- * @param	None
- * @return	0 if success
- */
-static int8_t f2fs_format_device(void)
+static int f2fs_format_device(void)
 {
-	int8_t err = 0;
+	int err = 0;
 
 	err= f2fs_prepare_super_block();
-	if (err < 0)
+	if (err < 0) {
+		MSG(0, "\tError: Failed to prepare a super block!!!\n");
 		goto exit;
+	}
 
 	err = f2fs_trim_device();
 	if (err < 0) {
-		printf("\n\tError: Failed to trim whole device!!!\n");
+		MSG(0, "\tError: Failed to trim whole device!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_init_sit_area();
 	if (err < 0) {
-		printf("\n\tError: Failed to Initialise the SIT AREA!!!\n");
+		MSG(0, "\tError: Failed to Initialise the SIT AREA!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_init_nat_area();
 	if (err < 0) {
-		printf("\n\tError: Failed to Initialise the NAT AREA!!!\n");
+		MSG(0, "\tError: Failed to Initialise the NAT AREA!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_create_root_dir();
 	if (err < 0) {
-		printf("\n\tError: Failed to create the root directory!!!\n");
+		MSG(0, "\tError: Failed to create the root directory!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_write_check_point_pack();
 	if (err < 0) {
-		printf("\n\tError: Failed to write the check point pack!!!\n");
+		MSG(0, "\tError: Failed to write the check point pack!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_write_super_block();
 	if (err < 0) {
-		printf("\n\tError: Failed to write the Super Block!!!\n");
+		MSG(0, "\tError: Failed to write the Super Block!!!\n");
 		goto exit;
 	}
 exit:
 	if (err)
-		printf("\n\tError: Could not format the device!!!\n");
+		MSG(0, "\tError: Could not format the device!!!\n");
 
 	/*
 	 * We should call fsync() to flush out all the dirty pages
 	 * in the block device page cache.
 	 */
-	if (fsync(f2fs_params.fd) < 0)
-		printf("\n\tError: Could not conduct fsync!!!\n");
+	if (fsync(config.fd) < 0)
+		MSG(0, "\tError: Could not conduct fsync!!!\n");
 
-	if (close(f2fs_params.fd) < 0)
-		printf("\n\tError: Failed to close device file!!!\n");
+	if (close(config.fd) < 0)
+		MSG(0, "\tError: Failed to close device file!!!\n");
 
 	return err;
 }
 
-/**
- * @brief     	main function of F2Fs utility
- * @param	argc count of argument
- * @param	argv array of arguments
- * @return	0 if success
- */
 int main(int argc, char *argv[])
 {
-	printf("\nF2FS-tools: Ver: %s (%s)\n",
+	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
 				F2FS_TOOLS_VERSION,
 				F2FS_TOOLS_DATE);
-	f2fs_init_global_parameters();
+	f2fs_init_configuration(&config);
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_is_device_mounted() < 0)
+	if (f2fs_dev_is_mounted(&config) < 0)
 		return -1;
 
-	if (f2fs_get_device_info() < 0)
+	if (f2fs_get_device_info(&config) < 0)
 		return -1;
 
 	if (f2fs_format_device() < 0)
 		return -1;
 
-	printf("Info: format successful\n");
+	MSG(0, "Info: format successful\n");
 
 	return 0;
 }

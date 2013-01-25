@@ -1,20 +1,47 @@
+.*
 *~
 *.[ao]
 *.orig
 *.tar.*
+*.s
+*.lo
+*.la
+*.so
+*.so.dbg
+*.mod.c
+*.lst
+*.orig
+*.rej
 
-.deps/
-.libs/
+CVS
+!.gitignore
+tags
+TAGS
+GPATH
+GRTAGS
+GSYMS
+GTAGS
 
+#
+# Generated files
+#
+compile
+install-sh
+missing
+depcomp
+INSTALL
+aclocal.m4
+autoconf-[0-9].*
+autom4te.cache
+build-aux
 Makefile
 Makefile.in
-
-/aclocal.m4
-/autom4te.cache/
-/build-aux/
-/config.*
-/configure*
-/stamp-h1
+config.*
+configure
+configure.scan
+ltmain.sh
+libtool
+stamp-h
+stamp-h1
 
 /mkfs/mkfs.f2fs
-

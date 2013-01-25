@@ -11,7 +11,9 @@
 #ifndef __F2FS_FS_H__
 #define __F2FS_FS_H__
 
+#include <inttypes.h>
 #include <linux/types.h>
+#include <sys/types.h>
 #include <endian.h>
 #include <byteswap.h>
 
@@ -35,6 +37,88 @@
 #define cpu_to_le64(x)	bswap_64(x)
 #endif
 
+/*
+ * Debugging interfaces
+ */
+#define ASSERT_MSG(exp, fmt, ...)					\
+	do {								\
+		if (!(exp)) {						\
+			printf("\nAssertion failed!\n");		\
+			printf("[%s:%4d] " #exp, __func__, __LINE__);	\
+			printf("\n --> "fmt, ##__VA_ARGS__);		\
+			exit(-1);					\
+		}							\
+	} while (0);
+
+#define ASSERT(exp)							\
+	do {								\
+		if (!(exp)) {						\
+			printf("\nAssertion failed!\n");		\
+			printf("[%s:%4d] " #exp"\n", __func__, __LINE__);\
+			exit(-1);					\
+		}							\
+	} while (0);
+
+#define MSG(n, fmt, ...)						\
+	do {								\
+		if (config.dbg_lv >= n) {				\
+			printf(fmt, ##__VA_ARGS__);			\
+		}							\
+	} while (0);
+
+#define DBG(n, fmt, ...)						\
+	do {								\
+		if (config.dbg_lv >= n) {				\
+			printf("[%s:%4d] " fmt,				\
+				__func__, __LINE__, ##__VA_ARGS__);	\
+		}							\
+	} while (0);
+
+/* Display on console */
+#define DISP(fmt, ptr, member)				\
+	do {						\
+		printf("%-30s" fmt, #member, ((ptr)->member));	\
+	} while (0);
+
+#define DISP_u32(ptr, member)						\
+	do {								\
+		assert(sizeof((ptr)->member) <= 4);			\
+		printf("%-30s" "\t\t[0x%8x : %u]\n",		\
+			#member, ((ptr)->member), ((ptr)->member) );	\
+	} while (0);
+
+#define DISP_u64(ptr, member)						\
+	do {								\
+		assert(sizeof((ptr)->member) == 8);			\
+		printf("%-30s" "\t\t[0x%8llx : %llu]\n",		\
+			#member, ((ptr)->member), ((ptr)->member) );	\
+	} while (0);
+
+#define DISP_utf(ptr, member)						\
+	do {								\
+		printf(#member "\t\t\t\t[%s]\n", ((ptr)->member) );	\
+	} while (0);
+
+/* Display to buffer */
+#define BUF_DISP_u32(buf, data, len, ptr, member)					\
+	do {										\
+		assert(sizeof((ptr)->member) <= 4);					\
+		snprintf(buf, len, #member);						\
+		snprintf(data, len, "0x%x : %u", ((ptr)->member), ((ptr)->member));	\
+	} while (0);
+
+#define BUF_DISP_u64(buf, data, len, ptr, member)					\
+	do {										\
+		assert(sizeof((ptr)->member) == 8);					\
+		snprintf(buf, len, #member);						\
+		snprintf(data, len, "0x%llx : %llu", ((ptr)->member), ((ptr)->member));	\
+	} while (0);
+
+#define BUF_DISP_utf(buf, data, len, ptr, member)				\
+	do {									\
+		snprintf(buf, len, #member);					\
+	} while (0);
+
 /* these are defined in kernel */
 #define PAGE_SIZE		4096
 #define PAGE_CACHE_SIZE		4096
@@ -48,10 +132,8 @@
 #define	DEFAULT_SECTORS_PER_BLOCK	8
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
-#define F2FS_CP_BLOCK_SIZE		(DEFAULT_SECTOR_SIZE * \
-					DEFAULT_SECTORS_PER_BLOCK)
 
-struct f2fs_global_parameters {
+struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
 	u_int32_t overprovision;
@@ -67,6 +149,7 @@ struct f2fs_global_parameters {
 	int32_t fd;
 	char *device_name;
 	char *extension_list;
+	int dbg_lv;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -499,5 +582,24 @@ enum {
 	F2FS_FT_SYMLINK,
 	F2FS_FT_MAX
 };
+
+void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
+int log_base_2(u_int32_t);
+
+int f2fs_test_bit(unsigned int, const char *);
+int f2fs_set_bit(unsigned int, unsigned char *);
+int f2fs_clear_bit(unsigned int, char *);
+
+u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
+
+void f2fs_init_configuration(struct f2fs_configuration *);
+int f2fs_dev_is_mounted(struct f2fs_configuration *);
+int f2fs_get_device_info(struct f2fs_configuration *);
+
+int dev_read(int, void *, __u64, size_t);
+int dev_write(int, void *, __u64, size_t);
+
+int dev_read_block(int, void *, __u64);
+int dev_read_blocks(int, void *, __u64, __u32 );
 
 #endif	//__F2FS_FS_H__

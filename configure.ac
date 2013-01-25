@@ -29,11 +29,12 @@ AC_CHECK_FILE(.git,
 		"f2fs_tools_date",
 		[f2fs-tools date based on Source releases]))
 
+AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADER([config.h])
-
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign tar-pax dist-xz])
-AC_CONFIG_SRCDIR([mkfs/f2fs_format.c])
+
 AC_CHECK_HEADERS_ONCE([
 	fcntl.h
 	mntent.h
@@ -46,6 +47,10 @@ AC_CHECK_HEADERS_ONCE([
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_LIBTOOL
+AC_PATH_PROG([LDCONFIG], [ldconfig],
+       [AC_MSG_ERROR([ldconfig not found])],
+       [$PATH:/sbin])
 
 # Checks for libraries.
 PKG_CHECK_MODULES([libuuid], [uuid])
@@ -67,9 +72,15 @@ AC_CHECK_FUNCS_ONCE([
 	memset
 ])
 
+# Install directories
+AC_PREFIX_DEFAULT([/usr])
+AC_SUBST([sbindir], [/sbin])
+AC_SUBST([sysconfdir], [/etc])
+AC_SUBST([localstatedir], [/var])
 AC_CONFIG_FILES([
 	Makefile
 	man/Makefile
+	lib/Makefile
 	mkfs/Makefile
 ])
 

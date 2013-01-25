@@ -1,7 +1,8 @@
-.\"  Copyright (C) 2007-2012 Nippon Telegraph and Telephone Corporation.
-.\"  Written by Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
+.\" Copyright (c) 2012 Samsung Electronics Co., Ltd.
+.\"             http://www.samsung.com/
+.\"  Written by Jaegeuk Kim <jaegeuk.kim@samsung.com>
 .\"
-.TH MKFS.F2FS 8 "August 2012" "f2fs-tools version 1.0"
+.TH MKFS.F2FS 8 "January 2013" "f2fs-tools version 1.2.0"
 .SH NAME
 mkfs.f2fs \- create an F2FS file system
 .SH SYNOPSIS
@@ -25,6 +26,14 @@ mkfs.f2fs \- create an F2FS file system
 [
 .B \-z
 .I #-of-sections-per-zone
+]
+[
+.B \-e
+.I extenstion-list
+]
+[
+.B \-d
+.I debugging-level
 ]
 .I device
 .SH DESCRIPTION
@@ -60,12 +69,23 @@ The default number is 0, which means one segment is assigned to a section.
 Specify the number of sections per zone. A zone consists of multiple sections.
 F2FS allocates segments for active logs with separated zones as much as possible.
 The default number is 1, which means a zone consists of one section.
+.TP
+.BI \-e " extension-list"
+Specify a file extension list in order f2fs to treat them as cold files.
+The data of files having those extensions will be stored to the cold log.
+The default list includes most of multimedia file extensions such as jpg, gif,
+mpeg, mkv, and so on.
+.TP
+.BI \-d " debug-level"
+Specify the level of debugging options.
+The default number is 0, which shows basic debugging messages.
+.TP
 .SH AUTHOR
 This version of
 .B mkfs.f2fs
 has been written by Jaegeuk Kim <jaegeuk.kim@samsung.com>.
 .SH AVAILABILITY
 .B mkfs.f2fs
-is available from http://sourceforge.net/projects/f2fs-tools/.
+is available from git://git.kernel.org/pub/scm/linux/kernel/git/jaegeuk/f2fs-tools.git.
 .SH SEE ALSO
 .BR mkfs (8).
