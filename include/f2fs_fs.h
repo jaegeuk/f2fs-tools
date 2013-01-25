@@ -1,5 +1,5 @@
 /**
- * f2fs_format.h
+ * f2fs_fs.h
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
@@ -8,8 +8,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
-#ifndef __F2FS_FORMAT_H__
-#define __F2FS_FORMAT_H__
+#ifndef __F2FS_FS_H__
+#define __F2FS_FS_H__
 
 #include <linux/types.h>
 #include <endian.h>
@@ -443,4 +443,4 @@ enum {
 	F2FS_FT_MAX
 };
 
-#endif	//__F2FS_FORMAT_H__
+#endif	//__F2FS_FS_H__

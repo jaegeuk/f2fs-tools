@@ -27,7 +27,7 @@
 #include <linux/fs.h>
 #include <uuid/uuid.h>
 
-#include "f2fs_format.h"
+#include "f2fs_fs.h"
 
 struct f2fs_global_parameters f2fs_params;
 struct f2fs_super_block super_block;
