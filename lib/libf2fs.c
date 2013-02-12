@@ -106,6 +106,21 @@ u_int32_t f2fs_cal_crc32(u_int32_t crc, void *buf, int len)
 	return crc;
 }
 
+int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len)
+{
+	u_int32_t cal_crc = 0;
+
+	cal_crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, buf, len);
+
+	if (cal_crc != blk_crc)	{
+		DBG(0,"CRC validation failed: cal_crc = %u \
+			blk_crc = %u buff_size = 0x%x",
+			cal_crc, blk_crc, len);
+		return -1;
+	}
+	return 0;
+}
+
 /*
  * device information
  */
@@ -218,30 +233,30 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 /*
  * IO interfaces
  */
-int dev_read(int fd, void *buf, __u64 offset, size_t len)
+int dev_read(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (read(fd, buf, len) < 0)
-		return -1;
-	return 0;
-}
-
-int dev_write(int fd, void *buf, __u64 offset, size_t len)
-{
-	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
-		return -1;
-	if (write(fd, buf, len) < 0)
+	if (read(config.fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
 
-int dev_read_block(int fd, void *buf, __u64 blk_addr)
+int dev_write(void *buf, __u64 offset, size_t len)
 {
-	return dev_read(fd, buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
+		return -1;
+	if (write(config.fd, buf, len) < 0)
+		return -1;
+	return 0;
 }
 
-int dev_read_blocks(int fd, void *buf, __u64 addr, __u32 nr_blks)
+int dev_read_block(void *buf, __u64 blk_addr)
 {
-	return dev_read(fd, buf, addr * F2FS_BLKSIZE, nr_blks * F2FS_BLKSIZE);
+	return dev_read(buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+}
+
+int dev_read_blocks(void *buf, __u64 addr, __u32 nr_blks)
+{
+	return dev_read(buf, addr * F2FS_BLKSIZE, nr_blks * F2FS_BLKSIZE);
 }

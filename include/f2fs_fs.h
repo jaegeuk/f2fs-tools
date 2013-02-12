@@ -596,10 +596,10 @@ void f2fs_init_configuration(struct f2fs_configuration *);
 int f2fs_dev_is_mounted(struct f2fs_configuration *);
 int f2fs_get_device_info(struct f2fs_configuration *);
 
-int dev_read(int, void *, __u64, size_t);
-int dev_write(int, void *, __u64, size_t);
+int dev_read(void *, __u64, size_t);
+int dev_write(void *, __u64, size_t);
 
-int dev_read_block(int, void *, __u64);
-int dev_read_blocks(int, void *, __u64, __u32 );
+int dev_read_block(void *, __u64);
+int dev_read_blocks(void *, __u64, __u32 );
 
-#endif	//__F2FS_FS_H__
+#endif	/*__F2FS_FS_H */

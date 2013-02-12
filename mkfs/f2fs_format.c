@@ -451,7 +451,7 @@ static int f2fs_init_sit_area(void)
 	for (index = 0;
 		index < (le32_to_cpu(super_block.segment_count_sit) / 2);
 								index++) {
-		if (dev_write(config.fd, zero_buf, sit_seg_addr, seg_size)) {
+		if (dev_write(zero_buf, sit_seg_addr, seg_size)) {
 			MSG(1, "\tError: While zeroing out the sit area \
 					on disk!!!\n");
 			return -1;
@@ -486,7 +486,7 @@ static int f2fs_init_nat_area(void)
 	for (index = 0;
 		index < (le32_to_cpu(super_block.segment_count_nat) / 2);
 								index++) {
-		if (dev_write(config.fd, nat_buf, nat_seg_addr, seg_size)) {
+		if (dev_write(nat_buf, nat_seg_addr, seg_size)) {
 			MSG(1, "\tError: While zeroing out the nat area \
 					on disk!!!\n");
 			return -1;
@@ -584,7 +584,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk_offset = le32_to_cpu(super_block.segment0_blkaddr);
 	cp_seg_blk_offset *= blk_size_bytes;
 
-	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
@@ -597,7 +597,7 @@ static int f2fs_write_check_point_pack(void)
 	sum->entries[0].ofs_in_node = 0;
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
@@ -607,7 +607,7 @@ static int f2fs_write_check_point_pack(void)
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
@@ -636,7 +636,7 @@ static int f2fs_write_check_point_pack(void)
 	sum->sit_j.entries[5].se.vblocks = cpu_to_le16((CURSEG_COLD_DATA << 10));
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
@@ -649,7 +649,7 @@ static int f2fs_write_check_point_pack(void)
 	sum->entries[0].ofs_in_node = 0;
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
@@ -659,7 +659,7 @@ static int f2fs_write_check_point_pack(void)
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
 
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
@@ -668,14 +668,14 @@ static int f2fs_write_check_point_pack(void)
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(sum, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		return -1;
 	}
 
 	/* 8. cp page2 */
 	cp_seg_blk_offset += blk_size_bytes;
-	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
@@ -693,7 +693,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk_offset = (le32_to_cpu(super_block.segment0_blkaddr) +
 				config.blks_per_seg) *
 				blk_size_bytes;
-	if (dev_write(config.fd, ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the ckp to disk!!!\n");
 		return -1;
 	}
@@ -713,8 +713,7 @@ static int f2fs_write_super_block(void)
 	memcpy(zero_buff + F2FS_SUPER_OFFSET, &super_block,
 						sizeof(super_block));
 	for (index = 0; index < 2; index++) {
-		if (dev_write(config.fd, zero_buff,
-				index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
+		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
 			MSG(1, "\tError: While while writing supe_blk \
 					on disk!!! index : %d\n", index);
 			return -1;
@@ -778,17 +777,15 @@ static int f2fs_write_root_inode(void)
 					config.blks_per_seg;
         main_area_node_seg_blk_offset *= blk_size_bytes;
 
-	if (dev_write(config.fd, raw_node,
-				main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
 
 	memset(raw_node, 0xff, sizeof(struct f2fs_node));
 
-	if (dev_write(config.fd, raw_node,
-				main_area_node_seg_blk_offset + F2FS_BLKSIZE,
-				F2FS_BLKSIZE)) {
+	main_area_node_seg_blk_offset += F2FS_BLKSIZE;
+	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
 	}
@@ -825,7 +822,7 @@ static int f2fs_update_nat_root(void)
 	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
 	nat_seg_blk_offset *= blk_size_bytes;
 
-	if (dev_write(config.fd, nat_blk, nat_seg_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(nat_blk, nat_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the nat_blk set0 to disk!\n");
 		return -1;
 	}
@@ -865,7 +862,7 @@ static int f2fs_add_default_dentry_root(void)
 				config.blks_per_seg;
 	data_blk_offset *= blk_size_bytes;
 
-	if (dev_write(config.fd, dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
+	if (dev_write(dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
 		return -1;
 	}
