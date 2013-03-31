@@ -152,8 +152,13 @@ int f2fs_dev_is_mounted(struct f2fs_configuration *c)
 	struct mntent *mnt = NULL;
 
 	file = setmntent(MOUNTED, "r");
-	if (file == NULL)
-		return 0;
+	if (file == NULL) {
+		/* if failed due to /etc/mtab file not present
+		   try with /proc/mounts */
+		file = setmntent("/proc/mounts", "r");
+		if (file == NULL)
+			return 0;
+	}
 
 	while (1) {
 		mnt = getmntent(file);
