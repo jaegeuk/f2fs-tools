@@ -66,7 +66,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 						512 characters\n");
 				mkfs_usage();
 			}
-			sprintf((char *)config.vol_label, "%s", optarg);
+			config.vol_label = optarg;
 			MSG(0, "Info: Label = %s\n", config.vol_label);
 			break;
 		case 'o':
@@ -361,7 +361,7 @@ static int f2fs_prepare_super_block(void)
 
 	uuid_generate(super_block.uuid);
 
-	ASCIIToUNICODE(super_block.volume_name, config.vol_label);
+	ASCIIToUNICODE(super_block.volume_name, (u_int8_t *)config.vol_label);
 
 	super_block.node_ino = cpu_to_le32(1);
 	super_block.meta_ino = cpu_to_le32(2);

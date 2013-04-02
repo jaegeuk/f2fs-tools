@@ -136,8 +136,7 @@ void f2fs_init_configuration(struct f2fs_configuration *c)
 	c->segs_per_sec = 1;
 	c->secs_per_zone = 1;
 	c->heap = 1;
-	memset(c->vol_label, 0, sizeof(c->vol_label));
-	c->vol_label[0] = '\0';
+	c->vol_label = "";
 	c->device_name = NULL;
 }
 
