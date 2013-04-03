@@ -37,12 +37,13 @@ static void mkfs_usage()
 	MSG(0, "  -o overprovision ratio [default:5]\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
+	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
 	exit(1);
 }
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "a:d:e:l:o:s:z:";
+	static const char *option_string = "a:d:e:l:o:s:z:t:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -82,6 +83,10 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'z':
 			config.secs_per_zone = atoi(optarg);
 			MSG(0, "Info: Sections per zone = %d\n", atoi(optarg));
+			break;
+		case 't':
+			config.trim = atoi(optarg);
+			MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
 			break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
@@ -903,6 +908,9 @@ int f2fs_trim_device()
 {
 	unsigned long long range[2];
 	struct stat stat_buf;
+
+	if (!config.trim)
+		return 0;
 
 	range[0] = 0;
 	range[1] = config.total_sectors * DEFAULT_SECTOR_SIZE;

@@ -150,6 +150,7 @@ struct f2fs_configuration {
 	char *device_name;
 	char *extension_list;
 	int dbg_lv;
+	int trim;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
