@@ -810,18 +810,18 @@ static int f2fs_update_nat_root(void)
 	}
 
 	/* update root */
-	nat_blk->entries[super_block.root_ino].block_addr = cpu_to_le32(
+	nat_blk->entries[le32_to_cpu(super_block.root_ino)].block_addr = cpu_to_le32(
 		le32_to_cpu(super_block.main_blkaddr) +
 		config.cur_seg[CURSEG_HOT_NODE] * config.blks_per_seg);
-	nat_blk->entries[super_block.root_ino].ino = super_block.root_ino;
+	nat_blk->entries[le32_to_cpu(super_block.root_ino)].ino = super_block.root_ino;
 
 	/* update node nat */
-	nat_blk->entries[super_block.node_ino].block_addr = cpu_to_le32(1);
-	nat_blk->entries[super_block.node_ino].ino = super_block.node_ino;
+	nat_blk->entries[le32_to_cpu(super_block.node_ino)].block_addr = cpu_to_le32(1);
+	nat_blk->entries[le32_to_cpu(super_block.node_ino)].ino = super_block.node_ino;
 
 	/* update meta nat */
-	nat_blk->entries[super_block.meta_ino].block_addr = cpu_to_le32(1);
-	nat_blk->entries[super_block.meta_ino].ino = super_block.meta_ino;
+	nat_blk->entries[le32_to_cpu(super_block.meta_ino)].block_addr = cpu_to_le32(1);
+	nat_blk->entries[le32_to_cpu(super_block.meta_ino)].ino = super_block.meta_ino;
 
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
 	nat_seg_blk_offset = le32_to_cpu(super_block.nat_blkaddr);
