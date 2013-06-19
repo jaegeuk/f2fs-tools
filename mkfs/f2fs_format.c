@@ -563,7 +563,7 @@ static int f2fs_write_check_point_pack(void)
 			le32_to_cpu(ckp->overprov_segment_count)) *
 			 config.blks_per_seg));
 	ckp->cp_pack_total_block_count = cpu_to_le32(8);
-	ckp->ckpt_flags |= CP_UMOUNT_FLAG;
+	ckp->ckpt_flags = cpu_to_le32(CP_UMOUNT_FLAG);
 	ckp->cp_pack_start_sum = cpu_to_le32(1);
 	ckp->valid_node_count = cpu_to_le32(1);
 	ckp->valid_inode_count = cpu_to_le32(1);
