@@ -525,7 +525,7 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* 1. cp page 1 of checkpoint pack 1 */
-	ckp->checkpoint_ver = 1;
+	ckp->checkpoint_ver = cpu_to_le64(1);
 	ckp->cur_node_segno[0] =
 		cpu_to_le32(config.cur_seg[CURSEG_HOT_NODE]);
 	ckp->cur_node_segno[1] =
@@ -578,12 +578,11 @@ static int f2fs_write_check_point_pack(void)
 			((le32_to_cpu(super_block.segment_count_nat) / 2) <<
 			 le32_to_cpu(super_block.log_blocks_per_seg)) / 8);
 
-	ckp->checksum_offset = cpu_to_le32(4092);
+	ckp->checksum_offset = cpu_to_le32(CHECKSUM_OFFSET);
 
-	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp,
-					le32_to_cpu(ckp->checksum_offset));
-	*((u_int32_t *)((unsigned char *)ckp +
-				le32_to_cpu(ckp->checksum_offset))) = crc;
+	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp, CHECKSUM_OFFSET);
+	*((__le32 *)((unsigned char *)ckp + CHECKSUM_OFFSET)) =
+							cpu_to_le32(crc);
 
 	blk_size_bytes = 1 << le32_to_cpu(super_block.log_blocksize);
 	cp_seg_blk_offset = le32_to_cpu(super_block.segment0_blkaddr);
@@ -690,11 +689,9 @@ static int f2fs_write_check_point_pack(void)
 	 */
 	ckp->checkpoint_ver = 0;
 
-	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp,
-					le32_to_cpu(ckp->checksum_offset));
-	*((u_int32_t *)((unsigned char *)ckp +
-				le32_to_cpu(ckp->checksum_offset))) = crc;
-
+	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp, CHECKSUM_OFFSET);
+	*((__le32 *)((unsigned char *)ckp + CHECKSUM_OFFSET)) =
+							cpu_to_le32(crc);
 	cp_seg_blk_offset = (le32_to_cpu(super_block.segment0_blkaddr) +
 				config.blks_per_seg) *
 				blk_size_bytes;
