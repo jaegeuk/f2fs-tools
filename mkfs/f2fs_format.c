@@ -372,9 +372,8 @@ static int f2fs_prepare_super_block(void)
 	super_block.meta_ino = cpu_to_le32(2);
 	super_block.root_ino = cpu_to_le32(3);
 
-	total_zones = ((le32_to_cpu(super_block.segment_count_main) - 1) /
-			config.segs_per_sec) /
-			config.secs_per_zone;
+	total_zones = le32_to_cpu(super_block.segment_count_main) /
+			(config.segs_per_sec * config.secs_per_zone);
 	if (total_zones <= 6) {
 		MSG(1, "\tError: %d zones: Need more zones \
 			by shrinking zone size\n", total_zones);
