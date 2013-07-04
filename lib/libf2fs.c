@@ -23,7 +23,7 @@
 #include <linux/hdreg.h>
 #include <linux/fs.h>
 
-#include "f2fs_fs.h"
+#include <f2fs_fs.h>
 
 struct f2fs_configuration config;
 
@@ -55,6 +55,63 @@ int log_base_2(u_int32_t num)
 /*
  * f2fs bit operations
  */
+static const int bits_in_byte[256] = {
+	0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4,
+	1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+	1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+	1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+	2, 3, 3, 4, 3, 4, 4, 5, 3, 4, 4, 5, 4, 5, 5, 6,
+	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+	3, 4, 4, 5, 4, 5, 5, 6, 4, 5, 5, 6, 5, 6, 6, 7,
+	4, 5, 5, 6, 5, 6, 6, 7, 5, 6, 6, 7, 6, 7, 7, 8,
+};
+
+int get_bits_in_byte(unsigned char n)
+{
+	return bits_in_byte[n];
+}
+
+int set_bit(unsigned int nr,void * addr)
+{
+	int             mask, retval;
+	unsigned char   *ADDR = (unsigned char *) addr;
+
+	ADDR += nr >> 3;
+	mask = 1 << ((nr & 0x07));
+	retval = mask & *ADDR;
+	*ADDR |= mask;
+	return retval;
+}
+
+int clear_bit(unsigned int nr, void * addr)
+{
+	int             mask, retval;
+	unsigned char   *ADDR = (unsigned char *) addr;
+
+	ADDR += nr >> 3;
+	mask = 1 << ((nr & 0x07));
+	retval = mask & *ADDR;
+	*ADDR &= ~mask;
+	return retval;
+}
+
+int test_bit(unsigned int nr, const void * addr)
+{
+	const __u32 *p = (const __u32 *)addr;
+
+	nr = nr ^ 0;
+
+	return ((1 << (nr & 31)) & (p[nr >> 5])) != 0;
+}
+
 int f2fs_test_bit(unsigned int nr, const char *p)
 {
 	int mask;
@@ -65,7 +122,7 @@ int f2fs_test_bit(unsigned int nr, const char *p)
 	return (mask & *addr) != 0;
 }
 
-int f2fs_set_bit(unsigned int nr, unsigned char *addr)
+int f2fs_set_bit(unsigned int nr, char *addr)
 {
 	int mask;
 	int ret;
@@ -87,6 +144,104 @@ int f2fs_clear_bit(unsigned int nr, char *addr)
 	ret = mask & *addr;
 	*addr &= ~mask;
 	return ret;
+}
+
+/*
+ * Hashing code adapted from ext3
+ */
+#define DELTA 0x9E3779B9
+
+static void TEA_transform(unsigned int buf[4], unsigned int const in[])
+{
+	__u32 sum = 0;
+	__u32 b0 = buf[0], b1 = buf[1];
+	__u32 a = in[0], b = in[1], c = in[2], d = in[3];
+	int     n = 16;
+
+	do {
+		sum += DELTA;
+		b0 += ((b1 << 4)+a) ^ (b1+sum) ^ ((b1 >> 5)+b);
+		b1 += ((b0 << 4)+c) ^ (b0+sum) ^ ((b0 >> 5)+d);
+	} while (--n);
+
+	buf[0] += b0;
+	buf[1] += b1;
+
+}
+
+static void str2hashbuf(const char *msg, int len, unsigned int *buf, int num)
+{
+	unsigned pad, val;
+	int i;
+
+	pad = (__u32)len | ((__u32)len << 8);
+	pad |= pad << 16;
+
+	val = pad;
+	if (len > num * 4)
+		len = num * 4;
+	for (i = 0; i < len; i++) {
+		if ((i % 4) == 0)
+			val = pad;
+		val = msg[i] + (val << 8);
+		if ((i % 4) == 3) {
+			*buf++ = val;
+			val = pad;
+			num--;
+		}
+	}
+	if (--num >= 0)
+		*buf++ = val;
+	while (--num >= 0)
+		*buf++ = pad;
+
+}
+
+/**
+ * Return hash value of directory entry
+ * @param name          dentry name
+ * @param len           name lenth
+ * @return              return on success hash value, errno on failure
+ */
+f2fs_hash_t f2fs_dentry_hash(const char *name, int len)
+{
+	__u32 hash;
+	f2fs_hash_t	f2fs_hash;
+	const char	*p;
+	__u32 in[8], buf[4];
+
+	/* special hash codes for special dentries */
+	if (name[0] == '.') {
+		if (name[1] == '\0') {
+			f2fs_hash = F2FS_DOT_HASH;
+			goto exit;
+		}
+		if (name[1] == '.' && name[2] == '\0') {
+			f2fs_hash = F2FS_DDOT_HASH;
+			goto exit;
+		}
+	}
+
+	/* Initialize the default seed for the hash checksum functions */
+	buf[0] = 0x67452301;
+	buf[1] = 0xefcdab89;
+	buf[2] = 0x98badcfe;
+	buf[3] = 0x10325476;
+
+	p = name;
+	while (len > 0) {
+		str2hashbuf(p, len, in, 4);
+		TEA_transform(buf, in);
+		len -= 16;
+		p += 16;
+	}
+	hash = buf[0];
+
+	f2fs_hash = hash;
+exit:
+	f2fs_hash &= ~F2FS_HASH_COL_BIT;
+
+	return f2fs_hash;
 }
 
 /*
