@@ -537,7 +537,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 
 		ASSERT(ret >= 0);
 
-		i += (name_len + F2FS_NAME_LEN - 1) / F2FS_NAME_LEN;
+		i += (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
 		dentries++;
 		*child_files = *child_files + 1;
 		free(name);
