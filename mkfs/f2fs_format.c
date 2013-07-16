@@ -130,6 +130,7 @@ const char *media_ext_lists[] = {
 	"mpe",
 	"rm",
 	"ogg",
+	"apk",	/* for android system */
 	NULL
 };
 
