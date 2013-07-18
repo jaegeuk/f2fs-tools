@@ -12,6 +12,13 @@
 
 #define BUF_SZ	80
 
+const char *seg_type_name[SEG_TYPE_MAX] = {
+	"SEG_TYPE_DATA",
+	"SEG_TYPE_CUR_DATA",
+	"SEG_TYPE_NODE",
+	"SEG_TYPE_CUR_NODE",
+};
+
 void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
 {
 	struct seg_entry *se;
@@ -137,7 +144,38 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 	return 0;
 }
 
-void dump_cleanup(struct f2fs_sb_info *sbi)
+int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 {
-	f2fs_do_umount(sbi);
+	nid_t ino, nid;
+	int ret;
+	struct f2fs_summary sum_entry;
+	struct node_info ni;
+	struct f2fs_node *node_blk;
+
+	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
+	nid = le32_to_cpu(sum_entry.nid);
+
+	DBG(1, "Node ID               [0x%x]\n", nid);
+	DBG(1, "Segment Type          [%s]\n", seg_type_name[ret]);
+	DBG(1, "version               [%d]\n", sum_entry.version);
+	DBG(1, "ofs_in_node           [%d]\n", sum_entry.ofs_in_node);
+	ret = get_node_info(sbi, nid, &ni);
+	ASSERT(ret >= 0);
+
+	node_blk = calloc(BLOCK_SZ, 1);
+
+read_node_blk:
+	dev_read_block(node_blk, ni.blk_addr);
+
+	ino = le32_to_cpu(node_blk->footer.ino);
+	nid = le32_to_cpu(node_blk->footer.nid);
+	if (ino == nid) {
+		print_inode_info(&node_blk->i);
+	} else {
+		ret = get_node_info(sbi, ino, &ni);
+		goto read_node_blk;
+	}
+
+	free(node_blk);
+	return ino;
 }

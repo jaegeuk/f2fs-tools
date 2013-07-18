@@ -793,7 +793,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 void fsck_free(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-		if (fsck->main_area_bitmap)
+	if (fsck->main_area_bitmap)
 		free(fsck->main_area_bitmap);
 
 	if (fsck->nat_area_bitmap)
@@ -801,6 +801,4 @@ void fsck_free(struct f2fs_sb_info *sbi)
 
 	if (fsck->sit_area_bitmap)
 		free(fsck->sit_area_bitmap);
-
-	f2fs_do_umount(sbi);
 }

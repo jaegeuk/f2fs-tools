@@ -31,6 +31,7 @@ void dump_usage()
 	MSG(0, "  -i inode no (hex)\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
+	MSG(0, "  -b blk_addr (in 4KB)\n");
 
 	exit(1);
 }
@@ -57,13 +58,14 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
-		const char *option_string = "d:i:s:a:";
+		const char *option_string = "d:i:s:a:b:";
 		static struct dump_option dump_opt = {
 			.nid = 3,	/* default root ino */
 			.start_sit = -1,
 			.end_sit = -1,
 			.start_ssa = -1,
 			.end_ssa = -1,
+			.blk_addr = -1,
 		};
 
 		config.func = DUMP;
@@ -81,6 +83,9 @@ void f2fs_parse_options(int argc, char *argv[])
 					break;
 				case 'a':
 					sscanf(optarg, "%d~%d", &dump_opt.start_ssa, &dump_opt.end_ssa);
+					break;
+				case 'b':
+					sscanf(optarg, "%d", &dump_opt.blk_addr);
 					break;
 				default:
 					MSG(0, "\tError: Unknown option %c\n", option);
@@ -134,6 +139,11 @@ out1:
 int do_dump(struct f2fs_sb_info *sbi)
 {
 	struct dump_option *opt = (struct dump_option *)config.private;
+	int ret;
+
+	ret = fsck_init(sbi);
+	if (ret < 0)
+		return ret;
 
 	if (opt->end_sit == -1)
 		opt->end_sit = SM_I(sbi)->main_segments;
@@ -143,10 +153,15 @@ int do_dump(struct f2fs_sb_info *sbi)
 		sit_dump(sbi, opt->start_sit, opt->end_sit);
 	if (opt->start_ssa != -1)
 		ssa_dump(sbi, opt->start_ssa, opt->end_ssa);
+	if (opt->blk_addr != -1) {
+		dump_inode_from_blkaddr(sbi, opt->blk_addr);
+		goto cleanup;
+	}
 
 	dump_node(sbi, opt->nid);
 
-	dump_cleanup(sbi);
+cleanup:
+	fsck_free(sbi);
 	return 0;
 }
 
@@ -178,6 +193,7 @@ int main (int argc, char **argv)
 			break;
 	}
 
+	f2fs_do_umount(sbi);
 	printf("\nDone.\n");
 	return ret;
 }

@@ -77,7 +77,11 @@ void print_node_info(struct f2fs_node *node_block)
 		DBG(0, "Node ID [0x%x:%u] is inode\n", nid, nid);
 		print_inode_info(&node_block->i);
 	} else {
+		int i;
+		u32 *dump_blk = (u32 *)node_block;
 		DBG(0, "Node ID [0x%x:%u] is direct node or indirect node.\n", nid, nid);
+		for (i = 0; i <= 10; i++)
+			MSG(0, "[%d]\t\t\t[0x%8x : %d]\n", i, dump_blk[i], dump_blk[i]);
 	}
 }
 
@@ -782,8 +786,8 @@ int get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid, struct f2fs_nat_entry *ra
 	int seg_off, entry_off;
 	int ret;
 
-	if (nid / NAT_ENTRY_PER_BLOCK > (fsck->nat_area_bitmap_sz * 8)) {
-		DBG(0, "\n");
+	if ((nid / NAT_ENTRY_PER_BLOCK) > fsck->nr_nat_entries) {
+		DBG(0, "nid is over max nid\n");
 		return -EINVAL;
 	}
 
@@ -934,7 +938,7 @@ int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	fsck->chk.sit_valid_blocks = sum_vblocks;
 	fsck->chk.sit_free_segs = free_segs;
 
-	DBG(0, "Blocks [0x%x] Free Segs [0x%x]\n", sum_vblocks, free_segs);
+	DBG(0, "Blocks [0x%x] Free Segs [0x%x]\n\n", sum_vblocks, free_segs);
 	return 0;
 }
 
