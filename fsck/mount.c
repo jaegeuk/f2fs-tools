@@ -88,6 +88,10 @@ void print_node_info(struct f2fs_node *node_block)
 void print_raw_sb_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (!config.dbg_lv)
+		return;
+
 	printf("\n");
 	printf("+--------------------------------------------------------+\n");
 	printf("| Super block                                            |\n");
@@ -131,6 +135,9 @@ void print_raw_sb_info(struct f2fs_sb_info *sbi)
 void print_ckpt_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+
+	if (!config.dbg_lv)
+		return;
 
 	printf("\n");
 	printf("+--------------------------------------------------------+\n");
@@ -938,7 +945,8 @@ int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	fsck->chk.sit_valid_blocks = sum_vblocks;
 	fsck->chk.sit_free_segs = free_segs;
 
-	DBG(0, "Blocks [0x%x] Free Segs [0x%x]\n\n", sum_vblocks, free_segs);
+	DBG(1, "Blocks [0x%x : %d] Free Segs [0x%x : %d]\n\n", sum_vblocks, sum_vblocks,
+			free_segs, free_segs);
 	return 0;
 }
 
@@ -1031,7 +1039,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	}
 	free(nat_block);
 
-	DBG(0, "valid nat entries (block_addr != 0x0) [0x%8x : %u]\n",
+	DBG(1, "valid nat entries (block_addr != 0x0) [0x%8x : %u]\n",
 			fsck->chk.valid_nat_entry_cnt, fsck->chk.valid_nat_entry_cnt);
 
 }

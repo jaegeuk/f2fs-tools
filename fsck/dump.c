@@ -170,7 +170,7 @@ read_node_blk:
 	ino = le32_to_cpu(node_blk->footer.ino);
 	nid = le32_to_cpu(node_blk->footer.nid);
 	if (ino == nid) {
-		print_inode_info(&node_blk->i);
+		print_node_info(node_blk);
 	} else {
 		ret = get_node_info(sbi, ino, &ni);
 		goto read_node_blk;
