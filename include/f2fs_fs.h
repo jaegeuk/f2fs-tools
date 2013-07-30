@@ -185,7 +185,7 @@ struct f2fs_configuration {
 	void *private;
 } __attribute__((packed));
 
-#ifdef CONFIG_64BIT
+#ifndef CONFIG_64BIT
 #define BITS_PER_LONG	64
 #else
 #define BITS_PER_LONG	32
@@ -635,6 +635,7 @@ extern int test_bit(unsigned int nr, const void * addr);
 extern int f2fs_test_bit(unsigned int, const char *);
 extern int f2fs_set_bit(unsigned int, char *);
 extern int f2fs_clear_bit(unsigned int, char *);
+extern unsigned long find_next_bit(const unsigned long *, unsigned long, unsigned long);
 
 extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);

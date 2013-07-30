@@ -10,6 +10,9 @@
  */
 #include "fsck.h"
 
+char *tree_mark;
+int tree_mark_size = 256;
+
 static int add_into_hard_link_list(struct f2fs_sb_info *sbi, u32 nid, u32 link_cnt)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -267,7 +270,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 	u32 child_cnt = 0, child_files = 0;
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
-	u64 i_blocks = le32_to_cpu(node_blk->i.i_blocks);
+	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	int idx = 0;
 	int ret = 0;
 
@@ -409,7 +412,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi,
 				le32_to_cpu(node_blk->dn.addr[idx]),
 				&child_cnt,
 				&child_files,
-				le32_to_cpu(inode->i_blocks == *blk_cnt),
+				le64_to_cpu(inode->i_blocks) == *blk_cnt,
 				ftype,
 				nid,
 				idx,
@@ -467,6 +470,45 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi,
 	return 0;
 }
 
+static void print_dentry(__u32 depth, __u8 *name,
+		struct f2fs_dentry_block *de_blk, int idx, int last_blk)
+{
+	int last_de = 0;
+	int next_idx = 0;
+	int name_len;
+	int i;
+	int bit_offset;
+
+	if (config.dbg_lv != -1)
+		return;
+
+	name_len = le16_to_cpu(de_blk->dentry[idx].name_len);
+	next_idx = idx + (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
+
+	bit_offset = find_next_bit((unsigned long *)de_blk->dentry_bitmap,
+			NR_DENTRY_IN_BLOCK, next_idx);
+	if (bit_offset >= NR_DENTRY_IN_BLOCK && last_blk)
+		last_de = 1;
+
+	if (tree_mark_size <= depth) {
+		tree_mark_size *= 2;
+		tree_mark = realloc(tree_mark, tree_mark_size);
+	}
+
+	if (last_de)
+		tree_mark[depth] = '`';
+	else
+		tree_mark[depth] = '|';
+
+	if (tree_mark[depth - 1] == '`')
+		tree_mark[depth - 1] = ' ';
+
+
+	for (i = 1; i < depth; i++)
+		printf("%c   ", tree_mark[i]);
+	printf("%c-- %s\n", last_de ? '`' : '|', name);
+}
+
 int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 		struct f2fs_inode *inode,
 		u32 blk_addr,
@@ -484,7 +526,6 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 	u16 name_len;;
 
 	enum FILE_TYPE ftype;
-
 	struct f2fs_dentry_block *de_blk;
 
 	de_blk = (struct f2fs_dentry_block *)calloc(BLOCK_SZ, 1);
@@ -526,6 +567,8 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 				fsck->dentry_depth, i, name, name_len,
 				le32_to_cpu(de_blk->dentry[i].ino),
 				de_blk->dentry[i].file_type);
+
+		print_dentry(fsck->dentry_depth, name, de_blk, i, last_blk);
 
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
@@ -702,6 +745,7 @@ int fsck_init(struct f2fs_sb_info *sbi)
 
 	build_sit_area_bitmap(sbi);
 
+	tree_mark = calloc(tree_mark_size, 1);
 	return 0;
 }
 
@@ -801,4 +845,7 @@ void fsck_free(struct f2fs_sb_info *sbi)
 
 	if (fsck->sit_area_bitmap)
 		free(fsck->sit_area_bitmap);
+
+	if (tree_mark)
+		free(tree_mark);
 }

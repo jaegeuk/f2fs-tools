@@ -42,7 +42,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	char *prog = basename(argv[0]);
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = "d:";
+		const char *option_string = "d:t";
 
 		config.func = FSCK;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -50,6 +50,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				case 'd':
 					config.dbg_lv = atoi(optarg);
 					MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
+					break;
+				case 't':
+					config.dbg_lv = -1;
 					break;
 				default:
 					MSG(0, "\tError: Unknown option %c\n",option);
