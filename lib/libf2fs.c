@@ -315,6 +315,7 @@ int f2fs_dev_is_mounted(struct f2fs_configuration *c)
 			break;
 		if (!strcmp(c->device_name, mnt->mnt_fsname)) {
 			endmntent(file);
+			MSG(0, "\tError: Not available on mounted device!\n");
 			return -1;
 		}
 	}
