@@ -76,7 +76,10 @@ void f2fs_parse_options(int argc, char *argv[])
 					MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
 					break;
 				case 'i':
-					sscanf(optarg, "%x", &dump_opt.nid);
+					if (strncmp(optarg, "0x", 2))
+						sscanf(optarg, "%d", &dump_opt.nid);
+					else
+						sscanf(optarg, "%x", &dump_opt.nid);
 					break;
 				case 's':
 					sscanf(optarg, "%d~%d", &dump_opt.start_sit, &dump_opt.end_sit);
@@ -85,7 +88,10 @@ void f2fs_parse_options(int argc, char *argv[])
 					sscanf(optarg, "%d~%d", &dump_opt.start_ssa, &dump_opt.end_ssa);
 					break;
 				case 'b':
-					sscanf(optarg, "%d", &dump_opt.blk_addr);
+					if (strncmp(optarg, "0x", 2))
+						sscanf(optarg, "%d", &dump_opt.blk_addr);
+					else
+						sscanf(optarg, "%x", &dump_opt.blk_addr);
 					break;
 				default:
 					MSG(0, "\tError: Unknown option %c\n", option);
