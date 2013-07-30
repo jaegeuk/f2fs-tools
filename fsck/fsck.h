@@ -160,5 +160,6 @@ struct dump_option {
 extern void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit);
 extern void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa);
 extern int dump_node(struct f2fs_sb_info *sbi, nid_t nid);
+extern int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr);
 
 #endif /* _FSCK_H_ */
