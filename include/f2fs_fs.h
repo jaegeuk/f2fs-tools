@@ -641,7 +641,7 @@ extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 
 extern void f2fs_init_configuration(struct f2fs_configuration *);
-extern int f2fs_dev_is_mounted(struct f2fs_configuration *);
+extern int f2fs_dev_is_umounted(struct f2fs_configuration *);
 extern int f2fs_get_device_info(struct f2fs_configuration *);
 
 extern int dev_read(void *, __u64, size_t);

@@ -183,7 +183,7 @@ int main (int argc, char **argv)
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_dev_is_mounted(&config) < 0)
+	if (f2fs_dev_is_umounted(&config) < 0)
 		return -1;
 
 	/* Get device */

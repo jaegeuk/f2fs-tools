@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <mntent.h>
@@ -365,31 +366,58 @@ void f2fs_init_configuration(struct f2fs_configuration *c)
 	c->device_name = NULL;
 }
 
-int f2fs_dev_is_mounted(struct f2fs_configuration *c)
+static int is_mounted(const char *mpt, const char *device)
 {
 	FILE *file = NULL;
 	struct mntent *mnt = NULL;
 
-	file = setmntent(MOUNTED, "r");
-	if (file == NULL) {
-		/* if failed due to /etc/mtab file not present
-		   try with /proc/mounts */
-		file = setmntent("/proc/mounts", "r");
-		if (file == NULL)
-			return 0;
+	file = setmntent(mpt, "r");
+	if (file == NULL)
+		return 0;
+
+	while ((mnt = getmntent(file)) != NULL) {
+		if (!strcmp(device, mnt->mnt_fsname))
+			break;
+	}
+	endmntent(file);
+	return mnt ? 1 : 0;
+}
+
+int f2fs_dev_is_umounted(struct f2fs_configuration *c)
+{
+	struct stat st_buf;
+	int ret = 0;
+
+	ret = is_mounted(MOUNTED, c->device_name);
+	if (ret) {
+		MSG(0, "\tError: Not available on mounted device!\n");
+		return -1;
 	}
 
-	while (1) {
-		mnt = getmntent(file);
-		if (mnt == NULL)
-			break;
-		if (!strcmp(c->device_name, mnt->mnt_fsname)) {
-			endmntent(file);
-			MSG(0, "\tError: Not available on mounted device!\n");
+	/*
+	 * if failed due to /etc/mtab file not present
+	 * try with /proc/mounts.
+	 */
+	ret = is_mounted("/proc/mounts", c->device_name);
+	if (ret) {
+		MSG(0, "\tError: Not available on mounted device!\n");
+		return -1;
+	}
+
+	/*
+	 * If f2fs is umounted with -l, the process can still use
+	 * the file system. In this case, we should not format.
+	 */
+	if (stat(c->device_name, &st_buf) == 0 && S_ISBLK(st_buf.st_mode)) {
+		int fd = open(c->device_name, O_RDONLY | O_EXCL);
+
+		if (fd >= 0) {
+			close(fd);
+		} else if (errno == EBUSY) {
+			MSG(0, "\tError: In use by the system!\n");
 			return -1;
 		}
 	}
-	endmntent(file);
 	return 0;
 }
 
