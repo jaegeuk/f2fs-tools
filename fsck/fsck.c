@@ -331,7 +331,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		ASSERT(0);
 	}
 
-	fsck_chk_xattr_blk(sbi, le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
+	fsck_chk_xattr_blk(sbi, nid, le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
 
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE; idx++) {
@@ -694,7 +694,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
-int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 x_nid, u32 *blk_cnt)
+int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino, u32 x_nid, u32 *blk_cnt)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct node_info ni;
@@ -721,6 +721,7 @@ int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 x_nid, u32 *blk_cnt)
 	}
 	f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, ni.blk_addr), fsck->main_area_bitmap);
 
+	DBG(2, "ino[0x%x] x_nid[0x%x]\n", ino, x_nid);
 	return 0;
 }
 

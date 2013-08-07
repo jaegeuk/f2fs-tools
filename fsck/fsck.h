@@ -76,7 +76,7 @@ enum seg_type {
 	SEG_TYPE_MAX,
 };
 
-extern int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 x_nid, u32 *blk_cnt);
+extern int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino, u32 x_nid, u32 *blk_cnt);
 extern int fsck_chk_orphan_node(struct f2fs_sb_info *sbi);
 
 extern int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
