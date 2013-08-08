@@ -26,6 +26,21 @@ void print_ext(struct file_ext *ext)
 					ext->end_blk, ext->blk_count);
 }
 
+void print_stat(struct stat64 *st)
+{
+	printf("--------------------------------------------\n");
+	printf("dev       [%d:%d]\n", major(st->st_dev), minor(st->st_dev));
+	printf("ino       [0x%8lx : %ld]\n", st->st_ino, st->st_ino);
+	printf("mode      [0x%8x : %d]\n", st->st_mode, st->st_mode);
+	printf("nlink     [0x%8lx : %ld]\n", st->st_nlink, st->st_nlink);
+	printf("uid       [0x%8x : %d]\n", st->st_uid, st->st_uid);
+	printf("gid       [0x%8x : %d]\n", st->st_gid, st->st_gid);
+	printf("size      [0x%8lx : %ld]\n", st->st_size, st->st_size);
+	printf("blksize   [0x%8lx : %ld]\n", st->st_blksize, st->st_blksize);
+	printf("blocks    [0x%8lx : %ld]\n", st->st_blocks, st->st_blocks);
+	printf("--------------------------------------------\n\n");
+}
+
 int main(int argc, char *argv[])
 {
 	int fd;
@@ -61,6 +76,7 @@ int main(int argc, char *argv[])
 	total_blks = (st.st_size + st.st_blksize - 1) / st.st_blksize;
 
 	printf("\n%s :\n", filename);
+	print_stat(&st);
 	printf("file_pos   start_blk     end_blk        blks\n");
 
 	blknum = 0;
