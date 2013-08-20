@@ -51,7 +51,7 @@ void print_inode_info(struct f2fs_inode *inode)
 	DISP_u32(inode, i_addr[2]);	/* Pointers to data blocks */
 	DISP_u32(inode, i_addr[3]);	/* Pointers to data blocks */
 
-	for (i = 4; i < ADDRS_PER_INODE; i++) {
+	for (i = 4; i < ADDRS_PER_INODE(inode); i++) {
 		if (inode->i_addr[i] != 0x0) {
 			printf("i_addr[0x%x] points data block\r\t\t\t\t[0x%4x]\n",
 					i, inode->i_addr[i]);

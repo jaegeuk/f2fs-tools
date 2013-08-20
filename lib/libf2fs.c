@@ -315,6 +315,13 @@ exit:
 	return f2fs_hash;
 }
 
+unsigned int addrs_per_inode(struct f2fs_inode *i)
+{
+	if (i->i_inline & F2FS_INLINE_XATTR)
+		return DEF_ADDRS_PER_INODE - F2FS_INLINE_XATTR_ADDRS;
+	return DEF_ADDRS_PER_INODE;
+}
+
 /*
  * CRC32
  */

@@ -334,7 +334,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 	fsck_chk_xattr_blk(sbi, nid, le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
 
 	/* check data blocks in inode */
-	for (idx = 0; idx < ADDRS_PER_INODE; idx++) {
+	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i); idx++) {
 		if (le32_to_cpu(node_blk->i.i_addr[idx]) != 0) {
 			*blk_cnt = *blk_cnt + 1;
 			ret = fsck_chk_data_blk(sbi,
