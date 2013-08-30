@@ -371,6 +371,7 @@ void f2fs_init_configuration(struct f2fs_configuration *c)
 	c->heap = 1;
 	c->vol_label = "";
 	c->device_name = NULL;
+	c->trim = 1;
 }
 
 static int is_mounted(const char *mpt, const char *device)

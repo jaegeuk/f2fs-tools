@@ -917,6 +917,7 @@ int f2fs_trim_device()
 		return -1;
 	}
 
+	MSG(0, "Info: Discarding device\n");
 	if (S_ISREG(stat_buf.st_mode))
 		return 0;
 	else if (S_ISBLK(stat_buf.st_mode)) {
