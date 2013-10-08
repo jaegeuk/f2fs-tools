@@ -10,6 +10,17 @@
  */
 #include "fsck.h"
 
+#define S_SHIFT 12
+static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
+	[S_IFREG >> S_SHIFT]	= F2FS_FT_REG_FILE,
+	[S_IFDIR >> S_SHIFT]	= F2FS_FT_DIR,
+	[S_IFCHR >> S_SHIFT]	= F2FS_FT_CHRDEV,
+	[S_IFBLK >> S_SHIFT]	= F2FS_FT_BLKDEV,
+	[S_IFIFO >> S_SHIFT]	= F2FS_FT_FIFO,
+	[S_IFSOCK >> S_SHIFT]	= F2FS_FT_SOCK,
+	[S_IFLNK >> S_SHIFT]	= F2FS_FT_SYMLINK,
+};
+
 char *tree_mark;
 int tree_mark_size = 256;
 
@@ -258,6 +269,10 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 	return 0;
 }
 
+static enum FILE_TYPE get_de_type(unsigned short mode)
+{
+	return f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
+}
 
 int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		u32 nid,
@@ -281,18 +296,14 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		fsck->chk.valid_inode_cnt++;
 
 	/* Orphan node. i_links should be 0 */
-	if (ftype & F2FS_FT_ORPHAN) {
+	if (ftype == F2FS_FT_ORPHAN) {
 		ASSERT(i_links == 0);
-
-		if (S_ISDIR(le16_to_cpu(node_blk->i.i_mode)))
-			ftype |= F2FS_FT_DIR;
-		else
-			ftype |= F2FS_FT_REG_FILE;
+		ftype = get_de_type(le16_to_cpu(node_blk->i.i_mode));
 	} else {
 		ASSERT(i_links > 0);
 	}
 
-	if (ftype & F2FS_FT_DIR) {
+	if (ftype == F2FS_FT_DIR) {
 
 		/* not included '.' & '..' */
 		if (f2fs_test_bit(BLKOFF_FROM_MAIN(sbi, ni->blk_addr), fsck->main_area_bitmap) != 0) {
@@ -301,7 +312,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		}
 		f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, ni->blk_addr), fsck->main_area_bitmap);
 
-	} else if (ftype & F2FS_FT_REG_FILE) {
+	} else {
 
 		if (f2fs_test_bit(BLKOFF_FROM_MAIN(sbi, ni->blk_addr), fsck->main_area_bitmap) == 0x0) {
 			f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, ni->blk_addr), fsck->main_area_bitmap);
@@ -325,16 +336,13 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 
 			/* No need to go deep into the node */
 			goto out;
-
 		}
-	} else {
-		ASSERT(0);
 	}
 
 	fsck_chk_xattr_blk(sbi, nid, le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
 
-	if (ftype & F2FS_FT_CHRDEV || ftype & F2FS_FT_BLKDEV ||
-			ftype & F2FS_FT_FIFO || ftype & F2FS_FT_SOCK)
+	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
+			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
 
 	/* check data blocks in inode */
@@ -378,11 +386,11 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		}
 	}
 check:
-	if (ftype & F2FS_FT_DIR)
+	if (ftype == F2FS_FT_DIR)
 		DBG(1, "Directory Inode: ino: %x name: %s depth: %d child files: %d\n\n",
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
 				le32_to_cpu(node_blk->i.i_current_depth), child_files);
-	if ((ftype & F2FS_FT_DIR && i_links != child_cnt) ||
+	if ((ftype == F2FS_FT_DIR && i_links != child_cnt) ||
 			(i_blocks != *blk_cnt)) {
 		print_node_info(node_blk);
 		DBG(1, "blk   cnt [0x%x]\n", *blk_cnt);
@@ -390,7 +398,7 @@ check:
 	}
 
 	ASSERT(i_blocks == *blk_cnt);
-	if (ftype & F2FS_FT_DIR)
+	if (ftype == F2FS_FT_DIR)
 		ASSERT(i_links == child_cnt);
 out:
 	return 0;
@@ -553,12 +561,11 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 		hash_code = f2fs_dentry_hash((const char *)name, name_len);
 		ASSERT(le32_to_cpu(de_blk->dentry[i].hash_code) == hash_code);
 
-		ftype = F2FS_FT_REG_FILE;
+		ftype = de_blk->dentry[i].file_type;
 
 		/* Becareful. 'dentry.file_type' is not imode. */
-		if (de_blk->dentry[i].file_type == F2FS_FT_DIR) {
+		if (ftype == F2FS_FT_DIR) {
 			*child_cnt = *child_cnt + 1;
-			ftype = F2FS_FT_DIR;
 			if ((name[0] == '.' && name[1] == '.' && name_len == 2) ||
 					(name[0] == '.' && name_len == 1)) {
 				i++;
@@ -633,7 +640,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
 
 	fsck->chk.valid_blk_cnt++;
 
-	if ((ftype & F2FS_FT_DIR) && !(ftype & F2FS_FT_ORPHAN)) {
+	if (ftype == F2FS_FT_DIR) {
 		fsck_chk_dentry_blk(sbi,
 				inode,
 				blk_addr,

@@ -618,16 +618,16 @@ struct f2fs_dentry_block {
 /* file types used in inode_info->flags */
 enum FILE_TYPE {
 	F2FS_FT_UNKNOWN,
-	F2FS_FT_REG_FILE = 0x1,
-	F2FS_FT_DIR = 0x2,
-	F2FS_FT_CHRDEV = 0x4,
-	F2FS_FT_BLKDEV = 0x8,
-	F2FS_FT_FIFO = 0x10,
-	F2FS_FT_SOCK = 0x20,
-	F2FS_FT_SYMLINK = 0x40,
-	F2FS_FT_MAX = 0x80,
+	F2FS_FT_REG_FILE,
+	F2FS_FT_DIR,
+	F2FS_FT_CHRDEV,
+	F2FS_FT_BLKDEV,
+	F2FS_FT_FIFO,
+	F2FS_FT_SOCK,
+	F2FS_FT_SYMLINK,
+	F2FS_FT_MAX,
 	/* added for fsck */
-	F2FS_FT_ORPHAN = 0x1000,
+	F2FS_FT_ORPHAN,
 };
 
 /* from f2fs/segment.h */
