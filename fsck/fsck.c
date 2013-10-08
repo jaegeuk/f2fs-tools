@@ -333,6 +333,10 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 
 	fsck_chk_xattr_blk(sbi, nid, le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
 
+	if (ftype & F2FS_FT_CHRDEV || ftype & F2FS_FT_BLKDEV ||
+			ftype & F2FS_FT_FIFO || ftype & F2FS_FT_SOCK)
+		goto check;
+
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i); idx++) {
 		if (le32_to_cpu(node_blk->i.i_addr[idx]) != 0) {
@@ -373,7 +377,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 			ASSERT(ret >= 0);
 		}
 	}
-
+check:
 	if (ftype & F2FS_FT_DIR)
 		DBG(1, "Directory Inode: ino: %x name: %s depth: %d child files: %d\n\n",
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
@@ -606,6 +610,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
 		u8 ver)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
 	/* Is it reserved block? */
 	if (blk_addr == NEW_ADDR) {
 		fsck->chk.valid_blk_cnt++;
