@@ -638,6 +638,7 @@ enum {
 
 extern void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
 extern int log_base_2(u_int32_t);
+extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
 extern int get_bits_in_byte(unsigned char n);
 extern int set_bit(unsigned int nr,void * addr);
