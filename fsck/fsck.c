@@ -269,11 +269,6 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 	return 0;
 }
 
-static enum FILE_TYPE get_de_type(unsigned short mode)
-{
-	return f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
-}
-
 int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		u32 nid,
 		enum FILE_TYPE ftype,
@@ -298,7 +293,6 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 	/* Orphan node. i_links should be 0 */
 	if (ftype == F2FS_FT_ORPHAN) {
 		ASSERT(i_links == 0);
-		ftype = get_de_type(le16_to_cpu(node_blk->i.i_mode));
 	} else {
 		ASSERT(i_links > 0);
 	}
@@ -390,6 +384,10 @@ check:
 		DBG(1, "Directory Inode: ino: %x name: %s depth: %d child files: %d\n\n",
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
 				le32_to_cpu(node_blk->i.i_current_depth), child_files);
+	if (ftype == F2FS_FT_ORPHAN)
+		DBG(1, "Orphan Inode: ino: %x name: %s i_blocks: %d\n\n",
+				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
+				i_blocks);
 	if ((ftype == F2FS_FT_DIR && i_links != child_cnt) ||
 			(i_blocks != *blk_cnt)) {
 		print_node_info(node_blk);
