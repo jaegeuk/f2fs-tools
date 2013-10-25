@@ -341,6 +341,10 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
+	if((node_blk->i.i_inline & F2FS_INLINE_DATA)){
+		DBG(3, "ino[0x%x] has inline data!\n", nid);
+		goto check;
+	}
 
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i); idx++) {
