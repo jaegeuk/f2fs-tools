@@ -174,8 +174,11 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 
 	IS_VALID_NID(sbi, nid);
 
-	if (ftype != F2FS_FT_ORPHAN)
+	if (ftype != F2FS_FT_ORPHAN ||
+			f2fs_test_bit(nid, fsck->nat_area_bitmap) != 0x0)
 		f2fs_clear_bit(nid, fsck->nat_area_bitmap);
+	else
+		ASSERT_MSG(0, "nid duplicated [0x%x]\n", nid);
 
 	ret = get_node_info(sbi, nid, &ni);
 	ASSERT(ret >= 0);
@@ -672,21 +675,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 
 		for (j = 0; j < le32_to_cpu(orphan_blk->entry_count); j++) {
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
-			DBG(3, "[%3ld] ino [0x%x]\n", i, ino);
-
-			/* 1) 'fsck_init' build nat_bitmap
-			 * 2) 'fsck_chk_node_blk' clear nat_bitmap if exist in dentry
-			 * 3) if nat_bitmap is already cleared, it means that node exist in dentry,
-			 */
-			if (f2fs_test_bit(ino, fsck->nat_area_bitmap) != 0x0) {
-				f2fs_clear_bit(ino, fsck->nat_area_bitmap);
-			} else {
-				DBG(0, "orphan inode [0x%x] exist in dentry\n", ino);
-				ASSERT(0);
-			}
-
-			DBG(1, "Orphan inode ino[0x%x]\n", ino);
-
+			DBG(1, "[%3ld] ino [0x%x]\n", i, ino);
 			blk_cnt = 1;
 			ret = fsck_chk_node_blk(sbi,
 					NULL,
