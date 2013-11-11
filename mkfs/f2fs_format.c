@@ -788,7 +788,12 @@ static int f2fs_write_root_inode(void)
 
 	memset(raw_node, 0xff, sizeof(struct f2fs_node));
 
-	main_area_node_seg_blk_offset += F2FS_BLKSIZE;
+	/* avoid power-off-recovery based on roll-forward policy */
+	main_area_node_seg_blk_offset = le32_to_cpu(super_block.main_blkaddr);
+	main_area_node_seg_blk_offset += config.cur_seg[CURSEG_WARM_NODE] *
+					config.blks_per_seg;
+        main_area_node_seg_blk_offset *= blk_size_bytes;
+
 	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		return -1;
