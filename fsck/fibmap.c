@@ -103,12 +103,11 @@ int main(int argc, char *argv[])
 			ext.end_blk = blknum;
 			ext.blk_count++;
 		} else {
-			ext.blk_count++;
 			print_ext(&ext);
 			ext.f_pos = i * st.st_blksize;
 			ext.start_blk = blknum;
 			ext.end_blk = blknum;
-			ext.blk_count = 0;
+			ext.blk_count = 1;
 		}
 	}
 
