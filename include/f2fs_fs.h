@@ -185,7 +185,7 @@ struct f2fs_configuration {
 	void *private;
 } __attribute__((packed));
 
-#ifndef CONFIG_64BIT
+#ifdef CONFIG_64BIT
 #define BITS_PER_LONG	64
 #else
 #define BITS_PER_LONG	32
