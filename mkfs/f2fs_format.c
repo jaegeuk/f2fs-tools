@@ -703,6 +703,13 @@ static int f2fs_write_check_point_pack(void)
 		return -1;
 	}
 
+	/* 10. cp page 2 of check point pack 2 */
+	cp_seg_blk_offset += blk_size_bytes * (le32_to_cpu(ckp->cp_pack_total_block_count) - 1);
+	if (dev_write(ckp, cp_seg_blk_offset, F2FS_BLKSIZE)) {
+		MSG(1, "\tError: While writing the ckp to disk!!!\n");
+		return -1;
+	}
+
 	free(sum) ;
 	free(ckp) ;
 	return	0;
