@@ -2,6 +2,6 @@
 
 AM_CPPFLAGS = ${libuuid_CFLAGS} -I$(top_srcdir)/include
 AM_CFLAGS = -Wall
-sbin_PROGRAMS = f2fstat
+sbin_PROGRAMS = f2fstat fibmap.f2fs
 f2fstat_SOURCES = f2fstat.c
-f2fstat_LDADD = ${libuuid_LIBS} $(top_builddir)/lib/libf2fs.la
+fibmap_f2fs_SOURCES = fibmap.c
