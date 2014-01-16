@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <libgen.h>
+#include <linux/hdreg.h>
 #include <linux/types.h>
 #include <linux/fs.h>
 
@@ -41,6 +43,42 @@ void print_stat(struct stat64 *st)
 	printf("--------------------------------------------\n\n");
 }
 
+void stat_bdev(struct stat64 *st, unsigned int *start_lba)
+{
+	struct stat bdev_stat;
+	struct hd_geometry geom;
+	char devname[32] = { 0, };
+	char linkname[32] = { 0, };
+	int fd;
+
+	sprintf(devname, "/dev/block/%d:%d", major(st->st_dev), minor(st->st_dev));
+
+	fd = open(devname, O_RDONLY);
+	if (fd < 0)
+		return;
+
+	if (fstat(fd, &bdev_stat) < 0)
+		goto out;
+
+	if (S_ISBLK(bdev_stat.st_mode)) {
+		if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
+			*start_lba = 0;
+		else
+			*start_lba = geom.start;
+	}
+
+	if (readlink(devname, linkname, sizeof(linkname)) < 0)
+		goto out;
+
+	printf("----------------bdev info-------------------\n");
+	printf("devname = %s\n", basename(linkname));
+	printf("start_lba = %u\n", *start_lba);
+
+out:
+	close(fd);
+
+}
+
 int main(int argc, char *argv[])
 {
 	int fd;
@@ -50,6 +88,7 @@ int main(int argc, char *argv[])
 	int total_blks;
 	unsigned int i;
 	struct file_ext ext;
+	__u32 start_lba;
 	__u32 blknum;
 
 	if (argc != 2) {
@@ -73,9 +112,12 @@ int main(int argc, char *argv[])
 		goto out;
 	}
 
+	stat_bdev(&st, &start_lba);
+
 	total_blks = (st.st_size + st.st_blksize - 1) / st.st_blksize;
 
-	printf("\n%s :\n", filename);
+	printf("\n----------------file info-------------------\n");
+	printf("%s :\n", filename);
 	print_stat(&st);
 	printf("file_pos   start_blk     end_blk        blks\n");
 
