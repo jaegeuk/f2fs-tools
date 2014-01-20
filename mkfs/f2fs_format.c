@@ -627,7 +627,7 @@ static int f2fs_write_check_point_pack(void)
 	sum->n_sits = cpu_to_le16(6);
 	sum->sit_j.entries[0].segno = ckp->cur_node_segno[0];
 	sum->sit_j.entries[0].se.vblocks = cpu_to_le16((CURSEG_HOT_NODE << 10) | 1);
-	f2fs_set_bit(0, sum->sit_j.entries[0].se.valid_map);
+	f2fs_set_bit(0, (char *)sum->sit_j.entries[0].se.valid_map);
 	sum->sit_j.entries[1].segno = ckp->cur_node_segno[1];
 	sum->sit_j.entries[1].se.vblocks = cpu_to_le16((CURSEG_WARM_NODE << 10));
 	sum->sit_j.entries[2].segno = ckp->cur_node_segno[2];
@@ -636,7 +636,7 @@ static int f2fs_write_check_point_pack(void)
 	/* data sit for root */
 	sum->sit_j.entries[3].segno = ckp->cur_data_segno[0];
 	sum->sit_j.entries[3].se.vblocks = cpu_to_le16((CURSEG_HOT_DATA << 10) | 1);
-	f2fs_set_bit(0, sum->sit_j.entries[3].se.valid_map);
+	f2fs_set_bit(0, (char *)sum->sit_j.entries[3].se.valid_map);
 	sum->sit_j.entries[4].segno = ckp->cur_data_segno[1];
 	sum->sit_j.entries[4].se.vblocks = cpu_to_le16((CURSEG_WARM_DATA << 10));
 	sum->sit_j.entries[5].segno = ckp->cur_data_segno[2];

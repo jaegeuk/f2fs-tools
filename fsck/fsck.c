@@ -10,17 +10,6 @@
  */
 #include "fsck.h"
 
-#define S_SHIFT 12
-static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
-	[S_IFREG >> S_SHIFT]	= F2FS_FT_REG_FILE,
-	[S_IFDIR >> S_SHIFT]	= F2FS_FT_DIR,
-	[S_IFCHR >> S_SHIFT]	= F2FS_FT_CHRDEV,
-	[S_IFBLK >> S_SHIFT]	= F2FS_FT_BLKDEV,
-	[S_IFIFO >> S_SHIFT]	= F2FS_FT_FIFO,
-	[S_IFSOCK >> S_SHIFT]	= F2FS_FT_SOCK,
-	[S_IFLNK >> S_SHIFT]	= F2FS_FT_SYMLINK,
-};
-
 char *tree_mark;
 int tree_mark_size = 256;
 
@@ -392,7 +381,7 @@ check:
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
 				le32_to_cpu(node_blk->i.i_current_depth), child_files);
 	if (ftype == F2FS_FT_ORPHAN)
-		DBG(1, "Orphan Inode: ino: %x name: %s i_blocks: %d\n\n",
+		DBG(1, "Orphan Inode: ino: %x name: %s i_blocks: %lu\n\n",
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
 				i_blocks);
 	if ((ftype == F2FS_FT_DIR && i_links != child_cnt) ||
@@ -659,7 +648,6 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
 
 int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 {
-	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	int ret = 0;
 	u32 blk_cnt = 0;
 
