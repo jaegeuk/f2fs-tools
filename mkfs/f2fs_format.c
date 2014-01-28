@@ -299,7 +299,7 @@ static int f2fs_prepare_super_block(void)
 	 */
 	sit_bitmap_size = ((le32_to_cpu(super_block.segment_count_sit) / 2) <<
 				log_blks_per_seg) / 8;
-	max_nat_bitmap_size = 4096 - sizeof(struct f2fs_checkpoint) + 1 -
+	max_nat_bitmap_size = CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1 -
 			sit_bitmap_size;
 	max_nat_segments = (max_nat_bitmap_size * 8) >> log_blks_per_seg;
 
