@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #ifdef DEBUG
 #define dbg(fmt, args...)	printf(fmt, __VA_ARGS__);
@@ -47,6 +48,7 @@ unsigned long lfs_blks;
 struct options {
 	int delay;
 	int interval;
+	char partname[32];
 };
 
 struct mm_table {
@@ -69,7 +71,7 @@ again:
 	}
 }
 
-void f2fstat(void)
+void f2fstat(struct options *opt)
 {
 	int fd;
 	int ret;
@@ -79,6 +81,7 @@ void f2fstat(void)
 	struct mm_table *found;
 	int f2fstat_table_cnt;
 	char *head, *tail;
+	int found_cnt = 0;
 
 	static struct mm_table f2fstat_table[] = {
 		{ "  - Data",		&used_data_blks },
@@ -114,6 +117,13 @@ void f2fstat(void)
 	buf[ret] = '\0';
 
 	head = buf;
+
+	if (opt->partname[0] != '\0') {
+		head = strstr(buf, opt->partname);
+		if (head == NULL)
+			exit(EXIT_FAILURE);
+	}
+
 	for (;;) {
 		remove_newline(&head);
 		tail = strchr(head, ':');
@@ -137,6 +147,8 @@ void f2fstat(void)
 			goto nextline;
 
 		*(found->val) = strtoul(head, &tail, 10);
+		if (++found_cnt == f2fstat_table_cnt)
+			break;
 nextline:
 		tail = strchr(head, '\n');
 		if (!tail)
@@ -151,14 +163,15 @@ void usage(void)
 {
 	printf("Usage: f2fstat [option]\n"
 			"    -d    delay (secs)\n"
-			"    -i    interval of head info\n");
+			"    -i    interval of head info\n"
+			"    -p    partition name (e.g. /dev/sda3)\n");
 	exit(EXIT_FAILURE);
 }
 
 void parse_option(int argc, char *argv[], struct options *opt)
 {
 	char option;
-	const char *option_string = "d:i:h";
+	const char *option_string = "d:i:p:h";
 
 	while ((option = getopt(argc, argv, option_string)) != EOF) {
 		switch (option) {
@@ -167,6 +180,9 @@ void parse_option(int argc, char *argv[], struct options *opt)
 			break;
 		case 'i':
 			opt->interval = atoi(optarg);
+			break;
+		case 'p':
+			strcpy(opt->partname, basename(optarg));
 			break;
 		default:
 			usage();
@@ -188,6 +204,7 @@ int main(int argc, char *argv[])
 	struct options opt = {
 		.delay = 1,
 		.interval = 20,
+		.partname = { 0, },
 	};
 
 	parse_option(argc, argv, &opt);
@@ -200,7 +217,7 @@ int main(int argc, char *argv[])
 			head_interval = opt.interval;
 		}
 
-		f2fstat();
+		f2fstat(&opt);
 
 		printf(format, util, used_node_blks, used_data_blks,
 				free_segs, valid_segs, dirty_segs, prefree_segs,
