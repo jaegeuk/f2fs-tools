@@ -104,7 +104,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid, u32 blk_addr
 		if (le32_to_cpu(sum_entry.nid) != nid) {
 			DBG(0, "nid                       [0x%x]\n", nid);
 			DBG(0, "target blk_addr           [0x%x]\n", blk_addr);
-			DBG(0, "summary blk_addr          [0x%lx]\n",
+			DBG(0, "summary blk_addr          [0x%x]\n",
 					GET_SUM_BLKADDR(sbi, GET_SEGNO(sbi, blk_addr)));
 			DBG(0, "seg no / offset           [0x%x / 0x%x]\n",
 					GET_SEGNO(sbi, blk_addr), OFFSET_IN_SEG(sbi, blk_addr));
@@ -667,7 +667,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 
 		for (j = 0; j < le32_to_cpu(orphan_blk->entry_count); j++) {
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
-			DBG(1, "[%3ld] ino [0x%x]\n", i, ino);
+			DBG(1, "[%3d] ino [0x%x]\n", i, ino);
 			blk_cnt = 1;
 			ret = fsck_chk_node_blk(sbi,
 					NULL,

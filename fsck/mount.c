@@ -738,7 +738,7 @@ int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno, struct f2fs_summ
 	ssa_blk = GET_SUM_BLKADDR(sbi, segno);
 	for (type = 0; type < NR_CURSEG_NODE_TYPE; type++) {
 		if (segno == ckpt->cur_node_segno[type]) {
-			curseg = CURSEG_I(sbi, type);
+			curseg = CURSEG_I(sbi, CURSEG_HOT_NODE + type);
 			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
 			return SEG_TYPE_CUR_NODE; /* current node seg was not stored */
 		}

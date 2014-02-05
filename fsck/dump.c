@@ -70,22 +70,28 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 	fd = open("dump_ssa", O_CREAT|O_WRONLY|O_TRUNC, 0666);
 	ASSERT(fd >= 0);
 
+	snprintf(buf, BUF_SZ, "Note: dump.f2fs -b blkaddr = 0x%x + segno * "
+				" 0x200 + offset\n",
+				sbi->sm_info->main_blkaddr);
+	ret = write(fd, buf, strlen(buf));
+	ASSERT(ret >= 0);
+
 	for (segno = start_ssa; segno < end_ssa; segno++) {
 		ret = get_sum_block(sbi, segno, &sum_blk);
 
 		memset(buf, 0, BUF_SZ);
 		switch (ret) {
 		case SEG_TYPE_CUR_NODE:
-			snprintf(buf, BUF_SZ, "\n\nsegno: %d, Current Node\n", segno);
+			snprintf(buf, BUF_SZ, "\n\nsegno: %x, Current Node\n", segno);
 			break;
 		case SEG_TYPE_CUR_DATA:
-			snprintf(buf, BUF_SZ, "\n\nsegno: %d, Current Data\n", segno);
+			snprintf(buf, BUF_SZ, "\n\nsegno: %x, Current Data\n", segno);
 			break;
 		case SEG_TYPE_NODE:
-			snprintf(buf, BUF_SZ, "\n\nsegno: %d, Node\n", segno);
+			snprintf(buf, BUF_SZ, "\n\nsegno: %x, Node\n", segno);
 			break;
 		case SEG_TYPE_DATA:
-			snprintf(buf, BUF_SZ, "\n\nsegno: %d, Data\n", segno);
+			snprintf(buf, BUF_SZ, "\n\nsegno: %x, Data\n", segno);
 			break;
 		}
 		ret = write(fd, buf, strlen(buf));
@@ -98,10 +104,8 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 				ret = write(fd, buf, strlen(buf));
 				ASSERT(ret >= 0);
 			}
-			snprintf(buf, BUF_SZ, " [%8x, %3d, %3x]",
-					le32_to_cpu(sum_blk.entries[i].nid),
-					le16_to_cpu(sum_blk.entries[i].ofs_in_node),
-					sum_blk.entries[i].version);
+			snprintf(buf, BUF_SZ, "[%3d: %6x]", i,
+					le32_to_cpu(sum_blk.entries[i].nid));
 			ret = write(fd, buf, strlen(buf));
 			ASSERT(ret >= 0);
 		}
@@ -147,28 +151,36 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 {
 	nid_t ino, nid;
-	int ret;
+	int type, ret;
 	struct f2fs_summary sum_entry;
 	struct node_info ni;
 	struct f2fs_node *node_blk;
 
-	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
+	type = get_sum_entry(sbi, blk_addr, &sum_entry);
 	nid = le32_to_cpu(sum_entry.nid);
 
-	DBG(1, "Node ID               [0x%x]\n", nid);
-	DBG(1, "Segment Type          [%s]\n", seg_type_name[ret]);
-	DBG(1, "version               [%d]\n", sum_entry.version);
-	DBG(1, "ofs_in_node           [%d]\n", sum_entry.ofs_in_node);
 	ret = get_node_info(sbi, nid, &ni);
 	ASSERT(ret >= 0);
+
+	DBG(1, "Note: blkaddr = main_blkaddr + segno * 512 + offset\n");
+	DBG(1, "Block_addr            [0x%x]\n", blk_addr);
+	DBG(1, " - Segno              [0x%x]\n", GET_SEGNO(sbi, blk_addr));
+	DBG(1, " - Offset             [0x%x]\n", OFFSET_IN_SEG(sbi, blk_addr));
+	DBG(1, "SUM.nid               [0x%x]\n", nid);
+	DBG(1, "SUM.type              [%s]\n", seg_type_name[type]);
+	DBG(1, "SUM.version           [%d]\n", sum_entry.version);
+	DBG(1, "SUM.ofs_in_node       [%d]\n", sum_entry.ofs_in_node);
+	DBG(1, "NAT.blkaddr           [0x%x]\n", ni.blk_addr);
+	DBG(1, "NAT.ino               [0x%x]\n", ni.ino);
 
 	node_blk = calloc(BLOCK_SZ, 1);
 
 read_node_blk:
-	dev_read_block(node_blk, ni.blk_addr);
+	dev_read_block(node_blk, blk_addr);
 
 	ino = le32_to_cpu(node_blk->footer.ino);
 	nid = le32_to_cpu(node_blk->footer.nid);
+
 	if (ino == nid) {
 		print_node_info(node_blk);
 	} else {
