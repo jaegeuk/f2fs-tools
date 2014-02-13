@@ -29,8 +29,8 @@ unsigned long valid_segs;
 unsigned long dirty_segs;
 unsigned long prefree_segs;
 
-unsigned long gc;
-unsigned long bg_gc;
+unsigned long gc, bg_gc;
+unsigned long cp;
 unsigned long gc_data_blks;
 unsigned long gc_node_blks;
 
@@ -99,6 +99,7 @@ void f2fstat(struct options *opt)
 		{ "  - dents",		&dirty_dents,		0 },
 		{ "  - meta",		&dirty_meta,		KEY_META },
 		{ "  - nodes",		&dirty_node,		KEY_NODE },
+		{ "CP calls",		&cp,			0 },
 		{ "GC calls",		&gc,			0 },
 		{ "LFS",		&lfs_blks,		0 },
 		{ "Memory",		&memory_kb,		0 },
@@ -213,12 +214,12 @@ void parse_option(int argc, char *argv[], struct options *opt)
 void print_head(void)
 {
 	fprintf(stderr, "---utilization--- -----------main area-------- ---balancing async-- -gc- ---alloc--- -----memory-----\n");
-	fprintf(stderr, "util  node   data   free  valid  dirty prefree node  dent meta sit   gc    ssr    lfs  total  node  meta\n");
+	fprintf(stderr, "util  node   data   free  valid  dirty prefree node  dent meta sit  cp   gc    ssr    lfs  total  node  meta\n");
 }
 
 int main(int argc, char *argv[])
 {
-	char format[] = "%3ld %6ld %6ld %6ld %6ld %6ld %6ld %5ld %5ld %3ld %3ld %5ld %6ld %6ld %6ld %6ld %6ld\n";
+	char format[] = "%3ld %6ld %6ld %6ld %6ld %6ld %6ld %5ld %5ld %3ld %3ld %3ld %5ld %6ld %6ld %6ld %6ld %6ld\n";
 	int head_interval;
 	struct options opt = {
 		.delay = 1,
@@ -241,7 +242,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, format, util, used_node_blks, used_data_blks,
 			free_segs, valid_segs, dirty_segs, prefree_segs,
 			dirty_node, dirty_dents, dirty_meta, dirty_sit,
-			gc, ssr_blks, lfs_blks, memory_kb, node_kb, meta_kb);
+			cp, gc, ssr_blks, lfs_blks, memory_kb, node_kb, meta_kb);
 
 		sleep(opt.delay);
 	}
