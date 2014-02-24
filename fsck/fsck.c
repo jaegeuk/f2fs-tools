@@ -381,9 +381,9 @@ check:
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
 				le32_to_cpu(node_blk->i.i_current_depth), child_files);
 	if (ftype == F2FS_FT_ORPHAN)
-		DBG(1, "Orphan Inode: ino: %x name: %s i_blocks: %lu\n\n",
+		DBG(1, "Orphan Inode: ino: %x name: %s i_blocks: %u\n\n",
 				le32_to_cpu(node_blk->footer.ino), node_blk->i.i_name,
-				i_blocks);
+				(u32)i_blocks);
 	if ((ftype == F2FS_FT_DIR && i_links != child_cnt) ||
 			(i_blocks != *blk_cnt)) {
 		print_node_info(node_blk);
@@ -793,9 +793,9 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 
 	printf("[FSCK] valid_block_count matching with CP            ");
 	if (sbi->total_valid_block_count == fsck->chk.valid_blk_cnt) {
-		printf(" [Ok..] [0x%lx]\n", fsck->chk.valid_blk_cnt);
+		printf(" [Ok..] [0x%x]\n", (u32)fsck->chk.valid_blk_cnt);
 	} else {
-		printf(" [Fail] [0x%lx]\n", fsck->chk.valid_blk_cnt);
+		printf(" [Fail] [0x%x]\n", (u32)fsck->chk.valid_blk_cnt);
 		ret = EXIT_ERR_CODE;
 	}
 
