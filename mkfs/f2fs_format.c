@@ -774,6 +774,7 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_xattr_nid = 0;
 	raw_node->i.i_flags = 0;
 	raw_node->i.i_current_depth = cpu_to_le32(1);
+	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
 
 	data_blk_nor = le32_to_cpu(super_block.main_blkaddr) +
 		config.cur_seg[CURSEG_HOT_DATA] * config.blks_per_seg;
