@@ -154,7 +154,7 @@ static void configure_extension_list(void)
 		memcpy(super_block.extension_list[i++], *extlist, name_len);
 		extlist++;
 	}
-	super_block.extension_count = i - 1;
+	super_block.extension_count = i;
 
 	if (!ext_str)
 		return;
@@ -165,11 +165,11 @@ static void configure_extension_list(void)
 		name_len = strlen(ue);
 		memcpy(super_block.extension_list[i++], ue, name_len);
 		ue = strtok(NULL, ",");
-		if (i > F2FS_MAX_EXTENSION)
+		if (i >= F2FS_MAX_EXTENSION)
 			break;
 	}
 
-	super_block.extension_count = i - 1;
+	super_block.extension_count = i;
 
 	free(config.extension_list);
 }
