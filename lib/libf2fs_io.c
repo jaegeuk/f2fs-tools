@@ -49,6 +49,18 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+int dev_fill(void *buf, __u64 offset, size_t len)
+{
+	/* Only allow fill to zero */
+	if (*((__u8*)buf))
+		return -1;
+	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
+		return -1;
+	if (write(config.fd, buf, len) < 0)
+		return -1;
+	return 0;
+}
+
 int dev_read_block(void *buf, __u64 blk_addr)
 {
 	return dev_read(buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);

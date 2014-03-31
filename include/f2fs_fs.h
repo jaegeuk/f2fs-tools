@@ -665,6 +665,8 @@ extern int f2fs_get_device_info(struct f2fs_configuration *);
 
 extern int dev_read(void *, __u64, size_t);
 extern int dev_write(void *, __u64, size_t);
+/* All bytes in the buffer must be 0 use dev_fill(). */
+extern int dev_fill(void *, __u64, size_t);
 
 extern int dev_read_block(void *, __u64);
 extern int dev_read_blocks(void *, __u64, __u32 );
