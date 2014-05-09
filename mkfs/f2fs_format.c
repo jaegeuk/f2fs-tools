@@ -490,8 +490,8 @@ static int f2fs_write_check_point_pack(void)
 	ckp->cp_pack_start_sum = cpu_to_le32(1);
 	ckp->valid_node_count = cpu_to_le32(1);
 	ckp->valid_inode_count = cpu_to_le32(1);
-	ckp->next_free_nid = cpu_to_le32(0xc00000);
-
+	ckp->next_free_nid = cpu_to_le32(
+			le32_to_cpu(super_block.root_ino) + 1);
 	ckp->sit_ver_bitmap_bytesize = cpu_to_le32(
 			((le32_to_cpu(super_block.segment_count_sit) / 2) <<
 			 le32_to_cpu(super_block.log_blocks_per_seg)) / 8);
