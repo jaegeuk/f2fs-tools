@@ -129,6 +129,7 @@ void print_raw_sb_info(struct f2fs_sb_info *sbi)
 	DISP_u32(sb, root_ino);
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
+	DISP_u32(sb, cp_payload);
 	printf("\n");
 }
 
@@ -285,6 +286,7 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr, unsigned lo
 	/* Read the 2nd cp block in this CP pack */
 	cp_page_2 = malloc(PAGE_SIZE);
 	cp_addr += le32_to_cpu(cp_block->cp_pack_total_block_count) - 1;
+
 	if (dev_read_block(cp_page_2, cp_addr) < 0)
 		goto invalid_cp2;
 
@@ -295,7 +297,7 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr, unsigned lo
 
 	crc = *(unsigned int *)((unsigned char *)cp_block + crc_offset);
 	if (f2fs_crc_valid(crc, cp_block, crc_offset))
-		goto invalid_cp1;
+		goto invalid_cp2;
 
 	cur_version = le64_to_cpu(cp_block->checkpoint_ver);
 
@@ -319,8 +321,9 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	unsigned long blk_size = sbi->blocksize;
 	unsigned long long cp1_version = 0, cp2_version = 0;
 	unsigned long long cp_start_blk_no;
+	unsigned int cp_blks = 1 + le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
 
-	sbi->ckpt = malloc(blk_size);
+	sbi->ckpt = malloc(cp_blks * blk_size);
 	if (!sbi->ckpt)
 		return -ENOMEM;
 	/*
@@ -351,6 +354,20 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 
 	memcpy(sbi->ckpt, cur_page, blk_size);
 
+	if (cp_blks > 1) {
+		int i;
+		unsigned long long cp_blk_no;
+
+		cp_blk_no = le32_to_cpu(raw_sb->cp_blkaddr);
+		if (cur_page == cp2)
+			cp_blk_no += 1 << le32_to_cpu(raw_sb->log_blocks_per_seg);
+		/* copy sit bitmap */
+		for (i = 1; i < cp_blks; i++) {
+			unsigned char *ckpt = (unsigned char *)sbi->ckpt;
+			dev_read_block(cur_page, cp_blk_no + i);
+			memcpy(ckpt + i * blk_size, cur_page, blk_size);
+		}
+	}
 	free(cp1);
 	free(cp2);
 	return 0;
@@ -696,6 +713,7 @@ void check_block_count(struct f2fs_sb_info *sbi,
 	unsigned int end_segno = sm_info->segment_count - 1;
 	int valid_blocks = 0;
 	unsigned int i;
+
 
 	/* check segment usage */
 	ASSERT(GET_SIT_VBLOCKS(raw_sit) <= sbi->blocks_per_seg);

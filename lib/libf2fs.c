@@ -341,8 +341,8 @@ int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len)
 	cal_crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, buf, len);
 
 	if (cal_crc != blk_crc)	{
-		DBG(0,"CRC validation failed: cal_crc = %u \
-			blk_crc = %u buff_size = 0x%x",
+		DBG(0,"CRC validation failed: cal_crc = %u, "
+			"blk_crc = %u buff_size = 0x%x\n",
 			cal_crc, blk_crc, len);
 		return -1;
 	}
