@@ -1,9 +1,11 @@
 
 #define POISON_POINTER_DELTA 0
-#define LIST_POISON1  ((void *) 0x00100100 + POISON_POINTER_DELTA)
-#define LIST_POISON2  ((void *) 0x00200200 + POISON_POINTER_DELTA)
+#define LIST_POISON1  ((void *) (0x00100100 + POISON_POINTER_DELTA))
+#define LIST_POISON2  ((void *) (0x00200200 + POISON_POINTER_DELTA))
 
+#if !defined(offsetof)
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
 #define container_of(ptr, type, member) ({                      \
 		const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
 		(type *)( (char *)__mptr - offsetof(type,member) );})

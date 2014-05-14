@@ -20,7 +20,6 @@
 #include <sys/mount.h>
 #include <sys/ioctl.h>
 #include <linux/hdreg.h>
-#include <linux/fs.h>
 
 #include <f2fs_fs.h>
 
@@ -428,7 +427,7 @@ int f2fs_dev_is_umounted(struct f2fs_configuration *c)
 int f2fs_get_device_info(struct f2fs_configuration *c)
 {
 	int32_t fd = 0;
-	int32_t sector_size;
+	uint32_t sector_size;
 	struct stat stat_buf;
 	struct hd_geometry geom;
 

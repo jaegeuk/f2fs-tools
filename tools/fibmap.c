@@ -11,7 +11,7 @@
 #include <libgen.h>
 #include <linux/hdreg.h>
 #include <linux/types.h>
-#include <linux/fs.h>
+// #include <linux/fs.h>
 
 struct file_ext {
 	__u32 f_pos;

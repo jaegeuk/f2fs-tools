@@ -103,20 +103,17 @@ extern int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi,
 
 extern int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi,
 		struct f2fs_inode *inode,
-		u32 nid,
 		enum FILE_TYPE ftype,
 		struct f2fs_node *node_blk,
 		u32 *blk_cnt);
 
 extern int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi,
 		struct f2fs_inode *inode,
-		u32 nid,
 		enum FILE_TYPE ftype,
 		struct f2fs_node *node_blk,
 		u32 *blk_cnt);
 
 extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
 		u32 blk_addr,
 		u32 *child_cnt,
 		u32 *child_files,
@@ -127,7 +124,6 @@ extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
 		u8 ver);
 
 extern int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
 		u32 blk_addr,
 		u32 *child_cnt,
 		u32 *child_files,
@@ -154,7 +150,7 @@ struct dump_option {
 	int end_sit;
 	int start_ssa;
 	int end_ssa;
-	u32 blk_addr;
+	int32_t blk_addr;
 };
 
 extern void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit);

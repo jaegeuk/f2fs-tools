@@ -12,7 +12,7 @@
 #include <libgen.h>
 
 struct f2fs_fsck gfsck = {
-	.sbi.fsck = &gfsck,
+	.sbi = { .fsck = &gfsck, },
 };
 
 void fsck_usage()

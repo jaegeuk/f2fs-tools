@@ -16,7 +16,6 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <time.h>
-#include <linux/fs.h>
 #include <uuid/uuid.h>
 
 #include "f2fs_fs.h"
@@ -115,29 +114,10 @@ static int f2fs_prepare_super_block(void)
 	log_blks_per_seg = log_base_2(config.blks_per_seg);
 
 	super_block.log_sectorsize = cpu_to_le32(log_sectorsize);
-
-	if (log_sectorsize < 0) {
-		MSG(1, "\tError: Failed to get the sector size: %u!\n",
-				config.sector_size);
-		return -1;
-	}
-
 	super_block.log_sectors_per_block = cpu_to_le32(log_sectors_per_block);
-
-	if (log_sectors_per_block < 0) {
-		MSG(1, "\tError: Failed to get sectors per block: %u!\n",
-				config.sectors_per_blk);
-		return -1;
-	}
 
 	super_block.log_blocksize = cpu_to_le32(log_blocksize);
 	super_block.log_blocks_per_seg = cpu_to_le32(log_blks_per_seg);
-
-	if (log_blks_per_seg < 0) {
-		MSG(1, "\tError: Failed to get block per segment: %u!\n",
-				config.blks_per_seg);
-		return -1;
-	}
 
 	super_block.segs_per_sec = cpu_to_le32(config.segs_per_sec);
 	super_block.secs_per_zone = cpu_to_le32(config.secs_per_zone);

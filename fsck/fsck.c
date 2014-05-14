@@ -11,7 +11,7 @@
 #include "fsck.h"
 
 char *tree_mark;
-int tree_mark_size = 256;
+uint32_t tree_mark_size = 256;
 
 static int add_into_hard_link_list(struct f2fs_sb_info *sbi, u32 nid, u32 link_cnt)
 {
@@ -238,7 +238,6 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 		case TYPE_INDIRECT_NODE:
 			ret = fsck_chk_idnode_blk(sbi,
 					inode,
-					nid,
 					ftype,
 					node_blk,
 					blk_cnt);
@@ -246,7 +245,6 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 		case TYPE_DOUBLE_INDIRECT_NODE:
 			ret = fsck_chk_didnode_blk(sbi,
 					inode,
-					nid,
 					ftype,
 					node_blk,
 					blk_cnt);
@@ -273,7 +271,7 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
-	int idx = 0;
+	unsigned int idx = 0;
 	int ret = 0;
 
 	ASSERT(node_blk->footer.nid == node_blk->footer.ino);
@@ -340,7 +338,6 @@ int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
 		if (le32_to_cpu(node_blk->i.i_addr[idx]) != 0) {
 			*blk_cnt = *blk_cnt + 1;
 			ret = fsck_chk_data_blk(sbi,
-					&node_blk->i,
 					le32_to_cpu(node_blk->i.i_addr[idx]),
 					&child_cnt,
 					&child_files,
@@ -414,7 +411,6 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi,
 			continue;
 		*blk_cnt = *blk_cnt + 1;
 		fsck_chk_data_blk(sbi,
-				inode,
 				le32_to_cpu(node_blk->dn.addr[idx]),
 				&child_cnt,
 				&child_files,
@@ -430,7 +426,6 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi,
 
 int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi,
 		struct f2fs_inode *inode,
-		u32 nid,
 		enum FILE_TYPE ftype,
 		struct f2fs_node *node_blk,
 		u32 *blk_cnt)
@@ -454,7 +449,6 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi,
 
 int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi,
 		struct f2fs_inode *inode,
-		u32 nid,
 		enum FILE_TYPE ftype,
 		struct f2fs_node *node_blk,
 		u32 *blk_cnt)
@@ -482,7 +476,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	int last_de = 0;
 	int next_idx = 0;
 	int name_len;
-	int i;
+	unsigned int i;
 	int bit_offset;
 
 	if (config.dbg_lv != -1)
@@ -516,7 +510,6 @@ static void print_dentry(__u32 depth, __u8 *name,
 }
 
 int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
 		u32 blk_addr,
 		u32 *child_cnt,
 		u32 *child_files,
@@ -600,7 +593,6 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 }
 
 int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
 		u32 blk_addr,
 		u32 *child_cnt,
 		u32 *child_files,
@@ -636,7 +628,6 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
 
 	if (ftype == F2FS_FT_DIR) {
 		fsck_chk_dentry_blk(sbi,
-				inode,
 				blk_addr,
 				child_cnt,
 				child_files,
@@ -743,7 +734,7 @@ int fsck_init(struct f2fs_sb_info *sbi)
 
 int fsck_verify(struct f2fs_sb_info *sbi)
 {
-	int i = 0;
+	unsigned int i = 0;
 	int ret = 0;
 	u32 nr_unref_nid = 0;
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);

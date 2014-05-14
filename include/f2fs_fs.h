@@ -12,8 +12,6 @@
 #include <inttypes.h>
 #include <linux/types.h>
 #include <sys/types.h>
-#include <endian.h>
-#include <byteswap.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>

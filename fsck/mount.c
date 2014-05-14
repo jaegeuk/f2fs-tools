@@ -12,7 +12,7 @@
 
 void print_inode_info(struct f2fs_inode *inode)
 {
-	int i = 0;
+	unsigned int i = 0;
 	int namelen = le32_to_cpu(inode->i_namelen);
 
 	DISP_u32(inode, i_mode);
@@ -470,7 +470,7 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
-void reset_curseg(struct f2fs_sb_info *sbi, int type, int modified)
+void reset_curseg(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
 
@@ -509,7 +509,7 @@ int read_compacted_summaries(struct f2fs_sb_info *sbi)
 		segno = le32_to_cpu(ckpt->cur_data_segno[i]);
 		blk_off = le16_to_cpu(ckpt->cur_data_blkoff[i]);
 		curseg->next_segno = segno;
-		reset_curseg(sbi, i, 0);
+		reset_curseg(sbi, i);
 		curseg->alloc_type = ckpt->alloc_type[i];
 		curseg->next_blkoff = blk_off;
 
@@ -540,7 +540,7 @@ int restore_node_summary(struct f2fs_sb_info *sbi,
 	struct f2fs_summary *sum_entry;
 	void *page;
 	block_t addr;
-	int i;
+	unsigned int i;
 
 	page = malloc(PAGE_SIZE);
 	if (!page)
@@ -602,7 +602,7 @@ int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	if (IS_NODESEG(type)) {
 		if (is_set_ckpt_flags(ckpt, CP_UMOUNT_FLAG)) {
 			struct f2fs_summary *sum_entry = &sum_blk->entries[0];
-			int i;
+			unsigned int i;
 			for (i = 0; i < sbi->blocks_per_seg; i++, sum_entry++) {
 				/* do not change original value */
 #if 0
@@ -621,7 +621,7 @@ int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	curseg = CURSEG_I(sbi, type);
 	memcpy(curseg->sum_blk, sum_blk, PAGE_CACHE_SIZE);
 	curseg->next_segno = segno;
-	reset_curseg(sbi, type, 0);
+	reset_curseg(sbi, type);
 	curseg->alloc_type = ckpt->alloc_type[type];
 	curseg->next_blkoff = blk_off;
 	free(sum_blk);
@@ -690,12 +690,12 @@ struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi, unsigned i
 }
 
 void check_block_count(struct f2fs_sb_info *sbi,
-		int segno, struct f2fs_sit_entry *raw_sit)
+		unsigned int segno, struct f2fs_sit_entry *raw_sit)
 {
 	struct f2fs_sm_info *sm_info = SM_I(sbi);
 	unsigned int end_segno = sm_info->segment_count - 1;
 	int valid_blocks = 0;
-	int i;
+	unsigned int i;
 
 	/* check segment usage */
 	ASSERT(GET_SIT_VBLOCKS(raw_sit) <= sbi->blocks_per_seg);
@@ -896,7 +896,8 @@ int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_sm_info *sm_i = SM_I(sbi);
-	int segno = 0, j = 0;
+	unsigned int segno = 0;
+	int j = 0;
 	char *ptr = NULL;
 
 	u32 sum_vblocks = 0;
@@ -977,7 +978,8 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	pgoff_t block_off;
 	pgoff_t block_addr;
 	int seg_off;
-	int ret, i;
+	int ret;
+	unsigned int i;
 
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
@@ -1097,7 +1099,7 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct f2fs_sm_info *sm_i = SM_I(sbi);
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
-	int i;
+	unsigned int i;
 
 	/* free nm_info */
 	free(nm_i->nat_bitmap);
