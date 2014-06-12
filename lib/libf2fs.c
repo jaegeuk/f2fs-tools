@@ -354,6 +354,7 @@ int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len)
  */
 void f2fs_init_configuration(struct f2fs_configuration *c)
 {
+	c->total_sectors = 0;
 	c->sector_size = DEFAULT_SECTOR_SIZE;
 	c->sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	c->blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
@@ -430,6 +431,7 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 	uint32_t sector_size;
 	struct stat stat_buf;
 	struct hd_geometry geom;
+	u_int64_t wanted_total_sectors = c->total_sectors;
 
 	fd = open(c->device_name, O_RDWR);
 	if (fd < 0) {
@@ -472,7 +474,12 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 		MSG(0, "\tError: Volume type is not supported!!!\n");
 		return -1;
 	}
+	if (wanted_total_sectors && wanted_total_sectors < c->total_sectors) {
+		MSG(0, "Info: total device sectors = %"PRIu64" (in 512bytes)\n",
+					c->total_sectors);
+		c->total_sectors = wanted_total_sectors;
 
+	}
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
 	MSG(0, "Info: total sectors = %"PRIu64" (in 512bytes)\n",
 					c->total_sectors);

@@ -26,7 +26,7 @@ extern struct f2fs_configuration config;
 
 static void mkfs_usage()
 {
-	MSG(0, "\nUsage: mkfs.f2fs [options] device\n");
+	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a heap-based allocation [default:1]\n");
 	MSG(0, "  -d debug level [default:0]\n");
@@ -36,6 +36,7 @@ static void mkfs_usage()
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
+	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
 	exit(1);
 }
 
@@ -93,15 +94,21 @@ static void f2fs_parse_options(int argc, char *argv[])
 		}
 	}
 
-	if ((optind + 1) != argc) {
+	if (optind >= argc) {
 		MSG(0, "\tError: Device not specified\n");
 		mkfs_usage();
+	}
+	config.device_name = argv[optind];
+
+	if ((optind + 1) < argc) {
+		/* We have a sector count. */
+		config.total_sectors = atoll(argv[optind+1]);
+		MSG(0, "\ttotal_sectors=%lu (%s bytes)\n", config.total_sectors, argv[optind+1]);
 	}
 
 	config.reserved_segments  =
 			(2 * (100 / config.overprovision + 1) + 6)
 			* config.segs_per_sec;
-	config.device_name = argv[optind];
 }
 
 int main(int argc, char *argv[])
