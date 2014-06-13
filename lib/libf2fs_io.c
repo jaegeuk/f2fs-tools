@@ -67,3 +67,16 @@ int dev_read_blocks(void *buf, __u64 addr, __u32 nr_blks)
 {
 	return dev_read(buf, addr * F2FS_BLKSIZE, nr_blks * F2FS_BLKSIZE);
 }
+
+void f2fs_finalize_device(struct f2fs_configuration *c)
+{
+	/*
+	 * We should call fsync() to flush out all the dirty pages
+	 * in the block device page cache.
+	 */
+	if (fsync(c->fd) < 0)
+		MSG(0, "\tError: Could not conduct fsync!!!\n");
+
+	if (close(c->fd) < 0)
+		MSG(0, "\tError: Failed to close device file!!!\n");
+}
