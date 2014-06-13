@@ -36,8 +36,12 @@ int f2fs_trim_device()
 	if (S_ISREG(stat_buf.st_mode))
 		return 0;
 	else if (S_ISBLK(stat_buf.st_mode)) {
-		if (ioctl(config.fd, BLKDISCARD, &range) < 0)
+		if (ioctl(config.fd, BLKDISCARD, &range) < 0) {
 			MSG(0, "Info: This device doesn't support TRIM\n");
+		} else {
+			MSG(0, "Info: Discarded %lu sectors\n",
+						config.total_sectors);
+		}
 	} else
 		return -1;
 #endif
