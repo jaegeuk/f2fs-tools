@@ -493,3 +493,15 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 	return 0;
 }
 
+void f2fs_finalize_device(struct f2fs_configuration *c)
+{
+	/*
+	 * We should call fsync() to flush out all the dirty pages
+	 * in the block device page cache.
+	 */
+	if (fsync(c->fd) < 0)
+		MSG(0, "\tError: Could not conduct fsync!!!\n");
+
+	if (close(c->fd) < 0)
+		MSG(0, "\tError: Failed to close device file!!!\n");
+}

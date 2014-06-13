@@ -15,20 +15,6 @@
 
 #include "f2fs_fs.h"
 
-void f2fs_finalize_device()
-{
-	/*
-	 * We should call fsync() to flush out all the dirty pages
-	 * in the block device page cache.
-	 */
-	if (fsync(config.fd) < 0)
-		MSG(0, "\tError: Could not conduct fsync!!!\n");
-
-	if (close(config.fd) < 0)
-		MSG(0, "\tError: Failed to close device file!!!\n");
-
-}
-
 int f2fs_trim_device()
 {
 	unsigned long long range[2];

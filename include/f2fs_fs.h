@@ -659,6 +659,7 @@ extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 extern void f2fs_init_configuration(struct f2fs_configuration *);
 extern int f2fs_dev_is_umounted(struct f2fs_configuration *);
 extern int f2fs_get_device_info(struct f2fs_configuration *);
+extern void f2fs_finalize_device(struct f2fs_configuration *);
 
 extern int dev_read(void *, __u64, size_t);
 extern int dev_write(void *, __u64, size_t);
