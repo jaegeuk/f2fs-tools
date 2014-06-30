@@ -8,6 +8,8 @@
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  */
+#include <inttypes.h>
+
 #include "fsck.h"
 
 #define BUF_SZ	80
@@ -57,7 +59,7 @@ void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
 	ASSERT(ret >= 0);
 
 	close(fd);
-	DBG(1, "Blocks [0x%lx] Free Segs [0x%x]\n", valid_blocks, free_segs);
+	DBG(1, "Blocks [0x%" PRIx64 "] Free Segs [0x%x]\n", valid_blocks, free_segs);
 }
 
 void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)

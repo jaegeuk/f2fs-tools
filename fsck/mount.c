@@ -355,7 +355,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	memcpy(sbi->ckpt, cur_page, blk_size);
 
 	if (cp_blks > 1) {
-		int i;
+		unsigned int i;
 		unsigned long long cp_blk_no;
 
 		cp_blk_no = le32_to_cpu(raw_sb->cp_blkaddr);
