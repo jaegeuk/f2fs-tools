@@ -15,6 +15,10 @@
 
 #include "f2fs_fs.h"
 
+#ifdef HAVE_LINUX_FS_H
+#include <linux/fs.h>
+#endif
+
 int f2fs_trim_device()
 {
 	unsigned long long range[2];
@@ -31,7 +35,7 @@ int f2fs_trim_device()
 		return -1;
 	}
 
-#if defined(BLKDISCARD)
+#if defined(WITH_BLKDISCARD) && defined(BLKDISCARD)
 	MSG(0, "Info: Discarding device\n");
 	if (S_ISREG(stat_buf.st_mode))
 		return 0;
