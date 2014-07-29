@@ -432,7 +432,7 @@ static int f2fs_write_check_point_pack(void)
 	u_int32_t blk_size_bytes;
 	u_int64_t cp_seg_blk_offset = 0;
 	u_int32_t crc = 0;
-	int i;
+	unsigned int i;
 	char *cp_payload = NULL;
 
 	ckp = calloc(F2FS_BLKSIZE, 1);
