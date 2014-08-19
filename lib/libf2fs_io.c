@@ -46,6 +46,15 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+int dev_write_dump(void *buf, __u64 offset, size_t len)
+{
+	if (lseek64(config.dump_fd, (off64_t)offset, SEEK_SET) < 0)
+		return -1;
+	if (write(config.dump_fd, buf, len) < 0)
+		return -1;
+	return 0;
+}
+
 int dev_fill(void *buf, __u64 offset, size_t len)
 {
 	/* Only allow fill to zero */
