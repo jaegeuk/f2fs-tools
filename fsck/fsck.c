@@ -506,7 +506,8 @@ static void print_dentry(__u32 depth, __u8 *name,
 
 	for (i = 1; i < depth; i++)
 		printf("%c   ", tree_mark[i]);
-	printf("%c-- %s\n", last_de ? '`' : '|', name);
+	printf("%c-- %s 0x%x\n", last_de ? '`' : '|',
+				name, le32_to_cpu(de_blk->dentry[idx].ino));
 }
 
 int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
@@ -561,7 +562,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 			}
 		}
 
-		DBG(2, "[%3u] - no[0x%x] name[%s] len[0x%x] ino[0x%x] type[0x%x]\n",
+		DBG(1, "[%3u] - no[0x%x] name[%s] len[0x%x] ino[0x%x] type[0x%x]\n",
 				fsck->dentry_depth, i, name, name_len,
 				le32_to_cpu(de_blk->dentry[i].ino),
 				de_blk->dentry[i].file_type);
