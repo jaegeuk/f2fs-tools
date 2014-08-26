@@ -542,11 +542,12 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
 			continue;
 		}
 
-		name_len = le32_to_cpu(de_blk->dentry[i].name_len);
+		name_len = le16_to_cpu(de_blk->dentry[i].name_len);
 		name = calloc(name_len + 1, 1);
 		memcpy(name, de_blk->filename[i], name_len);
+		hash_code = f2fs_dentry_hash((const unsigned char *)name,
+								name_len);
 
-		hash_code = f2fs_dentry_hash((const char *)name, name_len);
 		ASSERT(le32_to_cpu(de_blk->dentry[i].hash_code) == hash_code);
 
 		ftype = de_blk->dentry[i].file_type;

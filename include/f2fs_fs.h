@@ -679,7 +679,7 @@ extern int dev_fill(void *, __u64, size_t);
 extern int dev_read_block(void *, __u64);
 extern int dev_read_blocks(void *, __u64, __u32 );
 
-f2fs_hash_t f2fs_dentry_hash(const char *, int);
+f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
 extern struct f2fs_configuration config;
 

@@ -235,7 +235,8 @@ static void TEA_transform(unsigned int buf[4], unsigned int const in[])
 
 }
 
-static void str2hashbuf(const char *msg, int len, unsigned int *buf, int num)
+static void str2hashbuf(const unsigned char *msg, int len,
+					unsigned int *buf, int num)
 {
 	unsigned pad, val;
 	int i;
@@ -269,24 +270,17 @@ static void str2hashbuf(const char *msg, int len, unsigned int *buf, int num)
  * @param len           name lenth
  * @return              return on success hash value, errno on failure
  */
-f2fs_hash_t f2fs_dentry_hash(const char *name, int len)
+f2fs_hash_t f2fs_dentry_hash(const unsigned char *name, int len)
 {
 	__u32 hash;
 	f2fs_hash_t	f2fs_hash;
-	const char	*p;
+	const unsigned char	*p;
 	__u32 in[8], buf[4];
 
 	/* special hash codes for special dentries */
-	if (name[0] == '.') {
-		if (name[1] == '\0') {
-			f2fs_hash = F2FS_DOT_HASH;
-			goto exit;
-		}
-		if (name[1] == '.' && name[2] == '\0') {
-			f2fs_hash = F2FS_DDOT_HASH;
-			goto exit;
-		}
-	}
+	if ((len <= 2) && (name[0] == '.') &&
+		(name[1] == '.' || name[1] == '\0'))
+		return 0;
 
 	/* Initialize the default seed for the hash checksum functions */
 	buf[0] = 0x67452301;
@@ -295,18 +289,17 @@ f2fs_hash_t f2fs_dentry_hash(const char *name, int len)
 	buf[3] = 0x10325476;
 
 	p = name;
-	while (len > 0) {
+	while (1) {
 		str2hashbuf(p, len, in, 4);
 		TEA_transform(buf, in);
-		len -= 16;
 		p += 16;
+		if (len <= 16)
+			break;
+		len -= 16;
 	}
 	hash = buf[0];
 
-	f2fs_hash = hash;
-exit:
-	f2fs_hash &= ~F2FS_HASH_COL_BIT;
-
+	f2fs_hash = cpu_to_le32(hash & ~F2FS_HASH_COL_BIT);
 	return f2fs_hash;
 }
 
