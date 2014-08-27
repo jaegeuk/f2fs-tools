@@ -301,12 +301,12 @@ static inline block_t sum_blk_addr(struct f2fs_sb_info *sbi, int base, int type)
 	(segno / SIT_ENTRY_PER_BLOCK)
 #define TOTAL_SEGS(sbi) (SM_I(sbi)->main_segments)
 
-#define IS_VALID_NID(sbi, nid) 			\
-	do {						\
-		ASSERT(nid <= (NAT_ENTRY_PER_BLOCK *	\
-					F2FS_RAW_SUPER(sbi)->segment_count_nat	\
-					<< (sbi->log_blocks_per_seg - 1)));	\
-	} while (0);
+static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
+{
+	return (nid <= (NAT_ENTRY_PER_BLOCK *
+			F2FS_RAW_SUPER(sbi)->segment_count_nat
+			<< (sbi->log_blocks_per_seg - 1)));
+}
 
 #define IS_VALID_BLK_ADDR(sbi, addr)				\
 	do {							\

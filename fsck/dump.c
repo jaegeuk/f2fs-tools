@@ -141,7 +141,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 	struct node_info ni;
 	struct f2fs_node *node_blk;
 	int i, ret;
-	u32 idx, skip;
+	u32 idx, skip = 0;
 
 	switch (ntype) {
 	case TYPE_DIRECT_NODE:

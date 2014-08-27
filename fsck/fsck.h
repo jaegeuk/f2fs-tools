@@ -76,72 +76,37 @@ enum seg_type {
 	SEG_TYPE_MAX,
 };
 
-extern int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino, u32 x_nid, u32 *blk_cnt);
-extern int fsck_chk_orphan_node(struct f2fs_sb_info *sbi);
+extern int fsck_chk_xattr_blk(struct f2fs_sb_info *, u32, u32, u32 *);
+extern int fsck_chk_orphan_node(struct f2fs_sb_info *);
+extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
+		enum FILE_TYPE, enum NODE_TYPE, u32 *);
+extern int fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
+		struct f2fs_node *, u32 *, struct node_info *);
+extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
+		u32, enum FILE_TYPE, struct f2fs_node *, u32 *,
+		struct node_info *);
+extern int fsck_chk_idnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
+		enum FILE_TYPE, struct f2fs_node *, u32 *);
+extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
+		enum FILE_TYPE, struct f2fs_node *, u32 *);
+extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, u32 *, u32 *,
+		int, enum FILE_TYPE, u32, u16, u8);
+extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, u32 *, u32 *, int);
 
-extern int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
-		u32 nid,
-		enum FILE_TYPE ftype,
-		enum NODE_TYPE ntype,
-		u32 *blk_cnt);
-
-extern int fsck_chk_inode_blk(struct f2fs_sb_info *sbi,
-		u32 nid,
-		enum FILE_TYPE ftype,
-		struct f2fs_node *node_blk,
-		u32 *blk_cnt,
-		struct node_info *ni);
-
-extern int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
-		u32 nid,
-		enum FILE_TYPE ftype,
-		struct f2fs_node *node_blk,
-		u32 *blk_cnt,
-		struct node_info *ni);
-
-extern int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
-		enum FILE_TYPE ftype,
-		struct f2fs_node *node_blk,
-		u32 *blk_cnt);
-
-extern int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi,
-		struct f2fs_inode *inode,
-		enum FILE_TYPE ftype,
-		struct f2fs_node *node_blk,
-		u32 *blk_cnt);
-
-extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi,
-		u32 blk_addr,
-		u32 *child_cnt,
-		u32 *child_files,
-		int last_blk,
-		enum FILE_TYPE ftype,
-		u32 parent_nid,
-		u16 idx_in_node,
-		u8 ver);
-
-extern int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi,
-		u32 blk_addr,
-		u32 *child_cnt,
-		u32 *child_files,
-		int last_blk);
-
-extern void print_node_info(struct f2fs_node *node_block);
-extern void print_inode_info(struct f2fs_inode *inode);
-extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *sbi, unsigned int segno);
-extern int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno, struct f2fs_summary_block *sum_blk);
-extern int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr, struct f2fs_summary *sum_entry);
-extern int get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni);
-extern void build_nat_area_bitmap(struct f2fs_sb_info *sbi);
-extern int build_sit_area_bitmap(struct f2fs_sb_info *sbi);
-extern int fsck_init(struct f2fs_sb_info *sbi);
-extern int fsck_verify(struct f2fs_sb_info *sbi);
-extern void fsck_free(struct f2fs_sb_info *sbi);
-extern int f2fs_do_mount(struct f2fs_sb_info *sbi);
-extern void f2fs_do_umount(struct f2fs_sb_info *sbi);
+extern void print_node_info(struct f2fs_node *);
+extern void print_inode_info(struct f2fs_inode *);
+extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
+extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
+				struct f2fs_summary_block *);
+extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
+extern int get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
+extern void build_nat_area_bitmap(struct f2fs_sb_info *);
+extern int build_sit_area_bitmap(struct f2fs_sb_info *);
+extern int fsck_init(struct f2fs_sb_info *);
+extern int fsck_verify(struct f2fs_sb_info *);
+extern void fsck_free(struct f2fs_sb_info *);
+extern int f2fs_do_mount(struct f2fs_sb_info *);
+extern void f2fs_do_umount(struct f2fs_sb_info *);
 
 /* dump.c */
 struct dump_option {
@@ -153,9 +118,9 @@ struct dump_option {
 	int32_t blk_addr;
 };
 
-extern void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit);
-extern void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa);
-extern int dump_node(struct f2fs_sb_info *sbi, nid_t nid);
-extern int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr);
+extern void sit_dump(struct f2fs_sb_info *, int, int);
+extern void ssa_dump(struct f2fs_sb_info *, int, int);
+extern int dump_node(struct f2fs_sb_info *, nid_t);
+extern int dump_inode_from_blkaddr(struct f2fs_sb_info *, u32);
 
 #endif /* _FSCK_H_ */
