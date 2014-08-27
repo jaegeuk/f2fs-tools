@@ -189,8 +189,10 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 	struct f2fs_node *node_blk = NULL;
 	int ret = 0;
 
-	if (!IS_VALID_NID(sbi, nid))
+	if (!IS_VALID_NID(sbi, nid)) {
 		ASSERT_MSG("nid is not valid. [0x%x]", nid);
+		return 0;
+	}
 
 	if (ftype != F2FS_FT_ORPHAN ||
 			f2fs_test_bit(nid, fsck->nat_area_bitmap) != 0x0)
@@ -213,7 +215,10 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 		return 0;
 	}
 
-	IS_VALID_BLK_ADDR(sbi, ni.blk_addr);
+	if (!IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+		ASSERT_MSG("blkaddres is not valid. [0x%x]", ni.blk_addr);
+		return 0;
+	}
 
 	is_valid_ssa_node_blk(sbi, nid, ni.blk_addr);
 
@@ -596,7 +601,10 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		return 0;
 	}
 
-	IS_VALID_BLK_ADDR(sbi, blk_addr);
+	if (!IS_VALID_BLK_ADDR(sbi, blk_addr)) {
+		ASSERT_MSG("blkaddres is not valid. [0x%x]", blk_addr);
+		return 0;
+	}
 
 	is_valid_ssa_data_blk(sbi, blk_addr, parent_nid, idx_in_node, ver);
 

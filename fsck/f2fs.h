@@ -308,16 +308,17 @@ static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
 			<< (sbi->log_blocks_per_seg - 1)));
 }
 
-#define IS_VALID_BLK_ADDR(sbi, addr)				\
-	do {							\
-		if (addr >= F2FS_RAW_SUPER(sbi)->block_count ||	 	\
-				addr < SM_I(sbi)->main_blkaddr)	\
-		{						\
-			DBG(0, "block addr [0x%x]\n", addr);	\
-			ASSERT(addr <  F2FS_RAW_SUPER(sbi)->block_count);	\
-			ASSERT(addr >= SM_I(sbi)->main_blkaddr);	\
-		}						\
-	} while (0);
+static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
+{
+	if (addr >= F2FS_RAW_SUPER(sbi)->block_count ||
+				addr < SM_I(sbi)->main_blkaddr) {
+		DBG(0, "block addr [0x%x]\n", addr);
+		ASSERT(addr <  F2FS_RAW_SUPER(sbi)->block_count);
+		ASSERT(addr >= SM_I(sbi)->main_blkaddr);
+		return 0;
+	}
+	return 1;
+}
 
 static inline u64 BLKOFF_FROM_MAIN(struct f2fs_sb_info *sbi, u64 blk_addr)
 {
