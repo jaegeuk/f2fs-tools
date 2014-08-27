@@ -761,6 +761,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 					node->nid, node->links);
 			node = node->next;
 		}
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] Unreachable nat entries                       ");
@@ -769,6 +770,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", nr_unref_nid);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] SIT valid block bitmap checking                ");
@@ -777,6 +779,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf("[Fail]\n");
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] Hard link checking for regular file           ");
@@ -785,6 +788,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", fsck->chk.multi_hard_link_files);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] valid_block_count matching with CP            ");
@@ -793,6 +797,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", (u32)fsck->chk.valid_blk_cnt);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] valid_node_count matcing with CP (de lookup)  ");
@@ -801,6 +806,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", fsck->chk.valid_node_cnt);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] valid_node_count matcing with CP (nat lookup) ");
@@ -809,6 +815,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", fsck->chk.valid_nat_entry_cnt);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
 
 	printf("[FSCK] valid_inode_count matched with CP             ");
@@ -817,8 +824,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	} else {
 		printf(" [Fail] [0x%x]\n", fsck->chk.valid_inode_cnt);
 		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
 	}
-
 	return ret;
 }
 

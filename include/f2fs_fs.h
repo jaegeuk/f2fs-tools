@@ -60,6 +60,7 @@ typedef unsigned long	pgoff_t;
 			printf("\nAssertion failed!\n");		\
 			printf("[%s:%4d] " #exp, __func__, __LINE__);	\
 			printf("\n --> "fmt, ##__VA_ARGS__);		\
+			config.bug_on = 1;				\
 			exit(-1);					\
 		}							\
 	} while (0);
@@ -69,6 +70,7 @@ typedef unsigned long	pgoff_t;
 		if (!(exp)) {						\
 			printf("\nAssertion failed!\n");		\
 			printf("[%s:%4d] " #exp"\n", __func__, __LINE__);\
+			config.bug_on = 1;				\
 			exit(-1);					\
 		}							\
 	} while (0);
@@ -180,6 +182,9 @@ struct f2fs_configuration {
 	int trim;
 	int func;
 	void *private;
+	int fix_on;
+	int fix_cnt;
+	int bug_on;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
