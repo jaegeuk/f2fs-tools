@@ -801,9 +801,9 @@ int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr, struct f2fs_summary *s
 	return ret;
 }
 
-int get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid, struct f2fs_nat_entry *raw_nat)
+static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
+				struct f2fs_nat_entry *raw_nat)
 {
-	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
 	pgoff_t block_off;
@@ -811,13 +811,8 @@ int get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid, struct f2fs_nat_entry *ra
 	int seg_off, entry_off;
 	int ret;
 
-	if ((nid / NAT_ENTRY_PER_BLOCK) > fsck->nr_nat_entries) {
-		DBG(0, "nid is over max nid\n");
-		return -EINVAL;
-	}
-
 	if (lookup_nat_in_journal(sbi, nid, raw_nat) >= 0)
-		return 0;
+		return;
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 
@@ -835,21 +830,17 @@ int get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid, struct f2fs_nat_entry *ra
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
 
-	memcpy(raw_nat, &nat_block->entries[entry_off], sizeof(struct f2fs_nat_entry));
+	memcpy(raw_nat, &nat_block->entries[entry_off],
+					sizeof(struct f2fs_nat_entry));
 	free(nat_block);
-
-	return 0;
 }
 
-int get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
+void get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
 {
 	struct f2fs_nat_entry raw_nat;
-	int ret;
-
-	ret = get_nat_entry(sbi, nid, &raw_nat);
+	get_nat_entry(sbi, nid, &raw_nat);
 	ni->nid = nid;
 	node_info_from_raw_nat(ni, &raw_nat);
-	return ret;
 }
 
 void build_sit_entries(struct f2fs_sb_info *sbi)

@@ -99,7 +99,7 @@ extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
 extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
 				struct f2fs_summary_block *);
 extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
-extern int get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
+extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern int build_sit_area_bitmap(struct f2fs_sb_info *);
 extern int fsck_init(struct f2fs_sb_info *);
@@ -120,7 +120,7 @@ struct dump_option {
 
 extern void sit_dump(struct f2fs_sb_info *, int, int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
-extern int dump_node(struct f2fs_sb_info *, nid_t);
+extern void dump_node(struct f2fs_sb_info *, nid_t);
 extern int dump_inode_from_blkaddr(struct f2fs_sb_info *, u32);
 
 #endif /* _FSCK_H_ */

@@ -140,8 +140,8 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
-	int i, ret;
 	u32 idx, skip = 0;
+	int i;
 
 	switch (ntype) {
 	case TYPE_DIRECT_NODE:
@@ -162,8 +162,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 		return;
 	}
 
-	ret = get_node_info(sbi, nid, &ni);
-	ASSERT(ret >= 0);
+	get_node_info(sbi, nid, &ni);
 
 	node_blk = calloc(BLOCK_SZ, 1);
 	dev_read_block(node_blk, ni.blk_addr);
@@ -267,14 +266,12 @@ void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 	}
 }
 
-int dump_node(struct f2fs_sb_info *sbi, nid_t nid)
+void dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
-	int ret;
 
-	ret = get_node_info(sbi, nid, &ni);
-	ASSERT(ret >= 0);
+	get_node_info(sbi, nid, &ni);
 
 	node_blk = calloc(BLOCK_SZ, 1);
 	dev_read_block(node_blk, ni.blk_addr);
@@ -284,9 +281,8 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 	DBG(1, "nat_entry.version     [0x%x]\n", ni.version);
 	DBG(1, "nat_entry.ino         [0x%x]\n", ni.ino);
 
-	if (ni.blk_addr == 0x0) {
+	if (ni.blk_addr == 0x0)
 		MSG(0, "Invalid nat entry\n\n");
-	}
 
 	DBG(1, "node_blk.footer.ino [0x%x]\n", le32_to_cpu(node_blk->footer.ino));
 	DBG(1, "node_blk.footer.nid [0x%x]\n", le32_to_cpu(node_blk->footer.nid));
@@ -300,7 +296,6 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 	}
 
 	free(node_blk);
-	return 0;
 }
 
 int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
@@ -314,8 +309,7 @@ int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	type = get_sum_entry(sbi, blk_addr, &sum_entry);
 	nid = le32_to_cpu(sum_entry.nid);
 
-	ret = get_node_info(sbi, nid, &ni);
-	ASSERT(ret >= 0);
+	get_node_info(sbi, nid, &ni);
 
 	DBG(1, "Note: blkaddr = main_blkaddr + segno * 512 + offset\n");
 	DBG(1, "Block_addr            [0x%x]\n", blk_addr);
@@ -331,7 +325,8 @@ int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	node_blk = calloc(BLOCK_SZ, 1);
 
 read_node_blk:
-	dev_read_block(node_blk, blk_addr);
+	ret = dev_read_block(node_blk, blk_addr);
+	ASSERT(ret >= 0);
 
 	ino = le32_to_cpu(node_blk->footer.ino);
 	nid = le32_to_cpu(node_blk->footer.nid);
@@ -339,7 +334,7 @@ read_node_blk:
 	if (ino == nid) {
 		print_node_info(node_blk);
 	} else {
-		ret = get_node_info(sbi, ino, &ni);
+		get_node_info(sbi, ino, &ni);
 		goto read_node_blk;
 	}
 

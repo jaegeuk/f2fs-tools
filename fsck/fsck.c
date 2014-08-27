@@ -200,8 +200,7 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi,
 	else
 		ASSERT_MSG("nid duplicated [0x%x]\n", nid);
 
-	ret = get_node_info(sbi, nid, &ni);
-	ASSERT(ret >= 0);
+	get_node_info(sbi, nid, &ni);
 
 	/* Is it reserved block?
 	 * if block addresss was 0xffff,ffff,ffff,ffff
@@ -682,7 +681,7 @@ int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 	fsck->chk.valid_blk_cnt++;
 	fsck->chk.valid_node_cnt++;
 
-	ASSERT(get_node_info(sbi, x_nid, &ni) >= 0);
+	get_node_info(sbi, x_nid, &ni);
 
 	if (f2fs_test_main_bitmap(sbi, ni.blk_addr) != 0) {
 		ASSERT_MSG("Duplicated node block for x_attr. "
