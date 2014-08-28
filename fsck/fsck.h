@@ -59,7 +59,8 @@ enum NODE_TYPE {
 	TYPE_INODE = 37,
 	TYPE_DIRECT_NODE = 43,
 	TYPE_INDIRECT_NODE = 53,
-	TYPE_DOUBLE_INDIRECT_NODE = 67
+	TYPE_DOUBLE_INDIRECT_NODE = 67,
+	TYPE_XATTR = 77
 };
 
 struct hard_link_node {
@@ -76,11 +77,11 @@ enum seg_type {
 	SEG_TYPE_MAX,
 };
 
-extern int fsck_chk_xattr_blk(struct f2fs_sb_info *, u32, u32, u32 *);
-extern int fsck_chk_orphan_node(struct f2fs_sb_info *);
+extern void fsck_chk_xattr_blk(struct f2fs_sb_info *, u32, u32, u32 *);
+extern void fsck_chk_orphan_node(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		enum FILE_TYPE, enum NODE_TYPE, u32 *);
-extern int fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
+extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
 		struct f2fs_node *, u32 *, struct node_info *);
 extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		u32, enum FILE_TYPE, struct f2fs_node *, u32 *,
@@ -102,7 +103,7 @@ extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern int build_sit_area_bitmap(struct f2fs_sb_info *);
-extern int fsck_init(struct f2fs_sb_info *);
+extern void fsck_init(struct f2fs_sb_info *);
 extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
 extern int f2fs_do_mount(struct f2fs_sb_info *);

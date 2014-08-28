@@ -131,44 +131,29 @@ void f2fs_parse_options(int argc, char *argv[])
 	config.device_name = argv[optind];
 }
 
-int do_fsck(struct f2fs_sb_info *sbi)
+static void do_fsck(struct f2fs_sb_info *sbi)
 {
 	u32 blk_cnt;
-	int ret;
 
 	config.bug_on = 0;
 
-	ret = fsck_init(sbi);
-	if (ret < 0)
-		return ret;
+	fsck_init(sbi);
 
 	fsck_chk_orphan_node(sbi);
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
-	ret = fsck_chk_node_blk(sbi,
-			NULL,
-			sbi->root_ino_num,
-			F2FS_FT_DIR,
-			TYPE_INODE,
-			&blk_cnt);
-	if (ret < 0)
-		goto out1;
-
-	ret = fsck_verify(sbi);
-out1:
+	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
+			F2FS_FT_DIR, TYPE_INODE, &blk_cnt);
+	fsck_verify(sbi);
 	fsck_free(sbi);
-	return ret;
 }
 
-int do_dump(struct f2fs_sb_info *sbi)
+static void do_dump(struct f2fs_sb_info *sbi)
 {
 	struct dump_option *opt = (struct dump_option *)config.private;
-	int ret;
 
-	ret = fsck_init(sbi);
-	if (ret < 0)
-		return ret;
+	fsck_init(sbi);
 
 	if (opt->end_sit == -1)
 		opt->end_sit = SM_I(sbi)->main_segments;
@@ -182,15 +167,12 @@ int do_dump(struct f2fs_sb_info *sbi)
 		dump_inode_from_blkaddr(sbi, opt->blk_addr);
 		goto cleanup;
 	}
-
 	dump_node(sbi, opt->nid);
-
 cleanup:
 	fsck_free(sbi);
-	return 0;
 }
 
-int main (int argc, char **argv)
+int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
@@ -215,10 +197,10 @@ fsck_again:
 
 	switch (config.func) {
 	case FSCK:
-		ret = do_fsck(sbi);
+		do_fsck(sbi);
 		break;
 	case DUMP:
-		ret = do_dump(sbi);
+		do_dump(sbi);
 		break;
 	}
 
@@ -248,5 +230,5 @@ retry:
 	f2fs_finalize_device(&config);
 
 	printf("\nDone.\n");
-	return ret;
+	return 0;
 }

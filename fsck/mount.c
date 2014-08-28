@@ -1020,7 +1020,8 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 			struct node_info ni;
 			ni.nid = nid + i;
 
-			if ((nid + i) == F2FS_NODE_INO(sbi) || (nid + i) == F2FS_META_INO(sbi)) {
+			if ((nid + i) == F2FS_NODE_INO(sbi) ||
+					(nid + i) == F2FS_META_INO(sbi)) {
 				ASSERT(nat_block->entries[i].block_addr != 0x0);
 				continue;
 			}

@@ -413,6 +413,9 @@ enum {
 	OFFSET_BIT_SHIFT
 };
 
+#define XATTR_NODE_OFFSET	((((unsigned int)-1) << OFFSET_BIT_SHIFT) \
+				>> OFFSET_BIT_SHIFT)
+
 struct node_footer {
 	__le32 nid;		/* node id */
 	__le32 ino;		/* inode nunmber */
@@ -640,6 +643,7 @@ enum FILE_TYPE {
 	F2FS_FT_MAX,
 	/* added for fsck */
 	F2FS_FT_ORPHAN,
+	F2FS_FT_XATTR,
 };
 
 /* from f2fs/segment.h */
