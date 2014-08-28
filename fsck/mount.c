@@ -505,11 +505,6 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 	struct summary_footer *sum_footer;
 	struct seg_entry *se;
 
-	curseg->segno = curseg->next_segno;
-	curseg->zone = GET_ZONENO_FROM_SEGNO(sbi, curseg->segno);
-	curseg->next_blkoff = 0;
-	curseg->next_segno = NULL_SEGNO;
-
 	sum_footer = &(curseg->sum_blk->footer);
 	memset(sum_footer, 0, sizeof(struct summary_footer));
 	if (IS_DATASEG(type))
@@ -522,7 +517,6 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 
 static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 {
-	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	struct curseg_info *curseg;
 	unsigned int i, j, offset;
 	block_t start;
@@ -545,18 +539,14 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 	offset = 2 * SUM_JOURNAL_SIZE;
 	for (i = CURSEG_HOT_DATA; i <= CURSEG_COLD_DATA; i++) {
 		unsigned short blk_off;
-		unsigned int segno;
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
 
-		curseg = CURSEG_I(sbi, i);
-		segno = le32_to_cpu(ckpt->cur_data_segno[i]);
-		blk_off = le16_to_cpu(ckpt->cur_data_blkoff[i]);
-		curseg->next_segno = segno;
 		reset_curseg(sbi, i);
-		curseg->alloc_type = ckpt->alloc_type[i];
-		curseg->next_blkoff = blk_off;
 
 		if (curseg->alloc_type == SSR)
 			blk_off = sbi->blocks_per_seg;
+		else
+			blk_off = curseg->next_blkoff;
 
 		for (j = 0; j < blk_off; j++) {
 			struct f2fs_summary *s;
@@ -605,16 +595,12 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	struct f2fs_summary_block *sum_blk;
 	struct curseg_info *curseg;
-	unsigned short blk_off;
 	unsigned int segno = 0;
 	block_t blk_addr = 0;
 	int ret;
 
 	if (IS_DATASEG(type)) {
 		segno = le32_to_cpu(ckpt->cur_data_segno[type]);
-		blk_off = le16_to_cpu(ckpt->cur_data_blkoff[type -
-							CURSEG_HOT_DATA]);
-
 		if (is_set_ckpt_flags(ckpt, CP_UMOUNT_FLAG))
 			blk_addr = sum_blk_addr(sbi, NR_CURSEG_TYPE, type);
 		else
@@ -622,9 +608,6 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	} else {
 		segno = le32_to_cpu(ckpt->cur_node_segno[type -
 							CURSEG_HOT_NODE]);
-		blk_off = le16_to_cpu(ckpt->cur_node_blkoff[type -
-							CURSEG_HOT_NODE]);
-
 		if (is_set_ckpt_flags(ckpt, CP_UMOUNT_FLAG))
 			blk_addr = sum_blk_addr(sbi, NR_CURSEG_NODE_TYPE,
 							type - CURSEG_HOT_NODE);
@@ -641,10 +624,7 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 
 	curseg = CURSEG_I(sbi, type);
 	memcpy(curseg->sum_blk, sum_blk, PAGE_CACHE_SIZE);
-	curseg->next_segno = segno;
 	reset_curseg(sbi, type);
-	curseg->alloc_type = ckpt->alloc_type[type];
-	curseg->next_blkoff = blk_off;
 	free(sum_blk);
 }
 
@@ -663,7 +643,10 @@ static void restore_curseg_summaries(struct f2fs_sb_info *sbi)
 
 static void build_curseg(struct f2fs_sb_info *sbi)
 {
+	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	struct curseg_info *array;
+	unsigned short blk_off;
+	unsigned int segno;
 	int i;
 
 	array = malloc(sizeof(*array) * NR_CURSEG_TYPE);
@@ -674,8 +657,21 @@ static void build_curseg(struct f2fs_sb_info *sbi)
 	for (i = 0; i < NR_CURSEG_TYPE; i++) {
 		array[i].sum_blk = malloc(PAGE_CACHE_SIZE);
 		ASSERT(array[i].sum_blk);
-		array[i].segno = NULL_SEGNO;
-		array[i].next_blkoff = 0;
+		if (i <= CURSEG_COLD_DATA) {
+			blk_off = le16_to_cpu(ckpt->cur_data_blkoff[i]);
+			segno = le32_to_cpu(ckpt->cur_data_segno[i]);
+		}
+		if (i > CURSEG_COLD_DATA) {
+			blk_off = le16_to_cpu(ckpt->cur_node_blkoff[i -
+							CURSEG_HOT_NODE]);
+			segno = le32_to_cpu(ckpt->cur_node_segno[i -
+							CURSEG_HOT_NODE]);
+		}
+		array[i].segno = segno;
+		array[i].zone = GET_ZONENO_FROM_SEGNO(sbi, segno);
+		array[i].next_segno = NULL_SEGNO;
+		array[i].next_blkoff = blk_off;
+		array[i].alloc_type = ckpt->alloc_type[i];
 	}
 	restore_curseg_summaries(sbi);
 }

@@ -266,10 +266,15 @@ static inline block_t __start_sum_addr(struct f2fs_sb_info *sbi)
 #define GET_SEGNO_FROM_SEG0(sbi, blk_addr)				\
 	(GET_SEGOFF_FROM_SEG0(sbi, blk_addr) >> sbi->log_blocks_per_seg)
 
-#define FREE_I_START_SEGNO(sbi)		GET_SEGNO_FROM_SEG0(sbi, SM_I(sbi)->main_blkaddr)
+#define GET_BLKOFF_FROM_SEG0(sbi, blk_addr)				\
+	(GET_SEGOFF_FROM_SEG0(sbi, blk_addr) & (sbi->blocks_per_seg - 1))
+
+#define FREE_I_START_SEGNO(sbi)						\
+	GET_SEGNO_FROM_SEG0(sbi, SM_I(sbi)->main_blkaddr)
 #define GET_R2L_SEGNO(sbi, segno)	(segno + FREE_I_START_SEGNO(sbi))
 
-#define START_BLOCK(sbi, segno)	(SM_I(sbi)->main_blkaddr + (segno << sbi->log_blocks_per_seg))
+#define START_BLOCK(sbi, segno)	(SM_I(sbi)->main_blkaddr +		\
+	(segno << sbi->log_blocks_per_seg))
 
 static inline struct curseg_info *CURSEG_I(struct f2fs_sb_info *sbi, int type)
 {
@@ -311,12 +316,22 @@ static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
 
 static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
 {
+	int i;
+
 	if (addr >= F2FS_RAW_SUPER(sbi)->block_count ||
 				addr < SM_I(sbi)->main_blkaddr) {
 		DBG(0, "block addr [0x%x]\n", addr);
 		ASSERT(addr <  F2FS_RAW_SUPER(sbi)->block_count);
 		ASSERT(addr >= SM_I(sbi)->main_blkaddr);
 		return 0;
+	}
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+
+		if (START_BLOCK(sbi, curseg->segno) +
+					curseg->next_blkoff == addr)
+			return 0;
 	}
 	return 1;
 }

@@ -843,6 +843,24 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 }
 
+int check_curseg_offset(struct f2fs_sb_info *sbi)
+{
+	int i;
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+		struct seg_entry *se;
+
+		se = get_seg_entry(sbi, curseg->segno);
+		if (f2fs_test_bit(curseg->next_blkoff,
+				(const char *)se->cur_valid_map) == 1) {
+			ASSERT_MSG("Next block offset is not free, type:%d", i);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 int fsck_verify(struct f2fs_sb_info *sbi)
 {
 	unsigned int i = 0;
@@ -940,6 +958,15 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		printf(" [Ok..] [0x%x]\n", fsck->chk.sit_free_segs);
 	} else {
 		printf(" [Fail] [0x%x]\n", fsck->chk.sit_free_segs);
+		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
+	}
+
+	printf("[FSCK] next block offset is free                     ");
+	if (check_curseg_offset(sbi) == 0) {
+		printf(" [Ok..]\n");
+	} else {
+		printf(" [Fail]\n");
 		ret = EXIT_ERR_CODE;
 		config.bug_on = 1;
 	}
