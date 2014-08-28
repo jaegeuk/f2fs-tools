@@ -344,6 +344,9 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					node_blk->i.i_links =
 						cpu_to_le32(i_links + 1);
 					need_fix = 1;
+					FIX_MSG("File: 0x%x "
+						"i_links= 0x%x -> 0x%x",
+						nid, i_links, i_links + 1);
 				}
 			}
 			/* No need to go deep into the node */
@@ -375,6 +378,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			} else if (config.fix_cnt) {
 				node_blk->i.i_addr[idx] = 0;
 				need_fix = 1;
+				FIX_MSG("[0x%x] i_addr[%d] = 0", nid, idx);
 			}
 		}
 	}
@@ -399,6 +403,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			} else if (config.fix_cnt) {
 				node_blk->i.i_nid[idx] = 0;
 				need_fix = 1;
+				FIX_MSG("[0x%x] i_nid[%d] = 0", nid, idx);
 			}
 		}
 	}
@@ -421,6 +426,8 @@ check:
 		if (config.fix_cnt) {
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 			need_fix = 1;
+			FIX_MSG("[0x%x] i_blocks=0x%lx -> 0x%x",
+					nid, i_blocks, *blk_cnt);
 		}
 	}
 	if (ftype == F2FS_FT_DIR && i_links != child_cnt) {
@@ -429,6 +436,8 @@ check:
 		if (config.fix_cnt) {
 			node_blk->i.i_links = cpu_to_le32(child_cnt);
 			need_fix = 1;
+			FIX_MSG("Dir: 0x%x i_links= 0x%x -> 0x%x",
+						nid, i_links, child_cnt);
 		}
 	}
 

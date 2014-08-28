@@ -54,6 +54,12 @@ typedef unsigned long	pgoff_t;
 /*
  * Debugging interfaces
  */
+#define FIX_MSG(fmt, ...)						\
+	do {								\
+		printf("[FIX] (%s:%4d) ", __func__, __LINE__);		\
+		printf(" --> "fmt"\n", ##__VA_ARGS__);			\
+	} while (0)
+
 #define ASSERT_MSG(fmt, ...)						\
 	do {								\
 		printf("[ASSERT] (%s:%4d) ", __func__, __LINE__);	\
