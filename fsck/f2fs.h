@@ -126,6 +126,7 @@ struct f2fs_sb_info {
 	struct f2fs_nm_info *nm_info;
 	struct f2fs_sm_info *sm_info;
 	struct f2fs_checkpoint *ckpt;
+	int cur_cp;
 
 	struct list_head orphan_inode_list;
 	unsigned int n_orphans;

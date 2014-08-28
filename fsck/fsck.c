@@ -785,6 +785,64 @@ void fsck_init(struct f2fs_sb_info *sbi)
 	ASSERT(tree_mark != NULL);
 }
 
+static void fix_nat_entries(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	int i;
+
+	for (i = 0; i < fsck->nr_nat_entries; i++)
+		if (f2fs_test_bit(i, fsck->nat_area_bitmap) != 0)
+			nullify_nat_entry(sbi, i);
+}
+
+static void fix_checkpoint(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct f2fs_super_block *raw_sb = sbi->raw_super;
+	struct f2fs_checkpoint *ckp = F2FS_CKPT(sbi);
+	unsigned long long cp_blk_no;
+	int i, ret;
+	u_int32_t crc = 0;
+
+	ckp->ckpt_flags = cpu_to_le32(CP_UMOUNT_FLAG);
+	ckp->cp_pack_total_block_count =
+		cpu_to_le32(8 + le32_to_cpu(raw_sb->cp_payload));
+	ckp->cp_pack_start_sum = cpu_to_le32(1 +
+				le32_to_cpu(raw_sb->cp_payload));
+
+	ckp->free_segment_count = cpu_to_le32(fsck->chk.free_segs);
+	ckp->valid_block_count = cpu_to_le32(fsck->chk.valid_blk_cnt);
+	ckp->valid_node_count = cpu_to_le32(fsck->chk.valid_node_cnt);
+	ckp->valid_inode_count = cpu_to_le32(fsck->chk.valid_inode_cnt);
+
+	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp, CHECKSUM_OFFSET);
+	*((__le32 *)((unsigned char *)ckp + CHECKSUM_OFFSET)) =
+							cpu_to_le32(crc);
+
+	cp_blk_no = le32_to_cpu(raw_sb->cp_blkaddr);
+	if (sbi->cur_cp == 2)
+		cp_blk_no += 1 << le32_to_cpu(raw_sb->log_blocks_per_seg);
+
+	ret = dev_write_block(ckp, cp_blk_no++);
+	ASSERT(ret >= 0);
+
+	for (i = 0; i < le32_to_cpu(raw_sb->cp_payload); i++) {
+		ret = dev_write_block(((unsigned char *)ckp) + i * F2FS_BLKSIZE,
+								cp_blk_no++);
+		ASSERT(ret >= 0);
+	}
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+
+		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
+		ASSERT(ret >= 0);
+	}
+
+	ret = dev_write_block(ckp, cp_blk_no++);
+	ASSERT(ret >= 0);
+}
+
 int fsck_verify(struct f2fs_sb_info *sbi)
 {
 	unsigned int i = 0;
@@ -874,6 +932,32 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		printf(" [Fail] [0x%x]\n", fsck->chk.valid_inode_cnt);
 		ret = EXIT_ERR_CODE;
 		config.bug_on = 1;
+	}
+
+	printf("[FSCK] free segment_count matched with CP            ");
+	if (le32_to_cpu(F2FS_CKPT(sbi)->free_segment_count) ==
+						fsck->chk.sit_free_segs) {
+		printf(" [Ok..] [0x%x]\n", fsck->chk.sit_free_segs);
+	} else {
+		printf(" [Fail] [0x%x]\n", fsck->chk.sit_free_segs);
+		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
+	}
+
+	printf("[FSCK] other corrupted bugs                          ");
+	if (config.bug_on == 0) {
+		printf(" [Ok..]\n");
+	} else {
+		printf(" [Fail]\n");
+		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
+	}
+
+	/* fix global metadata */
+	if (config.bug_on && config.fix_cnt) {
+		fix_nat_entries(sbi);
+		rewrite_sit_area_bitmap(sbi);
+		fix_checkpoint(sbi);
 	}
 	return ret;
 }

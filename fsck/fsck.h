@@ -31,6 +31,7 @@ struct f2fs_fsck {
 		u32 multi_hard_link_files;
 		u64 sit_valid_blocks;
 		u32 sit_free_segs;
+		u32 free_segs;
 	} chk;
 
 	struct hard_link_node *hard_link_list_head;
@@ -100,6 +101,8 @@ extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
 				struct f2fs_summary_block *);
 extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
+extern void nullify_nat_entry(struct f2fs_sb_info *, u32);
+extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern void build_sit_area_bitmap(struct f2fs_sb_info *);
 extern void fsck_init(struct f2fs_sb_info *);

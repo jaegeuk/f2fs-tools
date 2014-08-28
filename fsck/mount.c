@@ -326,6 +326,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	unsigned long long cp1_version = 0, cp2_version = 0;
 	unsigned long long cp_start_blk_no;
 	unsigned int cp_blks = 1 + le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
+	int ret;
 
 	sbi->ckpt = malloc(cp_blks * blk_size);
 	if (!sbi->ckpt)
@@ -342,14 +343,19 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	cp2 = validate_checkpoint(sbi, cp_start_blk_no, &cp2_version);
 
 	if (cp1 && cp2) {
-		if (ver_after(cp2_version, cp1_version))
+		if (ver_after(cp2_version, cp1_version)) {
 			cur_page = cp2;
-		else
+			sbi->cur_cp = 2;
+		} else {
 			cur_page = cp1;
+			sbi->cur_cp = 1;
+		}
 	} else if (cp1) {
 		cur_page = cp1;
+		sbi->cur_cp = 1;
 	} else if (cp2) {
 		cur_page = cp2;
+		sbi->cur_cp = 2;
 	} else {
 		free(cp1);
 		free(cp2);
@@ -369,7 +375,8 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 		/* copy sit bitmap */
 		for (i = 1; i < cp_blks; i++) {
 			unsigned char *ckpt = (unsigned char *)sbi->ckpt;
-			dev_read_block(cur_page, cp_blk_no + i);
+			ret = dev_read_block(cur_page, cp_blk_no + i);
+			ASSERT(ret >= 0);
 			memcpy(ckpt + i * blk_size, cur_page, blk_size);
 		}
 	}
@@ -496,6 +503,7 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
 	struct summary_footer *sum_footer;
+	struct seg_entry *se;
 
 	curseg->segno = curseg->next_segno;
 	curseg->zone = GET_ZONENO_FROM_SEGNO(sbi, curseg->segno);
@@ -508,6 +516,8 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 		SET_SUM_TYPE(sum_footer, SUM_TYPE_DATA);
 	if (IS_NODESEG(type))
 		SET_SUM_TYPE(sum_footer, SUM_TYPE_NODE);
+	se = get_seg_entry(sbi, curseg->segno);
+	se->type = type;
 }
 
 static void read_compacted_summaries(struct f2fs_sb_info *sbi)
@@ -676,13 +686,14 @@ inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
 	ASSERT(segno <= end_segno);
 }
 
-struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
+static struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
 						unsigned int segno)
 {
 	struct sit_info *sit_i = SIT_I(sbi);
 	unsigned int offset = SIT_BLOCK_OFFSET(sit_i, segno);
 	block_t blk_addr = sit_i->sit_base_addr + offset;
 	struct f2fs_sit_block *sit_blk = calloc(BLOCK_SZ, 1);
+	int ret;
 
 	check_seg_range(sbi, segno);
 
@@ -690,9 +701,26 @@ struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
 	if (f2fs_test_bit(offset, sit_i->sit_bitmap))
 		blk_addr += sit_i->sit_blocks;
 
-	dev_read_block(sit_blk, blk_addr);
+	ret = dev_read_block(sit_blk, blk_addr);
+	ASSERT(ret >= 0);
 
 	return sit_blk;
+}
+
+void rewrite_current_sit_page(struct f2fs_sb_info *sbi,
+			unsigned int segno, struct f2fs_sit_block *sit_blk)
+{
+	struct sit_info *sit_i = SIT_I(sbi);
+	unsigned int offset = SIT_BLOCK_OFFSET(sit_i, segno);
+	block_t blk_addr = sit_i->sit_base_addr + offset;
+	int ret;
+
+	/* calculate sit block address */
+	if (f2fs_test_bit(offset, sit_i->sit_bitmap))
+		blk_addr += sit_i->sit_blocks;
+
+	ret = dev_write_block(sit_blk, blk_addr);
+	ASSERT(ret >= 0);
 }
 
 void check_block_count(struct f2fs_sb_info *sbi,
@@ -719,6 +747,10 @@ void check_block_count(struct f2fs_sb_info *sbi,
 	if (GET_SIT_VBLOCKS(raw_sit) != valid_blocks)
 		ASSERT_MSG("Wrong SIT valid blocks: segno=0x%x, %u vs. %u",
 				segno, GET_SIT_VBLOCKS(raw_sit), valid_blocks);
+
+	if (GET_SIT_TYPE(raw_sit) >= NO_CHECK_TYPE)
+		ASSERT_MSG("Wrong SIT type: segno=0x%x, %u",
+				segno, GET_SIT_TYPE(raw_sit));
 }
 
 void seg_info_from_raw_sit(struct seg_entry *se,
@@ -952,6 +984,62 @@ void build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 			free_segs, free_segs);
 }
 
+void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
+	struct sit_info *sit_i = SIT_I(sbi);
+	unsigned int segno = 0;
+	struct f2fs_summary_block *sum = curseg->sum_blk;
+	char *ptr = NULL;
+
+	/* remove sit journal */
+	sum->n_sits = 0;
+
+	fsck->chk.free_segs = 0;
+
+	ptr = fsck->main_area_bitmap;
+
+	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+		struct f2fs_sit_block *sit_blk;
+		struct f2fs_sit_entry *sit;
+		struct seg_entry *se;
+		u16 valid_blocks = 0;
+		u16 type;
+		int i;
+
+		sit_blk = get_current_sit_page(sbi, segno);
+		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
+		memcpy(sit->valid_map, ptr, SIT_VBLOCK_MAP_SIZE);
+
+		/* update valid block count */
+		for (i = 0; i < SIT_VBLOCK_MAP_SIZE; i++)
+			valid_blocks += get_bits_in_byte(sit->valid_map[i]);
+
+		se = get_seg_entry(sbi, segno);
+		type = se->type;
+		if (type >= NO_CHECK_TYPE) {
+			ASSERT(valid_blocks);
+			type = 0;
+		}
+		sit->vblocks = cpu_to_le16((type << SIT_VBLOCKS_SHIFT) |
+								valid_blocks);
+		rewrite_current_sit_page(sbi, segno, sit_blk);
+		free(sit_blk);
+
+		if (valid_blocks == 0 &&
+				sbi->ckpt->cur_node_segno[0] != segno &&
+				sbi->ckpt->cur_data_segno[0] != segno &&
+				sbi->ckpt->cur_node_segno[1] != segno &&
+				sbi->ckpt->cur_data_segno[1] != segno &&
+				sbi->ckpt->cur_node_segno[2] != segno &&
+				sbi->ckpt->cur_data_segno[2] != segno)
+			fsck->chk.free_segs++;
+
+		ptr += SIT_VBLOCK_MAP_SIZE;
+	}
+}
+
 int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
 					struct f2fs_nat_entry *raw_nat)
 {
@@ -970,6 +1058,51 @@ int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
 	return -1;
 }
 
+void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
+	struct f2fs_summary_block *sum = curseg->sum_blk;
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct f2fs_nat_block *nat_block;
+	pgoff_t block_off;
+	pgoff_t block_addr;
+	int seg_off, entry_off;
+	int ret;
+	int i = 0;
+
+	/* check in journal */
+	for (i = 0; i < nats_in_cursum(sum); i++) {
+		if (le32_to_cpu(nid_in_journal(sum, i)) == nid) {
+			memset(&nat_in_journal(sum, i), 0,
+					sizeof(struct f2fs_nat_entry));
+			FIX_MSG("Remove nid [0x%x] in nat journal\n", nid);
+			return;
+		}
+	}
+	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+
+	block_off = nid / NAT_ENTRY_PER_BLOCK;
+	entry_off = nid % NAT_ENTRY_PER_BLOCK;
+
+	seg_off = block_off >> sbi->log_blocks_per_seg;
+	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
+			(seg_off << sbi->log_blocks_per_seg << 1) +
+			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
+
+	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+		block_addr += sbi->blocks_per_seg;
+
+	ret = dev_read_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+
+	memset(&nat_block->entries[entry_off], 0,
+					sizeof(struct f2fs_nat_entry));
+
+	ret = dev_write_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+	free(nat_block);
+}
+
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -984,6 +1117,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	unsigned int i;
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	ASSERT(nat_block);
 
 	/* Alloc & build nat entry bitmap */
 	nr_nat_blks = (le32_to_cpu(raw_sb->segment_count_nat) / 2) <<
