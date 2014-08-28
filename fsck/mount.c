@@ -726,18 +726,22 @@ void check_block_count(struct f2fs_sb_info *sbi,
 	int valid_blocks = 0;
 	unsigned int i;
 
-
 	/* check segment usage */
-	ASSERT(GET_SIT_VBLOCKS(raw_sit) <= sbi->blocks_per_seg);
+	if (GET_SIT_VBLOCKS(raw_sit) > sbi->blocks_per_seg)
+		ASSERT_MSG("Invalid SIT vblocks: segno=0x%x, %u",
+				segno, GET_SIT_VBLOCKS(raw_sit));
 
 	/* check boundary of a given segment number */
-	ASSERT(segno <= end_segno);
+	if (segno > end_segno)
+		ASSERT_MSG("Invalid SEGNO: 0x%x", segno);
 
 	/* check bitmap with valid block count */
-	for (i = 0; i < sbi->blocks_per_seg; i++)
-		if (f2fs_test_bit(i, (char *)raw_sit->valid_map))
-			valid_blocks++;
-	ASSERT(GET_SIT_VBLOCKS(raw_sit) == valid_blocks);
+	for (i = 0; i < SIT_VBLOCK_MAP_SIZE; i++)
+		valid_blocks += get_bits_in_byte(raw_sit->valid_map[i]);
+
+	if (GET_SIT_VBLOCKS(raw_sit) != valid_blocks)
+		ASSERT_MSG("Wrong SIT valid blocks: segno=0x%x, %u vs. %u",
+				segno, GET_SIT_VBLOCKS(raw_sit), valid_blocks);
 }
 
 void seg_info_from_raw_sit(struct seg_entry *se,
@@ -918,18 +922,14 @@ int build_segment_manager(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
-int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
+void build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_sm_info *sm_i = SM_I(sbi);
 	unsigned int segno = 0;
-	int j = 0;
 	char *ptr = NULL;
-
 	u32 sum_vblocks = 0;
 	u32 free_segs = 0;
-	u32 vblocks = 0;
-
 	struct seg_entry *se;
 
 	fsck->sit_area_bitmap_sz = sm_i->main_segments * SIT_VBLOCK_MAP_SIZE;
@@ -938,20 +938,13 @@ int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 
 	ASSERT(fsck->sit_area_bitmap_sz == fsck->main_area_bitmap_sz);
 
-	for (segno = 0; segno < sm_i->main_segments; segno++) {
+	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
 		se = get_seg_entry(sbi, segno);
 
 		memcpy(ptr, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
 		ptr += SIT_VBLOCK_MAP_SIZE;
 
-		vblocks = 0;
-		for (j = 0; j < SIT_VBLOCK_MAP_SIZE; j++) {
-			vblocks += get_bits_in_byte(se->cur_valid_map[j]);
-		}
-		ASSERT(vblocks == se->valid_blocks);
-
 		if (se->valid_blocks == 0x0) {
-
 			if (sbi->ckpt->cur_node_segno[0] == segno ||
 					sbi->ckpt->cur_data_segno[0] == segno ||
 					sbi->ckpt->cur_node_segno[1] == segno ||
@@ -962,20 +955,16 @@ int build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 			} else {
 				free_segs++;
 			}
-
 		} else {
-			ASSERT(se->valid_blocks <= 512);
 			sum_vblocks += se->valid_blocks;
 		}
 	}
-
 	fsck->chk.sit_valid_blocks = sum_vblocks;
 	fsck->chk.sit_free_segs = free_segs;
 
 	DBG(1, "Blocks [0x%x : %d] Free Segs [0x%x : %d]\n\n",
 			sum_vblocks, sum_vblocks,
 			free_segs, free_segs);
-	return 0;
 }
 
 int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
@@ -1003,13 +992,11 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
 	u32 nid, nr_nat_blks;
-
 	pgoff_t block_off;
 	pgoff_t block_addr;
 	int seg_off;
 	int ret;
 	unsigned int i;
-
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 

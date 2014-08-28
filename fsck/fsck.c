@@ -634,7 +634,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	is_valid_ssa_data_blk(sbi, blk_addr, parent_nid, idx_in_node, ver);
 
 	if (f2fs_test_sit_bitmap(sbi, blk_addr) == 0)
-		ASSERT_MSG("SIT bitmap is 0x0. blk_addr[0x%x]\n", blk_addr);
+		ASSERT_MSG("SIT bitmap is 0x0. blk_addr[0x%x]", blk_addr);
 
 	if (f2fs_test_main_bitmap(sbi, blk_addr) != 0)
 		ASSERT_MSG("Duplicated data [0x%x]. pnid[0x%x] idx[0x%x]",

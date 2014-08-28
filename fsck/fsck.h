@@ -102,7 +102,7 @@ extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
 extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
-extern int build_sit_area_bitmap(struct f2fs_sb_info *);
+extern void build_sit_area_bitmap(struct f2fs_sb_info *);
 extern void fsck_init(struct f2fs_sb_info *);
 extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
