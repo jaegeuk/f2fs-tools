@@ -495,26 +495,35 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 void reset_curseg(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
+	struct summary_footer *sum_footer;
 
 	curseg->segno = curseg->next_segno;
 	curseg->zone = GET_ZONENO_FROM_SEGNO(sbi, curseg->segno);
 	curseg->next_blkoff = 0;
 	curseg->next_segno = NULL_SEGNO;
 
+	sum_footer = &(curseg->sum_blk->footer);
+	memset(sum_footer, 0, sizeof(struct summary_footer));
+	if (IS_DATASEG(type))
+		SET_SUM_TYPE(sum_footer, SUM_TYPE_DATA);
+	if (IS_NODESEG(type))
+		SET_SUM_TYPE(sum_footer, SUM_TYPE_NODE);
 }
 
-int read_compacted_summaries(struct f2fs_sb_info *sbi)
+static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	struct curseg_info *curseg;
+	unsigned int i, j, offset;
 	block_t start;
 	char *kaddr;
-	unsigned int i, j, offset;
+	int ret;
 
 	start = start_sum_block(sbi);
 
 	kaddr = (char *)malloc(PAGE_SIZE);
-	dev_read_block(kaddr, start++);
+	ret = dev_read_block(kaddr, start++);
+	ASSERT(ret >= 0);
 
 	curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	memcpy(&curseg->sum_blk->n_nats, kaddr, SUM_JOURNAL_SIZE);
@@ -548,52 +557,40 @@ int read_compacted_summaries(struct f2fs_sb_info *sbi)
 					PAGE_CACHE_SIZE - SUM_FOOTER_SIZE)
 				continue;
 			memset(kaddr, 0, PAGE_SIZE);
-			dev_read_block(kaddr, start++);
+			ret = dev_read_block(kaddr, start++);
+			ASSERT(ret >= 0);
 			offset = 0;
 		}
 	}
-
 	free(kaddr);
-	return 0;
 }
 
-int restore_node_summary(struct f2fs_sb_info *sbi,
+static void restore_node_summary(struct f2fs_sb_info *sbi,
 		unsigned int segno, struct f2fs_summary_block *sum_blk)
 {
 	struct f2fs_node *node_blk;
 	struct f2fs_summary *sum_entry;
-	void *page;
 	block_t addr;
 	unsigned int i;
+	int ret;
 
-	page = malloc(PAGE_SIZE);
-	if (!page)
-		return -ENOMEM;
+	node_blk = malloc(F2FS_BLKSIZE);
+	ASSERT(node_blk);
 
 	/* scan the node segment */
 	addr = START_BLOCK(sbi, segno);
 	sum_entry = &sum_blk->entries[0];
 
 	for (i = 0; i < sbi->blocks_per_seg; i++, sum_entry++) {
-		if (dev_read_block(page, addr))
-			goto out;
-
-		node_blk = (struct f2fs_node *)page;
+		ret = dev_read_block(node_blk, addr);
+		ASSERT(ret >= 0);
 		sum_entry->nid = node_blk->footer.nid;
-		/* do not change original value */
-#if 0
-		sum_entry->version = 0;
-		sum_entry->ofs_in_node = 0;
-#endif
 		addr++;
-
 	}
-out:
-	free(page);
-	return 0;
+	free(node_blk);
 }
 
-int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
+static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	struct f2fs_summary_block *sum_blk;
@@ -601,6 +598,7 @@ int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	unsigned short blk_off;
 	unsigned int segno = 0;
 	block_t blk_addr = 0;
+	int ret;
 
 	if (IS_DATASEG(type)) {
 		segno = le32_to_cpu(ckpt->cur_data_segno[type]);
@@ -625,26 +623,11 @@ int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	}
 
 	sum_blk = (struct f2fs_summary_block *)malloc(PAGE_SIZE);
-	dev_read_block(sum_blk, blk_addr);
+	ret = dev_read_block(sum_blk, blk_addr);
+	ASSERT(ret >= 0);
 
-	if (IS_NODESEG(type)) {
-		if (is_set_ckpt_flags(ckpt, CP_UMOUNT_FLAG)) {
-			struct f2fs_summary *sum_entry = &sum_blk->entries[0];
-			unsigned int i;
-			for (i = 0; i < sbi->blocks_per_seg; i++, sum_entry++) {
-				/* do not change original value */
-#if 0
-				sum_entry->version = 0;
-				sum_entry->ofs_in_node = 0;
-#endif
-			}
-		} else {
-			if (restore_node_summary(sbi, segno, sum_blk)) {
-				free(sum_blk);
-				return -EINVAL;
-			}
-		}
-	}
+	if (IS_NODESEG(type) && !is_set_ckpt_flags(ckpt, CP_UMOUNT_FLAG))
+		restore_node_summary(sbi, segno, sum_blk);
 
 	curseg = CURSEG_I(sbi, type);
 	memcpy(curseg->sum_blk, sum_blk, PAGE_CACHE_SIZE);
@@ -653,44 +636,38 @@ int read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	curseg->alloc_type = ckpt->alloc_type[type];
 	curseg->next_blkoff = blk_off;
 	free(sum_blk);
-
-	return 0;
 }
 
-int restore_curseg_summaries(struct f2fs_sb_info *sbi)
+static void restore_curseg_summaries(struct f2fs_sb_info *sbi)
 {
 	int type = CURSEG_HOT_DATA;
 
 	if (is_set_ckpt_flags(F2FS_CKPT(sbi), CP_COMPACT_SUM_FLAG)) {
-		if (read_compacted_summaries(sbi))
-			return -EINVAL;
+		read_compacted_summaries(sbi);
 		type = CURSEG_HOT_NODE;
 	}
 
-	for (; type <= CURSEG_COLD_NODE; type++) {
-		if (read_normal_summaries(sbi, type))
-			return -EINVAL;
-	}
-	return 0;
+	for (; type <= CURSEG_COLD_NODE; type++)
+		read_normal_summaries(sbi, type);
 }
 
-int build_curseg(struct f2fs_sb_info *sbi)
+static void build_curseg(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *array;
 	int i;
 
 	array = malloc(sizeof(*array) * NR_CURSEG_TYPE);
+	ASSERT(array);
 
 	SM_I(sbi)->curseg_array = array;
 
 	for (i = 0; i < NR_CURSEG_TYPE; i++) {
 		array[i].sum_blk = malloc(PAGE_CACHE_SIZE);
-		if (!array[i].sum_blk)
-			return -ENOMEM;
+		ASSERT(array[i].sum_blk);
 		array[i].segno = NULL_SEGNO;
 		array[i].next_blkoff = 0;
 	}
-	return restore_curseg_summaries(sbi);
+	restore_curseg_summaries(sbi);
 }
 
 inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
@@ -774,8 +751,13 @@ int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno,
 	for (type = 0; type < NR_CURSEG_NODE_TYPE; type++) {
 		if (segno == ckpt->cur_node_segno[type]) {
 			curseg = CURSEG_I(sbi, CURSEG_HOT_NODE + type);
+			if (!IS_SUM_NODE_SEG(curseg->sum_blk->footer)) {
+				ASSERT_MSG("segno [0x%x] indicates a data "
+						"segment, but should be node",
+						segno);
+				return -EINVAL;
+			}
 			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
-			/* current node seg was not stored */
 			return SEG_TYPE_CUR_NODE;
 		}
 	}
@@ -783,11 +765,15 @@ int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno,
 	for (type = 0; type < NR_CURSEG_DATA_TYPE; type++) {
 		if (segno == ckpt->cur_data_segno[type]) {
 			curseg = CURSEG_I(sbi, type);
-			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
-			ASSERT(!IS_SUM_NODE_SEG(sum_blk->footer));
+			if (IS_SUM_NODE_SEG(curseg->sum_blk->footer)) {
+				ASSERT_MSG("segno [0x%x] indicates a node "
+						"segment, but should be data",
+						segno);
+				return -EINVAL;
+			}
 			DBG(2, "segno [0x%x] is current data seg[0x%x]\n",
 								segno, type);
-			/* current data seg was not stored */
+			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
 			return SEG_TYPE_CUR_DATA;
 		}
 	}
@@ -815,7 +801,6 @@ int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr,
 	sum_blk = calloc(BLOCK_SZ, 1);
 
 	ret = get_sum_block(sbi, segno, sum_blk);
-
 	memcpy(sum_entry, &(sum_blk->entries[offset]),
 				sizeof(struct f2fs_summary));
 	free(sum_blk);

@@ -114,34 +114,28 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 	struct f2fs_summary sum_entry;
 
 	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
-	ASSERT(ret >= 0);
 
-	if (ret == SEG_TYPE_DATA || ret == SEG_TYPE_CUR_DATA) {
-		ASSERT_MSG("Summary footer is not for node segment\n");
-	} else if (ret == SEG_TYPE_NODE) {
-		if (le32_to_cpu(sum_entry.nid) != nid) {
-			DBG(0, "nid                       [0x%x]\n", nid);
-			DBG(0, "target blk_addr           [0x%x]\n", blk_addr);
-			DBG(0, "summary blk_addr          [0x%x]\n",
-					GET_SUM_BLKADDR(sbi,
-						GET_SEGNO(sbi, blk_addr)));
-			DBG(0, "seg no / offset           [0x%x / 0x%x]\n",
-					GET_SEGNO(sbi, blk_addr),
-						OFFSET_IN_SEG(sbi, blk_addr));
-			DBG(0, "summary_entry.nid         [0x%x]\n",
-					le32_to_cpu(sum_entry.nid));
-			DBG(0, "--> node block's nid      [0x%x]\n", nid);
-			ASSERT_MSG("Invalid node seg summary\n");
-			return -EINVAL;
-		}
-		return 0;
-	} else if (ret == SEG_TYPE_CUR_NODE) {
-		/* current node segment has no ssa */
-		return 0;
-	} else {
-		ASSERT_MSG("Invalid return value of 'get_sum_entry'");
+	if (ret != SEG_TYPE_NODE && ret != SEG_TYPE_CUR_NODE) {
+		ASSERT_MSG("Summary footer is not for node segment");
+		return -EINVAL;
 	}
-	return -EINVAL;
+
+	if (le32_to_cpu(sum_entry.nid) != nid) {
+		DBG(0, "nid                       [0x%x]\n", nid);
+		DBG(0, "target blk_addr           [0x%x]\n", blk_addr);
+		DBG(0, "summary blk_addr          [0x%x]\n",
+					GET_SUM_BLKADDR(sbi,
+					GET_SEGNO(sbi, blk_addr)));
+		DBG(0, "seg no / offset           [0x%x / 0x%x]\n",
+					GET_SEGNO(sbi, blk_addr),
+					OFFSET_IN_SEG(sbi, blk_addr));
+		DBG(0, "summary_entry.nid         [0x%x]\n",
+					le32_to_cpu(sum_entry.nid));
+		DBG(0, "--> node block's nid      [0x%x]\n", nid);
+		ASSERT_MSG("Invalid node seg summary\n");
+		return -EINVAL;
+	}
+	return 0;
 }
 
 static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
@@ -151,7 +145,11 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	struct f2fs_summary sum_entry;
 
 	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
-	ASSERT(ret == SEG_TYPE_DATA || ret == SEG_TYPE_CUR_DATA);
+
+	if (ret != SEG_TYPE_DATA && ret != SEG_TYPE_CUR_DATA) {
+		ASSERT_MSG("Summary footer is not for data segment");
+		return -EINVAL;
+	}
 
 	if (le32_to_cpu(sum_entry.nid) != parent_nid ||
 			sum_entry.version != version ||
@@ -169,8 +167,9 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 
 		DBG(0, "Target data block addr    [0x%x]\n", blk_addr);
 		ASSERT_MSG("Invalid data seg summary\n");
+		return -EINVAL;
 	}
-	return 1;
+	return 0;
 }
 
 static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
@@ -697,10 +696,15 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 
 	if (!IS_VALID_BLK_ADDR(sbi, blk_addr)) {
 		ASSERT_MSG("blkaddres is not valid. [0x%x]", blk_addr);
-		return 0;
+		return -EINVAL;
 	}
 
-	is_valid_ssa_data_blk(sbi, blk_addr, parent_nid, idx_in_node, ver);
+	if (is_valid_ssa_data_blk(sbi, blk_addr, parent_nid,
+						idx_in_node, ver)) {
+		ASSERT_MSG("summary data block is not valid. [0x%x]",
+						parent_nid);
+		return -EINVAL;
+	}
 
 	if (f2fs_test_sit_bitmap(sbi, blk_addr) == 0)
 		ASSERT_MSG("SIT bitmap is 0x0. blk_addr[0x%x]", blk_addr);
