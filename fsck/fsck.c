@@ -266,6 +266,34 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	return 0;
 }
 
+static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
+					u32 x_nid, u32 *blk_cnt)
+{
+	struct f2fs_node *node_blk = NULL;
+	struct node_info ni;
+	int ret = 0;
+
+	if (x_nid == 0x0)
+		return 0;
+
+	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk != NULL);
+
+	/* Sanity check */
+	if (sanity_check_nid(sbi, x_nid, node_blk,
+				F2FS_FT_XATTR, TYPE_XATTR, &ni)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
+	*blk_cnt = *blk_cnt + 1;
+	f2fs_set_main_bitmap(sbi, ni.blk_addr);
+	DBG(2, "ino[0x%x] x_nid[0x%x]\n", ino, x_nid);
+out:
+	free(node_blk);
+	return ret;
+}
+
 int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 nid, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
 		u32 *blk_cnt)
@@ -354,8 +382,14 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 
-	fsck_chk_xattr_blk(sbi, nid,
-			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt);
+	if (fsck_chk_xattr_blk(sbi, nid,
+			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt) &&
+			config.fix_cnt) {
+		node_blk->i.i_xattr_nid = 0;
+		need_fix = 1;
+		FIX_MSG("Remove xattr block: 0x%x, x_nid = 0x%x",
+				nid, le32_to_cpu(node_blk->i.i_xattr_nid));
+	}
 
 	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
@@ -718,33 +752,6 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		memset(orphan_blk, 0, BLOCK_SZ);
 	}
 	free(orphan_blk);
-}
-
-void fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
-		u32 x_nid, u32 *blk_cnt)
-{
-	struct f2fs_node *node_blk = NULL;
-	struct node_info ni;
-
-	if (x_nid == 0x0)
-		return;
-
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
-	ASSERT(node_blk != NULL);
-
-	/* Sanity check */
-	if (sanity_check_nid(sbi, x_nid, node_blk,
-				F2FS_FT_XATTR, TYPE_XATTR, &ni)) {
-		/* TODO: drop xattr node */
-		printf("drop xattr node\n");
-		goto out;
-	}
-
-	*blk_cnt = *blk_cnt + 1;
-	f2fs_set_main_bitmap(sbi, ni.blk_addr);
-	DBG(2, "ino[0x%x] x_nid[0x%x]\n", ino, x_nid);
-out:
-	free(node_blk);
 }
 
 void fsck_init(struct f2fs_sb_info *sbi)
