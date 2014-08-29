@@ -319,6 +319,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	unsigned int idx = 0;
+	int need_fix = 0;
 	int ret;
 
 	if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0)
@@ -339,8 +340,11 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			if (find_and_dec_hard_link_list(sbi, nid)) {
 				ASSERT_MSG("[0x%x] needs more i_links=0x%x",
 						nid, i_links);
-				if (config.fix_cnt)
-					printf("TODO: i_links++\n");
+				if (config.fix_cnt) {
+					node_blk->i.i_links =
+						cpu_to_le32(i_links + 1);
+					need_fix = 1;
+				}
 			}
 			/* No need to go deep into the node */
 			return;
@@ -366,8 +370,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					&child_cnt, &child_files,
 					(i_blocks == *blk_cnt),
 					ftype, nid, idx, ni->version);
-			if (!ret)
+			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
+			} else if (config.fix_cnt) {
+				node_blk->i.i_addr[idx] = 0;
+				need_fix = 1;
+			}
 		}
 	}
 
@@ -386,10 +394,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			ret = fsck_chk_node_blk(sbi, &node_blk->i,
 					le32_to_cpu(node_blk->i.i_nid[idx]),
 					ftype, ntype, blk_cnt);
-			if (!ret)
+			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
-			else if (config.fix_cnt)
-				printf("TODO delete i_nid[idx] = 0;\n");
+			} else if (config.fix_cnt) {
+				node_blk->i.i_nid[idx] = 0;
+				need_fix = 1;
+			}
 		}
 	}
 check:
@@ -404,28 +414,31 @@ check:
 				le32_to_cpu(node_blk->footer.ino),
 				node_blk->i.i_name,
 				(u32)i_blocks);
-	if ((ftype == F2FS_FT_DIR && i_links != child_cnt) ||
-						(i_blocks != *blk_cnt)) {
-		if (!config.fix_cnt)
-			print_node_info(node_blk);
 
-		/* node_blk, ni.blkaddr, child_cnt, *blk_cnt */
-		if (config.fix_cnt)
-			printf("TODO fix_inode_block\n");
-		else
-			print_node_info(node_blk);
-		DBG(1, "blk   cnt [0x%x]\n", *blk_cnt);
-		DBG(1, "child cnt [0x%x]\n", child_cnt);
-	}
-	if (i_blocks != *blk_cnt)
+	if (i_blocks != *blk_cnt) {
 		ASSERT_MSG("ino: 0x%x has i_blocks: %lu, but has %u blocks",
-						nid, i_blocks, *blk_cnt);
-	if (ftype == F2FS_FT_DIR && i_links != child_cnt)
+				nid, i_blocks, *blk_cnt);
+		if (config.fix_cnt) {
+			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+			need_fix = 1;
+		}
+	}
+	if (ftype == F2FS_FT_DIR && i_links != child_cnt) {
 		ASSERT_MSG("ino: 0x%x has i_links: %u but real links: %u",
-						nid, i_links, child_cnt);
+				nid, i_links, child_cnt);
+		if (config.fix_cnt) {
+			node_blk->i.i_links = cpu_to_le32(child_cnt);
+			need_fix = 1;
+		}
+	}
+
 	if (ftype == F2FS_FT_ORPHAN && i_links)
 		ASSERT_MSG("ino: 0x%x is orphan inode, but has i_links: %u",
-						nid, i_links);
+				nid, i_links);
+	if (need_fix) {
+		ret = dev_write_block(node_blk, ni->blk_addr);
+		ASSERT(ret >= 0);
+	}
 }
 
 int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,

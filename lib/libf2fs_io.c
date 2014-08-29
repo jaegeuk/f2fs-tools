@@ -46,6 +46,11 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+int dev_write_block(void *buf, __u64 blk_addr)
+{
+	return dev_write(buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+}
+
 int dev_write_dump(void *buf, __u64 offset, size_t len)
 {
 	if (lseek64(config.dump_fd, (off64_t)offset, SEEK_SET) < 0)
