@@ -617,8 +617,21 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 				TYPE_INODE,
 				&blk_cnt);
 
-		if (ret)
-			printf("TODO: delete dentry\n");
+		if (ret && config.fix_cnt) {
+			int j;
+			int slots = (name_len + F2FS_SLOT_LEN - 1) /
+				F2FS_SLOT_LEN;
+			for (j = 0; j < slots; j++)
+				clear_bit(i + j,
+					(unsigned long *)de_blk->dentry_bitmap);
+			FIX_MSG("Unlink [0x%x] - %s len[0x%x], type[0x%x]",
+					le32_to_cpu(de_blk->dentry[i].ino),
+					name, name_len,
+					de_blk->dentry[i].file_type);
+			i += slots;
+			free(name);
+			continue;
+		}
 
 		i += (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
 		dentries++;
