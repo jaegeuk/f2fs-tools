@@ -26,13 +26,16 @@
 #include <sys/mount.h>
 #include <assert.h>
 
-#include <list.h>
 #include <f2fs_fs.h>
 
 #define EXIT_ERR_CODE		(-1)
 #define ver_after(a, b) (typecheck(unsigned long long, a) &&            \
 		typecheck(unsigned long long, b) &&                     \
 		((long long)((a) - (b)) > 0))
+
+struct list_head {
+	struct list_head *next, *prev;
+};
 
 enum {
 	NAT_BITMAP,
