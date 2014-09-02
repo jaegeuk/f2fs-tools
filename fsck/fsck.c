@@ -454,12 +454,13 @@ check:
 				(u32)i_blocks);
 
 	if (i_blocks != *blk_cnt) {
-		ASSERT_MSG("ino: 0x%x has i_blocks: %lu, but has %u blocks",
+		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
+				"but has %u blocks",
 				nid, i_blocks, *blk_cnt);
 		if (config.fix_cnt) {
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 			need_fix = 1;
-			FIX_MSG("[0x%x] i_blocks=0x%lx -> 0x%x",
+			FIX_MSG("[0x%x] i_blocks=0x%08"PRIx64" -> 0x%x",
 					nid, i_blocks, *blk_cnt);
 		}
 	}
@@ -788,7 +789,7 @@ void fsck_init(struct f2fs_sb_info *sbi)
 static void fix_nat_entries(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	int i;
+	u32 i;
 
 	for (i = 0; i < fsck->nr_nat_entries; i++)
 		if (f2fs_test_bit(i, fsck->nat_area_bitmap) != 0)
@@ -801,7 +802,8 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *raw_sb = sbi->raw_super;
 	struct f2fs_checkpoint *ckp = F2FS_CKPT(sbi);
 	unsigned long long cp_blk_no;
-	int i, ret;
+	u32 i;
+	int ret;
 	u_int32_t crc = 0;
 
 	ckp->ckpt_flags = cpu_to_le32(CP_UMOUNT_FLAG);
