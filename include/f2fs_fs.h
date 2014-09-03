@@ -185,6 +185,7 @@ struct f2fs_configuration {
 	int fix_on;
 	int fix_cnt;
 	int bug_on;
+	int auto_fix;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -290,6 +291,7 @@ struct f2fs_super_block {
 /*
  * For checkpoint
  */
+#define CP_FSCK_FLAG		0x00000010
 #define CP_ERROR_FLAG		0x00000008
 #define CP_COMPACT_SUM_FLAG	0x00000004
 #define CP_ORPHAN_PRESENT_FLAG	0x00000002

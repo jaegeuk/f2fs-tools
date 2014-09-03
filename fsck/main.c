@@ -40,22 +40,26 @@ void f2fs_parse_options(int argc, char *argv[])
 	char *prog = basename(argv[0]);
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = "d:tf";
+		const char *option_string = "ad:ft";
 
 		config.func = FSCK;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
+			case 'a':
+				config.auto_fix = 1;
+				MSG(0, "Info: Fix the reported corruption.\n");
+				break;
 			case 'd':
 				config.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							config.dbg_lv);
 				break;
-			case 't':
-				config.dbg_lv = -1;
-				break;
 			case 'f':
 				config.fix_on = 1;
 				MSG(0, "Info: Force to fix corruption\n");
+				break;
+			case 't':
+				config.dbg_lv = -1;
 				break;
 			default:
 				MSG(0, "\tError: Unknown option %c\n", option);
@@ -135,8 +139,6 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 {
 	u32 blk_cnt;
 
-	config.bug_on = 0;
-
 	fsck_init(sbi);
 
 	fsck_chk_orphan_node(sbi);
@@ -192,7 +194,12 @@ fsck_again:
 	gfsck.sbi.fsck = &gfsck;
 	sbi = &gfsck.sbi;
 
-	if (f2fs_do_mount(sbi) < 0)
+	ret = f2fs_do_mount(sbi);
+	if (ret == 1) {
+		free(sbi->ckpt);
+		free(sbi->raw_super);
+		goto out;
+	} else if (ret < 0)
 		return -1;
 
 	switch (config.func) {
@@ -205,9 +212,9 @@ fsck_again:
 	}
 
 	f2fs_do_umount(sbi);
-
+out:
 	if (config.func == FSCK && config.bug_on) {
-		if (config.fix_on == 0) {
+		if (config.fix_on == 0 && !config.auto_fix) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");
@@ -226,7 +233,6 @@ retry:
 		if (config.fix_cnt > 0 && config.fix_cnt < 4)
 			goto fsck_again;
 	}
-
 	f2fs_finalize_device(&config);
 
 	printf("\nDone.\n");

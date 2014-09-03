@@ -1183,6 +1183,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 int f2fs_do_mount(struct f2fs_sb_info *sbi)
 {
 	int ret;
+
 	sbi->active_logs = NR_CURSEG_TYPE;
 	ret = validate_super_block(sbi, 0);
 	if (ret) {
@@ -1208,6 +1209,17 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	print_ckpt_info(sbi);
 
+	if (config.auto_fix) {
+		u32 flag = le32_to_cpu(sbi->ckpt->ckpt_flags);
+
+		if (flag & CP_FSCK_FLAG)
+			config.fix_cnt = 1;
+		else
+			return 1;
+	}
+
+	config.bug_on = 0;
+
 	sbi->total_valid_node_count = le32_to_cpu(sbi->ckpt->valid_node_count);
 	sbi->total_valid_inode_count =
 			le32_to_cpu(sbi->ckpt->valid_inode_count);
@@ -1227,7 +1239,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
-	return ret;
+	return 0;
 }
 
 void f2fs_do_umount(struct f2fs_sb_info *sbi)
