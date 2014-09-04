@@ -17,7 +17,10 @@ void fsck_usage()
 {
 	MSG(0, "\nUsage: fsck.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
+	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
 	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -f check/fix entire partition\n");
+	MSG(0, "  -t show directory tree [-d -1]\n");
 	exit(1);
 }
 
@@ -214,24 +217,22 @@ fsck_again:
 	f2fs_do_umount(sbi);
 out:
 	if (config.func == FSCK && config.bug_on) {
-		if (config.fix_on == 0 && !config.auto_fix) {
+		if (config.fix_on == 0 && config.auto_fix == 0) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");
 			ret = scanf("%s", ans);
 			ASSERT(ret >= 0);
 			if (!strcasecmp(ans, "y"))
-				config.fix_cnt++;
+				config.fix_on = 1;
 			else if (!strcasecmp(ans, "n"))
-				config.fix_cnt = 0;
+				config.fix_on = 0;
 			else
 				goto retry;
-		} else {
-			config.fix_cnt++;
+
+			if (config.fix_on)
+				goto fsck_again;
 		}
-		/* avoid infinite trials */
-		if (config.fix_cnt > 0 && config.fix_cnt < 4)
-			goto fsck_again;
 	}
 	f2fs_finalize_device(&config);
 

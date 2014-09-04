@@ -367,7 +367,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			if (find_and_dec_hard_link_list(sbi, nid)) {
 				ASSERT_MSG("[0x%x] needs more i_links=0x%x",
 						nid, i_links);
-				if (config.fix_cnt) {
+				if (config.fix_on) {
 					node_blk->i.i_links =
 						cpu_to_le32(i_links + 1);
 					need_fix = 1;
@@ -383,7 +383,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	if (fsck_chk_xattr_blk(sbi, nid,
 			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt) &&
-			config.fix_cnt) {
+			config.fix_on) {
 		node_blk->i.i_xattr_nid = 0;
 		need_fix = 1;
 		FIX_MSG("Remove xattr block: 0x%x, x_nid = 0x%x",
@@ -408,7 +408,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					ftype, nid, idx, ni->version);
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
-			} else if (config.fix_cnt) {
+			} else if (config.fix_on) {
 				node_blk->i.i_addr[idx] = 0;
 				need_fix = 1;
 				FIX_MSG("[0x%x] i_addr[%d] = 0", nid, idx);
@@ -433,7 +433,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					ftype, ntype, blk_cnt);
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
-			} else if (config.fix_cnt) {
+			} else if (config.fix_on) {
 				node_blk->i.i_nid[idx] = 0;
 				need_fix = 1;
 				FIX_MSG("[0x%x] i_nid[%d] = 0", nid, idx);
@@ -457,7 +457,7 @@ check:
 		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
 				"but has %u blocks",
 				nid, i_blocks, *blk_cnt);
-		if (config.fix_cnt) {
+		if (config.fix_on) {
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 			need_fix = 1;
 			FIX_MSG("[0x%x] i_blocks=0x%08"PRIx64" -> 0x%x",
@@ -467,7 +467,7 @@ check:
 	if (ftype == F2FS_FT_DIR && i_links != child_cnt) {
 		ASSERT_MSG("ino: 0x%x has i_links: %u but real links: %u",
 				nid, i_links, child_cnt);
-		if (config.fix_cnt) {
+		if (config.fix_on) {
 			node_blk->i.i_links = cpu_to_le32(child_cnt);
 			need_fix = 1;
 			FIX_MSG("Dir: 0x%x i_links= 0x%x -> 0x%x",
@@ -651,7 +651,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 				TYPE_INODE,
 				&blk_cnt);
 
-		if (ret && config.fix_cnt) {
+		if (ret && config.fix_on) {
 			int j;
 			int slots = (name_len + F2FS_SLOT_LEN - 1) /
 				F2FS_SLOT_LEN;
@@ -734,7 +734,7 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	if (!is_set_ckpt_flags(ckpt, CP_ORPHAN_PRESENT_FLAG))
 		return;
 
-	if (config.fix_cnt)
+	if (config.fix_on)
 		return;
 
 	start_blk = __start_cp_addr(sbi) + 1 +
@@ -983,7 +983,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 
 	/* fix global metadata */
-	if (config.bug_on && config.fix_cnt) {
+	if (config.bug_on && config.fix_on) {
 		fix_nat_entries(sbi);
 		rewrite_sit_area_bitmap(sbi);
 		fix_checkpoint(sbi);

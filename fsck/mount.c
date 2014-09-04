@@ -1213,7 +1213,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		u32 flag = le32_to_cpu(sbi->ckpt->ckpt_flags);
 
 		if (flag & CP_FSCK_FLAG)
-			config.fix_cnt = 1;
+			config.fix_on = 1;
 		else
 			return 1;
 	}

@@ -183,7 +183,6 @@ struct f2fs_configuration {
 	int func;
 	void *private;
 	int fix_on;
-	int fix_cnt;
 	int bug_on;
 	int auto_fix;
 } __attribute__((packed));
