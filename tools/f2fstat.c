@@ -212,15 +212,72 @@ void parse_option(int argc, char *argv[], struct options *opt)
 	}
 }
 
-void print_head(void)
+void __make_head(char *head, int index, int i, int len)
 {
-	fprintf(stderr, "---utilization--- -----------main area-------- ---------balancing async------- ---gc--- ---alloc--- -----memory-----\n");
-	fprintf(stderr, "util  node   data   free  valid  dirty prefree node  dent meta  sit   nat fnid  cp   gc    ssr    lfs  total  node  meta\n");
+	char name_h[5][20] = {"main segments", "page/slab caches", "cp/gc", "blks", "memory"};
+	int half = (len - strlen(name_h[i])) / 2;
+
+	*(head + index) = '|';
+	index++;
+	memset(head + index, '-', half);
+	index += half;
+	strcpy(head + index, name_h[i]);
+	index += strlen(name_h[i]);
+	memset(head + index, '-', half);
+}
+
+void print_head(char *res)
+{
+	char *ptr, *ptr_buf;
+	char buf[1024], head[1024];
+	char name[20][10] = {"util", "node", "data", "free", "valid", "dirty", "prefree", "node", "dent", "meta",
+		"sit", "nat", "fnid", "cp", "gc", "ssr", "lfs", "total", "node", "meta"};
+	int i, len, prev_index = 0;
+
+	ptr_buf = buf;
+	memset(buf, ' ', 1024);
+	memset(head, ' ', 1024);
+
+	for (i = 0; i < 20; i++) {
+		ptr = (i == 0) ? strtok(res, " ") : strtok(NULL, " ");
+		strncpy(ptr_buf, name[i], strlen(name[i]));
+		if (i == 1) {
+			prev_index = ptr_buf - buf - 1;
+		} else if (i == 7) {
+			len = (ptr_buf - buf) - 1 - prev_index;
+			__make_head(head, prev_index, 0, len);
+			prev_index = ptr_buf - buf - 1;
+		} else if (i == 13) {
+			len = (ptr_buf - buf) - 1 - prev_index;
+			__make_head(head, prev_index, 1, len);
+			prev_index = ptr_buf - buf - 1;
+		} else if (i == 15) {
+			len = (ptr_buf - buf) - 1 - prev_index;
+			__make_head(head, prev_index, 2, len);
+			prev_index = ptr_buf - buf - 1;
+		} else if (i == 17) {
+			len = (ptr_buf - buf) - 1 - prev_index;
+			__make_head(head, prev_index, 3, len);
+			prev_index = ptr_buf - buf - 1;
+		}
+
+		len = strlen(ptr);
+		ptr_buf += (len > strlen(name[i]) ? len : strlen(name[i])) + 1;
+	}
+
+	len = (ptr_buf - buf) - 1 - prev_index;
+	__make_head(head, prev_index, 4, len);
+
+	*ptr_buf = 0;
+	*(head + (ptr_buf - buf - 1)) = '|';
+	*(head + (ptr_buf - buf)) = 0;
+	fprintf(stderr, "%s\n%s\n", head, buf);
 }
 
 int main(int argc, char *argv[])
 {
-	char format[] = "%3ld %6ld %6ld %6ld %6ld %6ld %6ld %5ld %5ld %3ld %5ld %5ld %3ld %3ld %3ld %6ld %6ld %6ld %6ld %6ld\n";
+	char format[] = "%4ld %4ld %4ld %4ld %5ld %5ld %7ld %4ld %4ld %4ld %3ld %3ld %4ld %2ld %2ld %3ld %3ld %5ld %4ld %4ld";
+	char buf[1024], tmp[1024];
 	int head_interval;
 	struct options opt = {
 		.delay = 1,
@@ -231,19 +288,21 @@ int main(int argc, char *argv[])
 	parse_option(argc, argv, &opt);
 	head_interval = opt.interval;
 
-	print_head();
 	while (1) {
-		if (head_interval-- == 0) {
-			print_head();
-			head_interval = opt.interval;
-		}
-
+		memset(buf, 0, 1024);
 		f2fstat(&opt);
-
-		fprintf(stderr, format, util, used_node_blks, used_data_blks,
+		sprintf(buf, format, util, used_node_blks, used_data_blks,
 			free_segs, valid_segs, dirty_segs, prefree_segs,
 			dirty_node, dirty_dents, dirty_meta, dirty_sit, nat_caches, free_nids,
 			cp, gc, ssr_blks, lfs_blks, memory_kb, node_kb, meta_kb);
+
+		strcpy(tmp, buf);
+		if (head_interval == opt.interval)
+			print_head(tmp);
+		if (head_interval-- == 0)
+			head_interval = opt.interval;
+
+		fprintf(stderr, "%s\n", buf);
 
 		sleep(opt.delay);
 	}
