@@ -93,6 +93,8 @@ extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, u32 *, u32 *,
 		int, enum FILE_TYPE, u32, u16, u8);
 extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, u32 *, u32 *, int);
+int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
+		u32 *, u32 *);
 
 extern void print_node_info(struct f2fs_node *);
 extern void print_inode_info(struct f2fs_inode *);

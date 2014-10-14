@@ -191,6 +191,11 @@ static inline struct sit_info *SIT_I(struct f2fs_sb_info *sbi)
 	return (struct sit_info *)(SM_I(sbi)->sit_info);
 }
 
+static inline void *inline_data_addr(struct f2fs_node *node_blk)
+{
+	return (void *)&(node_blk->i.i_addr[1]);
+}
+
 static inline unsigned long __bitmap_size(struct f2fs_sb_info *sbi, int flag)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
