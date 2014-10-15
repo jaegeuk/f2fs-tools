@@ -401,6 +401,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		DBG(3, "ino[0x%x] has inline dentry!\n", nid);
 		ret = fsck_chk_inline_dentries(sbi, node_blk,
 					&child_cnt, &child_files);
+		if (ret < 0) {
+			/* should fix this bug all the time */
+			need_fix = 1;
+		}
 		goto check;
 	}
 
@@ -607,6 +611,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 	u32 hash_code;
 	u16 name_len;;
 	int ret = 0;
+	int fixed = 0;
 	int i;
 
 	for (i = 0; i < max;) {
@@ -621,7 +626,12 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 		hash_code = f2fs_dentry_hash((const unsigned char *)name,
 								name_len);
 
-		ASSERT(le32_to_cpu(dentry[i].hash_code) == hash_code);
+		/* fix hash_code made by old buggy code */
+		if (le32_to_cpu(dentry[i].hash_code) != hash_code) {
+			dentry[i].hash_code = hash_code;
+			fixed = 1;
+			FIX_MSG("hash_code[%d] of %s", i, name);
+		}
 
 		ftype = dentry[i].file_type;
 
@@ -670,7 +680,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 		*child_files = *child_files + 1;
 		free(name);
 	}
-	return dentries;
+	return fixed ? -1 : dentries;
 }
 
 int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
@@ -688,12 +698,17 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 			(unsigned long *)de_blk->dentry_bitmap,
 			de_blk->dentry, de_blk->filename,
 			NR_INLINE_DENTRY, 1);
-	DBG(1, "[%3d] Inline Dentry Block Done : "
+	if (dentries < 0) {
+		DBG(1, "[%3d] Inline Dentry Block Fixed hash_codes\n\n",
+			fsck->dentry_depth);
+	} else {
+		DBG(1, "[%3d] Inline Dentry Block Done : "
 				"dentries:%d in %d slots (len:%d)\n\n",
 			fsck->dentry_depth, dentries,
 			(int)NR_INLINE_DENTRY, F2FS_NAME_LEN);
+	}
 	fsck->dentry_depth--;
-	return 0;
+	return dentries;
 }
 
 int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
@@ -715,10 +730,17 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			de_blk->dentry, de_blk->filename,
 			NR_DENTRY_IN_BLOCK, last_blk);
 
-	DBG(1, "[%3d] Dentry Block [0x%x] Done : "
+	if (dentries < 0) {
+		ret = dev_write_block(de_blk, blk_addr);
+		ASSERT(ret >= 0);
+		DBG(1, "[%3d] Dentry Block [0x%x] Fixed hash_codes\n\n",
+			fsck->dentry_depth, blk_addr);
+	} else {
+		DBG(1, "[%3d] Dentry Block [0x%x] Done : "
 				"dentries:%d in %d slots (len:%d)\n\n",
 			fsck->dentry_depth, blk_addr, dentries,
 			NR_DENTRY_IN_BLOCK, F2FS_NAME_LEN);
+	}
 	fsck->dentry_depth--;
 	free(de_blk);
 	return 0;
