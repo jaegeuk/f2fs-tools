@@ -375,6 +375,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 						"i_links= 0x%x -> 0x%x",
 						nid, i_links, i_links + 1);
 				}
+				goto check;
 			}
 			/* No need to go deep into the node */
 			return;
