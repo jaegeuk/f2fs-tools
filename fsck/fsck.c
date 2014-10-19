@@ -394,11 +394,20 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
-	if((node_blk->i.i_inline & F2FS_INLINE_DATA)){
+
+	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
+		if (le32_to_cpu(node_blk->i.i_addr[0]) != 0) {
+			/* should fix this bug all the time */
+			FIX_MSG("inline_data has wrong 0'th block = %x",
+					le32_to_cpu(node_blk->i.i_addr[0]));
+			node_blk->i.i_addr[0] = 0;
+			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+			need_fix = 1;
+		}
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		goto check;
 	}
-	if((node_blk->i.i_inline & F2FS_INLINE_DENTRY)){
+	if((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
 		DBG(3, "ino[0x%x] has inline dentry!\n", nid);
 		ret = fsck_chk_inline_dentries(sbi, node_blk,
 					&child_cnt, &child_files);
