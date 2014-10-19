@@ -33,6 +33,7 @@ void print_inode_info(struct f2fs_inode *inode)
 	DISP_u32(inode, i_current_depth);
 	DISP_u32(inode, i_xattr_nid);
 	DISP_u32(inode, i_flags);
+	DISP_u32(inode, i_inline);
 	DISP_u32(inode, i_pino);
 
 	if (namelen) {
