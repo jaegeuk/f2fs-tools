@@ -731,6 +731,7 @@ enum FILE_TYPE {
 	/* added for fsck */
 	F2FS_FT_ORPHAN,
 	F2FS_FT_XATTR,
+	F2FS_FT_LAST_FILE_TYPE = F2FS_FT_XATTR,
 };
 
 /* from f2fs/segment.h */

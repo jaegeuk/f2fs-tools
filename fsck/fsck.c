@@ -629,7 +629,29 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 			i++;
 			continue;
 		}
-
+		if (!IS_VALID_NID(sbi, le32_to_cpu(dentry[i].ino))) {
+			DBG(1, "Bad dentry 0x%x with invalid NID/ino 0x%x",
+			    i, le32_to_cpu(dentry[i].ino));
+			if (config.fix_on) {
+				FIX_MSG("Clear bad dentry 0x%x with bad ino 0x%x",
+					i, le32_to_cpu(dentry[i].ino));
+				clear_bit(i, bitmap);
+				i++;
+				continue;
+			}
+		}
+		ftype = dentry[i].file_type;
+		if ((ftype <= F2FS_FT_UNKNOWN || ftype > F2FS_FT_LAST_FILE_TYPE) && config.fix_on) {
+			DBG(1, "Bad dentry 0x%x with unexpected ftype 0x%x",
+			    i, ftype);
+			if (config.fix_on) {
+				FIX_MSG("Clear bad dentry 0x%x with bad ftype 0x%x",
+					i, ftype);
+				clear_bit(i, bitmap);
+				i++;
+				continue;
+			}
+		}
 		name_len = le16_to_cpu(dentry[i].name_len);
 		name = calloc(name_len + 1, 1);
 		memcpy(name, filenames[i], name_len);
@@ -642,8 +664,6 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 			fixed = 1;
 			FIX_MSG("hash_code[%d] of %s", i, name);
 		}
-
-		ftype = dentry[i].file_type;
 
 		/* Becareful. 'dentry.file_type' is not imode. */
 		if (ftype == F2FS_FT_DIR) {
