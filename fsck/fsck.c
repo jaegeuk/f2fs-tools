@@ -694,7 +694,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 				dentry[i].file_type);
 
 		print_dentry(fsck->dentry_depth, name, bitmap,
-						dentry, max, i, 1);
+						dentry, max, i, last_blk);
 
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
