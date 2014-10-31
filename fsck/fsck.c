@@ -404,6 +404,17 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 			need_fix = 1;
 		}
+		if (!(node_blk->i.i_inline & F2FS_DATA_EXIST)) {
+			char buf[MAX_INLINE_DATA];
+			memset(buf, 0, MAX_INLINE_DATA);
+
+			if (memcmp(buf, &node_blk->i.i_addr[1],
+							MAX_INLINE_DATA)) {
+				FIX_MSG("inline_data has DATA_EXIST");
+				node_blk->i.i_inline |= F2FS_DATA_EXIST;
+				need_fix = 1;
+			}
+		}
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		goto check;
 	}
