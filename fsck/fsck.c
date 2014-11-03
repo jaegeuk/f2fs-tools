@@ -648,6 +648,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 					i, le32_to_cpu(dentry[i].ino));
 				clear_bit(i, bitmap);
 				i++;
+				fixed = 1;
 				continue;
 			}
 		}
@@ -660,6 +661,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 					i, ftype);
 				clear_bit(i, bitmap);
 				i++;
+				fixed = 1;
 				continue;
 			}
 		}
