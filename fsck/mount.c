@@ -1021,7 +1021,8 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 		se = get_seg_entry(sbi, segno);
 		type = se->type;
 		if (type >= NO_CHECK_TYPE) {
-			ASSERT(valid_blocks);
+			ASSERT_MSG("Invalide type and valid blocks=%x,%x",
+					segno, valid_blocks);
 			type = 0;
 		}
 		sit->vblocks = cpu_to_le16((type << SIT_VBLOCKS_SHIFT) |

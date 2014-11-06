@@ -13,10 +13,29 @@
 char *tree_mark;
 uint32_t tree_mark_size = 256;
 
-static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk)
+static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
+								int type)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct seg_entry *se;
 
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk));
+	if (se->type != type) {
+		if (type == CURSEG_WARM_DATA) {
+			if (se->type != CURSEG_COLD_DATA) {
+				FIX_MSG("Wrong segment type [0x%x] %x -> %x\n",
+						GET_SEGNO(sbi, blk), se->type,
+						CURSEG_WARM_DATA);
+				se->type = CURSEG_WARM_DATA;
+				config.bug_on = 1;
+			}
+		} else {
+			FIX_MSG("Wrong segment type [0x%x] %x -> %x\n",
+				GET_SEGNO(sbi, blk), se->type, type);
+			se->type = type;
+			config.bug_on = 1;
+		}
+	}
 	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->main_area_bitmap);
 }
 
@@ -286,7 +305,7 @@ static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 	}
 
 	*blk_cnt = *blk_cnt + 1;
-	f2fs_set_main_bitmap(sbi, ni.blk_addr);
+	f2fs_set_main_bitmap(sbi, ni.blk_addr, CURSEG_COLD_NODE);
 	DBG(2, "ino[0x%x] x_nid[0x%x]\n", ino, x_nid);
 out:
 	free(node_blk);
@@ -309,18 +328,22 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	if (ntype == TYPE_INODE) {
 		fsck_chk_inode_blk(sbi, nid, ftype, node_blk, blk_cnt, &ni);
 	} else {
-		f2fs_set_main_bitmap(sbi, ni.blk_addr);
-
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
+			f2fs_set_main_bitmap(sbi, ni.blk_addr,
+							CURSEG_WARM_NODE);
 			fsck_chk_dnode_blk(sbi, inode, nid, ftype, node_blk,
 					blk_cnt, &ni);
 			break;
 		case TYPE_INDIRECT_NODE:
+			f2fs_set_main_bitmap(sbi, ni.blk_addr,
+							CURSEG_COLD_NODE);
 			fsck_chk_idnode_blk(sbi, inode, ftype, node_blk,
 					blk_cnt);
 			break;
 		case TYPE_DOUBLE_INDIRECT_NODE:
+			f2fs_set_main_bitmap(sbi, ni.blk_addr,
+							CURSEG_COLD_NODE);
 			fsck_chk_didnode_blk(sbi, inode, ftype, node_blk,
 					blk_cnt);
 			break;
@@ -353,10 +376,11 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		fsck->chk.valid_inode_cnt++;
 
 	if (ftype == F2FS_FT_DIR) {
-		f2fs_set_main_bitmap(sbi, ni->blk_addr);
+		f2fs_set_main_bitmap(sbi, ni->blk_addr, CURSEG_HOT_NODE);
 	} else {
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
-			f2fs_set_main_bitmap(sbi, ni->blk_addr);
+			f2fs_set_main_bitmap(sbi, ni->blk_addr,
+							CURSEG_WARM_NODE);
 			if (i_links > 1) {
 				/* First time. Create new hard link node */
 				add_into_hard_link_list(sbi, nid, i_links);
@@ -820,13 +844,16 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		ASSERT_MSG("Duplicated data [0x%x]. pnid[0x%x] idx[0x%x]",
 				blk_addr, parent_nid, idx_in_node);
 
-	f2fs_set_main_bitmap(sbi, blk_addr);
 
 	fsck->chk.valid_blk_cnt++;
 
-	if (ftype == F2FS_FT_DIR)
+	if (ftype == F2FS_FT_DIR) {
+		f2fs_set_main_bitmap(sbi, blk_addr, CURSEG_HOT_DATA);
 		return fsck_chk_dentry_blk(sbi, blk_addr, child_cnt,
 				child_files, last_blk);
+	} else {
+		f2fs_set_main_bitmap(sbi, blk_addr, CURSEG_WARM_DATA);
+	}
 	return 0;
 }
 
