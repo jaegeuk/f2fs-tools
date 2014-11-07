@@ -418,6 +418,16 @@ int f2fs_dev_is_umounted(struct f2fs_configuration *c)
 	return 0;
 }
 
+void get_kernel_version(__u8 *version)
+{
+	int i;
+	for (i = 0; i < VERSION_LEN; i++) {
+		if (version[i] == '\n')
+			break;
+	}
+	memset(version + i, 0, VERSION_LEN + 1 - i);
+}
+
 int f2fs_get_device_info(struct f2fs_configuration *c)
 {
 	int32_t fd = 0;
@@ -435,6 +445,10 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 		return -1;
 	}
 	c->fd = fd;
+
+	c->kd = open("/proc/version", O_RDONLY);
+	if (c->kd < 0)
+		MSG(0, "\tInfo: No support kernel version!\n");
 
 	if (fstat(fd, &stat_buf) < 0 ) {
 		MSG(0, "\tError: Failed to get the device stat!\n");

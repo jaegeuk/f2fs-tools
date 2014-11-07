@@ -28,6 +28,15 @@ struct f2fs_configuration config;
 /*
  * IO interfaces
  */
+int dev_read_version(void *buf, __u64 offset, size_t len)
+{
+	if (lseek64(config.kd, (off64_t)offset, SEEK_SET) < 0)
+		return -1;
+	if (read(config.kd, buf, len) < 0)
+		return -1;
+	return 0;
+}
+
 int dev_read(void *buf, __u64 offset, size_t len)
 {
 	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
@@ -93,4 +102,6 @@ void f2fs_finalize_device(struct f2fs_configuration *c)
 
 	if (close(c->fd) < 0)
 		MSG(0, "\tError: Failed to close device file!!!\n");
+
+	close(c->kd);
 }

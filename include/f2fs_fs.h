@@ -216,6 +216,8 @@ static inline uint64_t bswap_64(uint64_t val)
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
 
+#define VERSION_LEN	256
+
 enum f2fs_config_func {
 	FSCK,
 	DUMP,
@@ -232,9 +234,11 @@ struct f2fs_configuration {
 	u_int64_t total_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
+	__u8 sb_version[VERSION_LEN + 1];
+	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
 	int heap;
-	int32_t fd;
+	int32_t fd, kd;
 	int32_t dump_fd;
 	char *device_name;
 	char *extension_list;
@@ -345,6 +349,7 @@ struct f2fs_super_block {
 	__le32 extension_count;		/* # of extensions below */
 	__u8 extension_list[F2FS_MAX_EXTENSION][8];	/* extension array */
 	__le32 cp_payload;
+	__u8 version[VERSION_LEN];	/* the kernel version */
 } __attribute__((packed));
 
 /*
@@ -773,6 +778,8 @@ extern int dev_fill(void *, __u64, size_t);
 extern int dev_read_block(void *, __u64);
 extern int dev_read_blocks(void *, __u64, __u32 );
 
+extern int dev_read_version(void *, __u64, size_t);
+extern void get_kernel_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
 extern struct f2fs_configuration config;
