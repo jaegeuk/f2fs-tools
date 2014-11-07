@@ -234,6 +234,7 @@ struct f2fs_configuration {
 	u_int64_t total_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
+	__u8 init_version[VERSION_LEN + 1];
 	__u8 sb_version[VERSION_LEN + 1];
 	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
@@ -350,6 +351,7 @@ struct f2fs_super_block {
 	__u8 extension_list[F2FS_MAX_EXTENSION][8];	/* extension array */
 	__le32 cp_payload;
 	__u8 version[VERSION_LEN];	/* the kernel version */
+	__u8 init_version[VERSION_LEN];	/* the initial kernel version */
 } __attribute__((packed));
 
 /*

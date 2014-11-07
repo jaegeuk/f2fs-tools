@@ -249,7 +249,10 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 		/* build sb version */
 		memcpy(config.sb_version, sbi->raw_super->version, VERSION_LEN);
 		get_kernel_version(config.sb_version);
+		memcpy(config.init_version, sbi->raw_super->init_version, VERSION_LEN);
+		get_kernel_version(config.init_version);
 
+		MSG(0, "Info: MKFS version\n  \"%s\"\n", config.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					config.sb_version, config.version);
 		if (memcmp(config.sb_version, config.version, VERSION_LEN)) {

@@ -350,6 +350,18 @@ static int f2fs_prepare_super_block(void)
 
 	configure_extension_list();
 
+	/* get kernel version */
+	if (config.kd >= 0) {
+		dev_read_version(config.version, 0, VERSION_LEN);
+		get_kernel_version(config.version);
+		MSG(0, "Info: format version with\n  \"%s\"\n", config.version);
+	} else {
+		memset(config.version, 0, VERSION_LEN);
+	}
+
+	memcpy(super_block.version, config.version, VERSION_LEN);
+	memcpy(super_block.init_version, config.version, VERSION_LEN);
+
 	return 0;
 }
 
