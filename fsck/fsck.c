@@ -867,9 +867,6 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	if (!is_set_ckpt_flags(ckpt, CP_ORPHAN_PRESENT_FLAG))
 		return;
 
-	if (config.fix_on)
-		return;
-
 	start_blk = __start_cp_addr(sbi) + 1 +
 		le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
 	orphan_blkaddr = __start_sum_addr(sbi) - 1;
@@ -883,6 +880,11 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		for (j = 0; j < le32_to_cpu(orphan_blk->entry_count); j++) {
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
 			DBG(1, "[%3d] ino [0x%x]\n", i, ino);
+			if (config.fix_on) {
+				FIX_MSG("Discard orphan inodes: ino [0x%x]\n",
+									ino);
+				continue;
+			}
 			blk_cnt = 1;
 			fsck_chk_node_blk(sbi, NULL, ino,
 					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt);
