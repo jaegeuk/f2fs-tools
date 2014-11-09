@@ -23,14 +23,14 @@ static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
 	if (se->type != type) {
 		if (type == CURSEG_WARM_DATA) {
 			if (se->type != CURSEG_COLD_DATA) {
-				FIX_MSG("Wrong segment type [0x%x] %x -> %x\n",
+				FIX_MSG("Wrong segment type [0x%x] %x -> %x",
 						GET_SEGNO(sbi, blk), se->type,
 						CURSEG_WARM_DATA);
 				se->type = CURSEG_WARM_DATA;
 				config.bug_on = 1;
 			}
 		} else {
-			FIX_MSG("Wrong segment type [0x%x] %x -> %x\n",
+			FIX_MSG("Wrong segment type [0x%x] %x -> %x",
 				GET_SEGNO(sbi, blk), se->type, type);
 			se->type = type;
 			config.bug_on = 1;
@@ -881,7 +881,7 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
 			DBG(1, "[%3d] ino [0x%x]\n", i, ino);
 			if (config.fix_on) {
-				FIX_MSG("Discard orphan inodes: ino [0x%x]\n",
+				FIX_MSG("Discard orphan inodes: ino [0x%x]",
 									ino);
 				continue;
 			}
