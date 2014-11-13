@@ -737,6 +737,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 					dentry[i].file_type);
 			i += slots;
 			free(name);
+			fixed = 1;
 			continue;
 		}
 
