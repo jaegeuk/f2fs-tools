@@ -795,6 +795,7 @@ void seg_info_from_raw_sit(struct seg_entry *se,
 	memcpy(se->cur_valid_map, raw_sit->valid_map, SIT_VBLOCK_MAP_SIZE);
 	memcpy(se->ckpt_valid_map, raw_sit->valid_map, SIT_VBLOCK_MAP_SIZE);
 	se->type = GET_SIT_TYPE(raw_sit);
+	se->orig_type = GET_SIT_TYPE(raw_sit);
 	se->mtime = le64_to_cpu(raw_sit->mtime);
 }
 

@@ -72,6 +72,7 @@ struct seg_entry {
 	unsigned short ckpt_valid_blocks;
 	unsigned char *ckpt_valid_map;
 	unsigned char type;             /* segment type like CURSEG_XXX_TYPE */
+	unsigned char orig_type;        /* segment type like CURSEG_XXX_TYPE */
 	unsigned long long mtime;       /* modification time of the segment */
 };
 

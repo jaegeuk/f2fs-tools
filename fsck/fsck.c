@@ -23,17 +23,15 @@ static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
 	if (se->type != type) {
 		if (type == CURSEG_WARM_DATA) {
 			if (se->type != CURSEG_COLD_DATA) {
-				FIX_MSG("Wrong segment type [0x%x] %x -> %x",
+				DBG(1, "Wrong segment type [0x%x] %x -> %x",
 						GET_SEGNO(sbi, blk), se->type,
 						CURSEG_WARM_DATA);
 				se->type = CURSEG_WARM_DATA;
-				config.bug_on = 1;
 			}
 		} else {
-			FIX_MSG("Wrong segment type [0x%x] %x -> %x",
+			DBG(1, "Wrong segment type [0x%x] %x -> %x",
 				GET_SEGNO(sbi, blk), se->type, type);
 			se->type = type;
-			config.bug_on = 1;
 		}
 	}
 	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->main_area_bitmap);
@@ -998,6 +996,25 @@ int check_curseg_offset(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+int check_sit_types(struct f2fs_sb_info *sbi)
+{
+	struct seg_entry *se;
+	unsigned int i;
+	int err = 0;
+
+	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+		struct seg_entry *se;
+
+		se = get_seg_entry(sbi, i);
+		if (se->orig_type != se->type) {
+			FIX_MSG("Wrong segment type [0x%x] %x -> %x",
+					i, se->orig_type, se->type);
+			err = -EINVAL;
+		}
+	}
+	return err;
+}
+
 int fsck_verify(struct f2fs_sb_info *sbi)
 {
 	unsigned int i = 0;
@@ -1108,13 +1125,21 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		config.bug_on = 1;
 	}
 
+	printf("[FSCK] SIT types                                     ");
+	if (check_sit_types(sbi) == 0) {
+		printf(" [Ok..]\n");
+	} else {
+		printf(" [Fail]\n");
+		ret = EXIT_ERR_CODE;
+		config.bug_on = 1;
+	}
+
 	printf("[FSCK] other corrupted bugs                          ");
 	if (config.bug_on == 0) {
 		printf(" [Ok..]\n");
 	} else {
 		printf(" [Fail]\n");
 		ret = EXIT_ERR_CODE;
-		config.bug_on = 1;
 	}
 
 	/* fix global metadata */
