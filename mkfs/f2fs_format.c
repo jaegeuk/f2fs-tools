@@ -71,7 +71,7 @@ static void configure_extension_list(void)
 		memcpy(super_block.extension_list[i++], *extlist, name_len);
 		extlist++;
 	}
-	super_block.extension_count = i;
+	super_block.extension_count = cpu_to_le32(i);
 
 	if (!ext_str)
 		return;
@@ -86,7 +86,7 @@ static void configure_extension_list(void)
 			break;
 	}
 
-	super_block.extension_count = i;
+	super_block.extension_count = cpu_to_le32(i);
 
 	free(config.extension_list);
 }
@@ -211,7 +211,7 @@ static int f2fs_prepare_super_block(void)
 	if (max_sit_bitmap_size >
 			(CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 65)) {
 		max_nat_bitmap_size = CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1;
-		super_block.cp_payload = F2FS_BLK_ALIGN(max_sit_bitmap_size);
+		super_block.cp_payload = cpu_to_le32(F2FS_BLK_ALIGN(max_sit_bitmap_size));
 	} else {
 		max_nat_bitmap_size = CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1
 			- max_sit_bitmap_size;
