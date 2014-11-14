@@ -999,7 +999,6 @@ int check_curseg_offset(struct f2fs_sb_info *sbi)
 
 int check_sit_types(struct f2fs_sb_info *sbi)
 {
-	struct seg_entry *se;
 	unsigned int i;
 	int err = 0;
 
