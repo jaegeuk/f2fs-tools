@@ -357,6 +357,7 @@ void f2fs_init_configuration(struct f2fs_configuration *c)
 	c->overprovision = 5;
 	c->segs_per_sec = 1;
 	c->secs_per_zone = 1;
+	c->segs_per_zone = 1;
 	c->heap = 1;
 	c->vol_label = "";
 	c->device_name = NULL;

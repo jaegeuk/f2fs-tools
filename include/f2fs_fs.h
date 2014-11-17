@@ -230,6 +230,7 @@ struct f2fs_configuration {
 	u_int32_t cur_seg[6];
 	u_int32_t segs_per_sec;
 	u_int32_t secs_per_zone;
+	u_int32_t segs_per_zone;
 	u_int32_t start_sector;
 	u_int64_t total_sectors;
 	u_int32_t sectors_per_blk;
@@ -785,5 +786,10 @@ extern void get_kernel_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
 extern struct f2fs_configuration config;
+
+#define ALIGN(val, size)	((val) + (size) - 1) / (size)
+#define SEG_ALIGN(blks)		ALIGN(blks, config.blks_per_seg)
+#define ZONE_ALIGN(blks)	ALIGN(blks, config.blks_per_seg * \
+					config.segs_per_zone)
 
 #endif	/*__F2FS_FS_H */

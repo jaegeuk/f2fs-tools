@@ -110,6 +110,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 	config.reserved_segments  =
 			(2 * (100 / config.overprovision + 1) + 6)
 			* config.segs_per_sec;
+	config.segs_per_zone = config.segs_per_sec * config.secs_per_zone;
 }
 
 int main(int argc, char *argv[])
