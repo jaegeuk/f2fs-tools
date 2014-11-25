@@ -1007,9 +1007,13 @@ int check_sit_types(struct f2fs_sb_info *sbi)
 
 		se = get_seg_entry(sbi, i);
 		if (se->orig_type != se->type) {
-			FIX_MSG("Wrong segment type [0x%x] %x -> %x",
-					i, se->orig_type, se->type);
-			err = -EINVAL;
+			if (se->orig_type == CURSEG_COLD_DATA) {
+				se->type = se->orig_type;
+			} else {
+				FIX_MSG("Wrong segment type [0x%x] %x -> %x",
+						i, se->orig_type, se->type);
+				err = -EINVAL;
+			}
 		}
 	}
 	return err;
