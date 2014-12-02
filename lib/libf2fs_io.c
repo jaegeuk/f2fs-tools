@@ -46,6 +46,15 @@ int dev_read(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+int dev_readahead(__u64 offset, size_t len)
+{
+#ifdef POSIX_FADV_WILLNEED
+	return posix_fadvise(config.fd, offset, len, POSIX_FADV_WILLNEED);
+#else
+	return 0;
+#endif
+}
+
 int dev_write(void *buf, __u64 offset, size_t len)
 {
 	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
@@ -89,6 +98,11 @@ int dev_read_block(void *buf, __u64 blk_addr)
 int dev_read_blocks(void *buf, __u64 addr, __u32 nr_blks)
 {
 	return dev_read(buf, addr * F2FS_BLKSIZE, nr_blks * F2FS_BLKSIZE);
+}
+
+int dev_reada_block(__u64 blk_addr)
+{
+	return dev_readahead(blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
 }
 
 void f2fs_finalize_device(struct f2fs_configuration *c)

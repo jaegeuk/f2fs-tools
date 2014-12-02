@@ -451,6 +451,19 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		goto check;
 	}
 
+	/* readahead node blocks */
+	for (idx = 0; idx < 5; idx++) {
+		u32 nid = le32_to_cpu(node_blk->i.i_nid[idx]);
+
+		if (nid != 0) {
+			struct node_info ni;
+
+			get_node_info(sbi, nid, &ni);
+			if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+				dev_reada_block(ni.blk_addr);
+		}
+	}
+
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i); idx++) {
 		if (le32_to_cpu(node_blk->i.i_addr[idx]) != 0) {
@@ -651,11 +664,30 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 	int dentries = 0;
 	u32 blk_cnt;
 	u8 *name;
-	u32 hash_code;
+	u32 hash_code, ino;
 	u16 name_len;;
 	int ret = 0;
 	int fixed = 0;
 	int i;
+
+	/* readahead inode blocks */
+	for (i = 0; i < max;) {
+		if (test_bit(i, bitmap) == 0) {
+			i++;
+			continue;
+		}
+		ino = le32_to_cpu(dentry[i].ino);
+
+		if (IS_VALID_NID(sbi, ino)) {
+			struct node_info ni;
+
+			get_node_info(sbi, ino, &ni);
+			if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+				dev_reada_block(ni.blk_addr);
+		}
+		name_len = le16_to_cpu(dentry[i].name_len);
+		i += (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
+	}
 
 	for (i = 0; i < max;) {
 		if (test_bit(i, bitmap) == 0) {
