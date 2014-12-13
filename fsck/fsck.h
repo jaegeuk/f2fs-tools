@@ -97,7 +97,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		u32 *, u32 *);
 
 extern void print_node_info(struct f2fs_node *);
-extern void print_inode_info(struct f2fs_inode *);
+extern void print_inode_info(struct f2fs_inode *, int);
 extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
 extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
 				struct f2fs_summary_block *);
@@ -126,6 +126,6 @@ struct dump_option {
 extern void sit_dump(struct f2fs_sb_info *, int, int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
 extern void dump_node(struct f2fs_sb_info *, nid_t);
-extern int dump_inode_from_blkaddr(struct f2fs_sb_info *, u32);
+extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
 
 #endif /* _FSCK_H_ */

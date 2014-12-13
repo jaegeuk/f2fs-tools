@@ -9,11 +9,21 @@
  * published by the Free Software Foundation.
  */
 #include "fsck.h"
+#include <locale.h>
 
-void print_inode_info(struct f2fs_inode *inode)
+void print_inode_info(struct f2fs_inode *inode, int name)
 {
 	unsigned int i = 0;
 	int namelen = le32_to_cpu(inode->i_namelen);
+
+	if (name && namelen) {
+		inode->i_name[namelen] = '\0';
+		MSG(0, " - File name         : %s\n", inode->i_name);
+		setlocale(LC_ALL, "");
+		MSG(0, " - File size         : %'llu (bytes)\n",
+				le64_to_cpu(inode->i_size));
+		return;
+	}
 
 	DISP_u32(inode, i_mode);
 	DISP_u32(inode, i_uid);
@@ -76,7 +86,7 @@ void print_node_info(struct f2fs_node *node_block)
 	/* Is this inode? */
 	if (ino == nid) {
 		DBG(0, "Node ID [0x%x:%u] is inode\n", nid, nid);
-		print_inode_info(&node_block->i);
+		print_inode_info(&node_block->i, 0);
 	} else {
 		int i;
 		u32 *dump_blk = (u32 *)node_block;

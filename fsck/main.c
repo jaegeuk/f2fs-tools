@@ -169,7 +169,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	if (opt->start_ssa != -1)
 		ssa_dump(sbi, opt->start_ssa, opt->end_ssa);
 	if (opt->blk_addr != -1) {
-		dump_inode_from_blkaddr(sbi, opt->blk_addr);
+		dump_info_from_blkaddr(sbi, opt->blk_addr);
 		goto cleanup;
 	}
 	dump_node(sbi, opt->nid);

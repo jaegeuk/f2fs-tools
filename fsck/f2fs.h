@@ -197,6 +197,12 @@ static inline void *inline_data_addr(struct f2fs_node *node_blk)
 	return (void *)&(node_blk->i.i_addr[1]);
 }
 
+static inline unsigned int ofs_of_node(struct f2fs_node *node_blk)
+{
+	unsigned flag = le32_to_cpu(node_blk->footer.flag);
+	return flag >> OFFSET_BIT_SHIFT;
+}
+
 static inline unsigned long __bitmap_size(struct f2fs_sb_info *sbi, int flag)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
@@ -253,6 +259,12 @@ static inline block_t __start_cp_addr(struct f2fs_sb_info *sbi)
 static inline block_t __start_sum_addr(struct f2fs_sb_info *sbi)
 {
 	return le32_to_cpu(F2FS_CKPT(sbi)->cp_pack_start_sum);
+}
+
+static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
+{
+	block_t end = SM_I(sbi)->main_blkaddr;
+	return end + le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count);
 }
 
 #define GET_ZONENO_FROM_SEGNO(sbi, segno)                               \

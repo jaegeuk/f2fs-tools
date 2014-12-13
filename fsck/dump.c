@@ -11,6 +11,7 @@
 #include <inttypes.h>
 
 #include "fsck.h"
+#include <locale.h>
 
 #define BUF_SZ	80
 
@@ -298,13 +299,114 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 	free(node_blk);
 }
 
-int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
+static void dump_node_from_blkaddr(u32 blk_addr)
 {
-	nid_t ino, nid;
-	int type, ret;
-	struct f2fs_summary sum_entry;
-	struct node_info ni;
 	struct f2fs_node *node_blk;
+	int ret;
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	ret = dev_read_block(node_blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	if (config.dbg_lv > 0)
+		print_node_info(node_blk);
+	else
+		print_inode_info(&node_blk->i, 1);
+
+	free(node_blk);
+}
+
+static void dump_data_offset(u32 blk_addr, int ofs_in_node)
+{
+	struct f2fs_node *node_blk;
+	unsigned int indirect_blks = 2 * NIDS_PER_BLOCK + 4;
+	unsigned int bidx = 0;
+	unsigned int node_ofs;
+	int ret;
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	ret = dev_read_block(node_blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	node_ofs = ofs_of_node(node_blk);
+
+	if (node_ofs == 0)
+		goto got_it;
+
+	if (node_ofs > 0 && node_ofs <= 2) {
+		bidx = node_ofs - 1;
+	} else if (node_ofs <= indirect_blks) {
+		int dec = (node_ofs - 4) / (NIDS_PER_BLOCK + 1);
+		bidx = node_ofs - 2 - dec;
+	} else {
+		int dec = (node_ofs - indirect_blks - 3) / (NIDS_PER_BLOCK + 1);
+		bidx = node_ofs - 5 - dec;
+	}
+	bidx = bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE(&node_blk->i);
+got_it:
+	bidx +=  ofs_in_node;
+
+	setlocale(LC_ALL, "");
+	MSG(0, " - Data offset       : 0x%x (4KB), %'u (bytes)\n",
+				bidx, bidx * 4096);
+	free(node_blk);
+}
+
+static void dump_node_offset(u32 blk_addr)
+{
+	struct f2fs_node *node_blk;
+	int ret;
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	ret = dev_read_block(node_blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	MSG(0, " - Node offset       : 0x%x\n", ofs_of_node(node_blk));
+	free(node_blk);
+}
+
+int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
+{
+	nid_t nid;
+	int type;
+	struct f2fs_summary sum_entry;
+	struct node_info ni, ino_ni;
+	int ret = 0;
+
+	MSG(0, "\n== Dump data from block address ==\n\n");
+
+	if (blk_addr < SM_I(sbi)->seg0_blkaddr) {
+		MSG(0, "\nFS Reserved Area for SEG #0: ");
+		ret = -EINVAL;
+	} else if (blk_addr < SIT_I(sbi)->sit_base_addr) {
+		MSG(0, "\nFS Metadata Area: ");
+		ret = -EINVAL;
+	} else if (blk_addr < NM_I(sbi)->nat_blkaddr) {
+		MSG(0, "\nFS SIT Area: ");
+		ret = -EINVAL;
+	} else if (blk_addr < SM_I(sbi)->ssa_blkaddr) {
+		MSG(0, "\nFS NAT Area: ");
+		ret = -EINVAL;
+	} else if (blk_addr < SM_I(sbi)->main_blkaddr) {
+		MSG(0, "\nFS SSA Area: ");
+		ret = -EINVAL;
+	} else if (blk_addr > __end_block_addr(sbi)) {
+		MSG(0, "\nOut of address space: ");
+		ret = -EINVAL;
+	}
+
+	if (ret) {
+		MSG(0, "User data is from 0x%x to 0x%x\n\n",
+			SM_I(sbi)->main_blkaddr,
+			__end_block_addr(sbi));
+		return ret;
+	}
 
 	type = get_sum_entry(sbi, blk_addr, &sum_entry);
 	nid = le32_to_cpu(sum_entry.nid);
@@ -318,26 +420,47 @@ int dump_inode_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	DBG(1, "SUM.nid               [0x%x]\n", nid);
 	DBG(1, "SUM.type              [%s]\n", seg_type_name[type]);
 	DBG(1, "SUM.version           [%d]\n", sum_entry.version);
-	DBG(1, "SUM.ofs_in_node       [%d]\n", sum_entry.ofs_in_node);
+	DBG(1, "SUM.ofs_in_node       [0x%x]\n", sum_entry.ofs_in_node);
 	DBG(1, "NAT.blkaddr           [0x%x]\n", ni.blk_addr);
 	DBG(1, "NAT.ino               [0x%x]\n", ni.ino);
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	get_node_info(sbi, ni.ino, &ino_ni);
 
-read_node_blk:
-	ret = dev_read_block(node_blk, blk_addr);
-	ASSERT(ret >= 0);
-
-	ino = le32_to_cpu(node_blk->footer.ino);
-	nid = le32_to_cpu(node_blk->footer.nid);
-
-	if (ino == nid) {
-		print_node_info(node_blk);
-	} else {
-		get_node_info(sbi, ino, &ni);
-		goto read_node_blk;
+	/* inode block address */
+	if (ni.blk_addr == NULL_ADDR || ino_ni.blk_addr == NULL_ADDR) {
+		MSG(0, "FS Userdata Area: Obsolete block from 0x%x\n",
+			blk_addr);
+		return -EINVAL;
 	}
 
-	free(node_blk);
-	return ino;
+	/* print inode */
+	if (config.dbg_lv > 0)
+		dump_node_from_blkaddr(ino_ni.blk_addr);
+
+	if (type == SEG_TYPE_CUR_DATA || type == SEG_TYPE_DATA) {
+		MSG(0, "FS Userdata Area: Data block from 0x%x\n", blk_addr);
+		MSG(0, " - Direct node block : id = 0x%x from 0x%x\n",
+					nid, ni.blk_addr);
+		MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
+					ni.ino, ino_ni.blk_addr);
+		dump_node_from_blkaddr(ino_ni.blk_addr);
+		dump_data_offset(ni.blk_addr,
+			le16_to_cpu(sum_entry.ofs_in_node));
+	} else {
+		MSG(0, "FS Userdata Area: Node block from 0x%x\n", blk_addr);
+		if (ni.ino == ni.nid) {
+			MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
+					ni.ino, ino_ni.blk_addr);
+			dump_node_from_blkaddr(ino_ni.blk_addr);
+		} else {
+			MSG(0, " - Node block        : id = 0x%x from 0x%x\n",
+					nid, ni.blk_addr);
+			MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
+					ni.ino, ino_ni.blk_addr);
+			dump_node_from_blkaddr(ino_ni.blk_addr);
+			dump_node_offset(ni.blk_addr);
+		}
+	}
+
+	return 0;
 }
