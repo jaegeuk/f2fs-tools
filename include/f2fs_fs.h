@@ -63,7 +63,7 @@ static inline uint32_t bswap_32(uint32_t val)
 }
 #endif /* !HAVE_BYTESWAP_H */
 
-#if !HAVE_BSWAP_64
+#if defined HAVE_DECL_BSWAP_64 && !HAVE_DECL_BSWAP_64
 /**
  * bswap_64 - reverse bytes in a uint64_t value.
  * @val: value whose bytes to swap.

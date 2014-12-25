@@ -72,6 +72,9 @@ AC_CHECK_FUNCS_ONCE([
 	memset
 ])
 
+AS_IF([test "$ac_cv_header_byteswap_h" = "yes"],
+      [AC_CHECK_DECLS([bswap_64],,,[#include <byteswap.h>])])
+
 # Install directories
 AC_PREFIX_DEFAULT([/usr])
 AC_SUBST([sbindir], [/sbin])
