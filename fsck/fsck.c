@@ -1023,6 +1023,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 {
 	unsigned int i = 0;
 	int ret = 0;
+	int force = 0;
 	u32 nr_unref_nid = 0;
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct hard_link_node *node = NULL;
@@ -1129,14 +1130,9 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		config.bug_on = 1;
 	}
 
-	printf("[FSCK] SIT types                                     ");
-	if (check_sit_types(sbi) == 0) {
-		printf(" [Ok..]\n");
-	} else {
-		printf(" [Fail]\n");
-		ret = EXIT_ERR_CODE;
-		config.bug_on = 1;
-	}
+	printf("[FSCK] fixing SIT types\n");
+	if (check_sit_types(sbi) != 0)
+		force = 1;
 
 	printf("[FSCK] other corrupted bugs                          ");
 	if (config.bug_on == 0) {
@@ -1147,7 +1143,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 
 	/* fix global metadata */
-	if (config.bug_on && config.fix_on) {
+	if (force || (config.bug_on && config.fix_on)) {
 		fix_nat_entries(sbi);
 		rewrite_sit_area_bitmap(sbi);
 		fix_checkpoint(sbi);
