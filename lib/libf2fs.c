@@ -463,10 +463,6 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 			MSG(0, "\tError: Using the default sector size\n");
 		} else {
 			if (c->sector_size < sector_size) {
-				MSG(0, "\tError: Cannot set the sector size to:"
-					" %d as the device does not support"
-					"\nSetting the sector size to : %d\n",
-					c->sector_size, sector_size);
 				c->sector_size = sector_size;
 				c->sectors_per_blk = PAGE_SIZE / sector_size;
 			}
@@ -495,16 +491,16 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 		return -1;
 	}
 	if (wanted_total_sectors && wanted_total_sectors < c->total_sectors) {
-		MSG(0, "Info: total device sectors = %"PRIu64" (in 512bytes)\n",
-					c->total_sectors);
+		MSG(0, "Info: total device sectors = %"PRIu64" (in %u bytes)\n",
+					c->total_sectors, c->sector_size);
 		c->total_sectors = wanted_total_sectors;
 
 	}
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
-	MSG(0, "Info: total sectors = %"PRIu64" (in 512bytes)\n",
-					c->total_sectors);
+	MSG(0, "Info: total sectors = %"PRIu64" (in %u bytes)\n",
+					c->total_sectors, c->sector_size);
 	if (c->total_sectors <
-			(F2FS_MIN_VOLUME_SIZE / DEFAULT_SECTOR_SIZE)) {
+			(F2FS_MIN_VOLUME_SIZE / c->sector_size)) {
 		MSG(0, "Error: Min volume size supported is %d\n",
 				F2FS_MIN_VOLUME_SIZE);
 		return -1;

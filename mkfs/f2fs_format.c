@@ -198,20 +198,20 @@ static int f2fs_prepare_super_block(void)
 	set_sb(block_count, config.total_sectors >> log_sectors_per_block);
 
 	zone_align_start_offset =
-		(config.start_sector * DEFAULT_SECTOR_SIZE +
+		(config.start_sector * config.sector_size +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		config.start_sector * DEFAULT_SECTOR_SIZE;
+		config.start_sector * config.sector_size;
 
-	if (config.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
+	if (config.start_sector % config.sectors_per_blk) {
 		MSG(1, "\tWARN: Align start sector number to the page unit\n");
 		MSG(1, "\ti.e., start sector: %d, ofs:%d (sects/page: %d)\n",
 				config.start_sector,
-				config.start_sector % DEFAULT_SECTORS_PER_BLOCK,
-				DEFAULT_SECTORS_PER_BLOCK);
+				config.start_sector % config.sectors_per_blk,
+				config.sectors_per_blk);
 	}
 
-	set_sb(segment_count, (config.total_sectors * DEFAULT_SECTOR_SIZE -
+	set_sb(segment_count, (config.total_sectors * config.sector_size -
 				zone_align_start_offset) / segment_size_bytes);
 
 	set_sb(segment0_blkaddr, zone_align_start_offset / blk_size_bytes);

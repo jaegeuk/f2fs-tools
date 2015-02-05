@@ -36,7 +36,7 @@ int f2fs_trim_device()
 		return 0;
 
 	range[0] = 0;
-	range[1] = config.total_sectors * DEFAULT_SECTOR_SIZE;
+	range[1] = config.total_sectors * config.sector_size;
 
 	if (fstat(config.fd, &stat_buf) < 0 ) {
 		MSG(1, "\tError: Failed to get the device stat!!!\n");
