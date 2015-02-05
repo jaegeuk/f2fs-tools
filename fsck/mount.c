@@ -221,12 +221,15 @@ int sanity_check_raw_super(struct f2fs_super_block *raw_super)
 		return -1;
 	}
 
-	if (F2FS_LOG_SECTOR_SIZE != le32_to_cpu(raw_super->log_sectorsize)) {
+	if (le32_to_cpu(raw_super->log_sectorsize) > F2FS_MAX_LOG_SECTOR_SIZE ||
+		le32_to_cpu(raw_super->log_sectorsize) <
+						F2FS_MIN_LOG_SECTOR_SIZE) {
 		return -1;
 	}
 
-	if (F2FS_LOG_SECTORS_PER_BLOCK !=
-				le32_to_cpu(raw_super->log_sectors_per_block)) {
+	if (le32_to_cpu(raw_super->log_sectors_per_block) +
+				le32_to_cpu(raw_super->log_sectorsize) !=
+						F2FS_MAX_LOG_SECTOR_SIZE) {
 		return -1;
 	}
 
