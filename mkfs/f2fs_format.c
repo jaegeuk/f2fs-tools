@@ -391,6 +391,7 @@ static int f2fs_init_sit_area(void)
 		if (dev_fill(zero_buf, sit_seg_addr, seg_size)) {
 			MSG(1, "\tError: While zeroing out the sit area \
 					on disk!!!\n");
+			free(zero_buf);
 			return -1;
 		}
 		sit_seg_addr += seg_size;
@@ -424,6 +425,7 @@ static int f2fs_init_nat_area(void)
 		if (dev_fill(nat_buf, nat_seg_addr, seg_size)) {
 			MSG(1, "\tError: While zeroing out the nat area \
 					on disk!!!\n");
+			free(nat_buf);
 			return -1;
 		}
 		nat_seg_addr = nat_seg_addr + (2 * seg_size);
@@ -443,30 +445,31 @@ static int f2fs_write_check_point_pack(void)
 	char *cp_payload = NULL;
 	char *sum_compact, *sum_compact_p;
 	struct f2fs_summary *sum_entry;
+	int ret = -1;
 
 	cp = calloc(F2FS_BLKSIZE, 1);
 	if (cp == NULL) {
 		MSG(1, "\tError: Calloc Failed for f2fs_checkpoint!!!\n");
-		return -1;
+		return ret;
 	}
 
 	sum = calloc(F2FS_BLKSIZE, 1);
 	if (sum == NULL) {
 		MSG(1, "\tError: Calloc Failed for summay_node!!!\n");
-		return -1;
+		goto free_cp;
 	}
 
 	sum_compact = calloc(F2FS_BLKSIZE, 1);
 	if (sum == NULL) {
 		MSG(1, "\tError: Calloc Failed for summay buffer!!!\n");
-		return -1;
+		goto free_sum;
 	}
 	sum_compact_p = sum_compact;
 
 	cp_payload = calloc(F2FS_BLKSIZE, 1);
 	if (cp_payload == NULL) {
 		MSG(1, "\tError: Calloc Failed for cp_payload!!!\n");
-		return -1;
+		goto free_sum_compact;
 	}
 
 	/* 1. cp page 1 of checkpoint pack 1 */
@@ -522,7 +525,7 @@ static int f2fs_write_check_point_pack(void)
 	DBG(1, "\tWriting main segments, cp at offset 0x%08"PRIx64"\n", cp_seg_blk_offset);
 	if (dev_write(cp, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
@@ -530,7 +533,7 @@ static int f2fs_write_check_point_pack(void)
 		if (dev_fill(cp_payload, cp_seg_blk_offset, blk_size_bytes)) {
 			MSG(1, "\tError: While zeroing out the sit bitmap area \
 					on disk!!!\n");
-			return -1;
+			goto free_cp_payload;
 		}
 	}
 
@@ -598,7 +601,7 @@ static int f2fs_write_check_point_pack(void)
 			cp_seg_blk_offset);
 	if (dev_write(sum_compact, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	/* Prepare and write Segment summary for HOT_NODE */
@@ -613,7 +616,7 @@ static int f2fs_write_check_point_pack(void)
 			cp_seg_blk_offset);
 	if (dev_write(sum, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	/* Fill segment summary for WARM_NODE to zero. */
@@ -625,7 +628,7 @@ static int f2fs_write_check_point_pack(void)
 			cp_seg_blk_offset);
 	if (dev_write(sum, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	/* Fill segment summary for COLD_NODE to zero. */
@@ -636,7 +639,7 @@ static int f2fs_write_check_point_pack(void)
 			cp_seg_blk_offset);
 	if (dev_write(sum, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	/* cp page2 */
@@ -644,7 +647,7 @@ static int f2fs_write_check_point_pack(void)
 	DBG(1, "\tWriting cp page2, at offset 0x%08"PRIx64"\n", cp_seg_blk_offset);
 	if (dev_write(cp, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	/* cp page 1 of check point pack 2
@@ -661,7 +664,7 @@ static int f2fs_write_check_point_pack(void)
 	DBG(1, "\tWriting cp page 1 of checkpoint pack 2, at offset 0x%08"PRIx64"\n", cp_seg_blk_offset);
 	if (dev_write(cp, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
@@ -669,7 +672,7 @@ static int f2fs_write_check_point_pack(void)
 		if (dev_fill(cp_payload, cp_seg_blk_offset, blk_size_bytes)) {
 			MSG(1, "\tError: While zeroing out the sit bitmap area \
 					on disk!!!\n");
-			return -1;
+			goto free_cp_payload;
 		}
 	}
 
@@ -679,14 +682,20 @@ static int f2fs_write_check_point_pack(void)
 	DBG(1, "\tWriting cp page 2 of checkpoint pack 2, at offset 0x%08"PRIx64"\n", cp_seg_blk_offset);
 	if (dev_write(cp, cp_seg_blk_offset, blk_size_bytes)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
-		return -1;
+		goto free_cp_payload;
 	}
 
-	free(sum_compact);
-	free(sum);
+	ret = 0;
+
+free_cp_payload:
 	free(cp_payload);
+free_sum_compact:
+	free(sum_compact);
+free_sum:
+	free(sum);
+free_cp:
 	free(cp);
-	return	0;
+	return ret;
 }
 
 static int f2fs_write_super_block(void)
@@ -703,6 +712,7 @@ static int f2fs_write_super_block(void)
 		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
 			MSG(1, "\tError: While while writing supe_blk \
 					on disk!!! index : %d\n", index);
+			free(zero_buff);
 			return -1;
 		}
 	}
@@ -768,6 +778,7 @@ static int f2fs_write_root_inode(void)
 	DBG(1, "\tWriting root inode (hot node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
 	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+		free(raw_node);
 		return -1;
 	}
 
@@ -782,6 +793,7 @@ static int f2fs_write_root_inode(void)
 	DBG(1, "\tWriting root inode (warm node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
 	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+		free(raw_node);
 		return -1;
 	}
 	free(raw_node);
@@ -820,6 +832,7 @@ static int f2fs_update_nat_root(void)
 	DBG(1, "\tWriting nat root, at offset 0x%08"PRIx64"\n", nat_seg_blk_offset);
 	if (dev_write(nat_blk, nat_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the nat_blk set0 to disk!\n");
+		free(nat_blk);
 		return -1;
 	}
 
@@ -861,6 +874,7 @@ static int f2fs_add_default_dentry_root(void)
 	DBG(1, "\tWriting default dentry root, at offset 0x%08"PRIx64"\n", data_blk_offset);
 	if (dev_write(dent_blk, data_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
+		free(dent_blk);
 		return -1;
 	}
 
