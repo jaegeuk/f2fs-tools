@@ -556,6 +556,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 {
 	int idx, ret;
 	u32 child_cnt = 0, child_files = 0;
+	int need_fix = 0;
 
 	for (idx = 0; idx < ADDRS_PER_BLOCK; idx++) {
 		if (le32_to_cpu(node_blk->dn.addr[idx]) == 0x0)
@@ -565,8 +566,17 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			&child_cnt, &child_files,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version);
-		if (!ret)
+		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
+		} else if (config.fix_on) {
+			node_blk->dn.addr[idx] = 0;
+			need_fix = 1;
+			FIX_MSG("[0x%x] dn.addr[%d] = 0", nid, idx);
+		}
+	}
+	if (need_fix) {
+		ret = dev_write_block(node_blk, ni->blk_addr);
+		ASSERT(ret >= 0);
 	}
 	return 0;
 }
