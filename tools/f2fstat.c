@@ -191,7 +191,7 @@ void usage(void)
 
 void parse_option(int argc, char *argv[], struct options *opt)
 {
-	char option;
+	int option;
 	const char *option_string = "d:i:p:h";
 
 	while ((option = getopt(argc, argv, option_string)) != EOF) {
