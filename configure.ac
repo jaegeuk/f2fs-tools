@@ -68,6 +68,7 @@ AC_TYPE_SIZE_T
 # Checks for library functions.
 AC_FUNC_GETMNTENT
 AC_CHECK_FUNCS_ONCE([
+	fallocate
 	getmntent
 	memset
 ])
