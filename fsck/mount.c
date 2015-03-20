@@ -204,6 +204,26 @@ void print_ckpt_info(struct f2fs_sb_info *sbi)
 	printf("\n\n");
 }
 
+void print_cp_state(u32 flag)
+{
+	MSG(0, "Info: checkpoint state = %x : ", flag);
+	if (flag & CP_FSCK_FLAG)
+		MSG(0, "%s", " fsck");
+	if (flag & CP_ERROR_FLAG)
+		MSG(0, "%s", " error");
+	if (flag & CP_COMPACT_SUM_FLAG)
+		MSG(0, "%s", " compacted_summary");
+	if (flag & CP_ORPHAN_PRESENT_FLAG)
+		MSG(0, "%s", " orphan_inodes");
+	if (flag & CP_FASTBOOT_FLAG)
+		MSG(0, "%s", " fastboot");
+	if (flag & CP_UMOUNT_FLAG)
+		MSG(0, "%s", " unmount");
+	else
+		MSG(0, "%s", " sudden-power-off");
+	MSG(0, "\n");
+}
+
 int sanity_check_raw_super(struct f2fs_super_block *raw_super)
 {
 	unsigned int blocksize;

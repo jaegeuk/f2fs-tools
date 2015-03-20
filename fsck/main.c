@@ -140,9 +140,13 @@ void f2fs_parse_options(int argc, char *argv[])
 
 static void do_fsck(struct f2fs_sb_info *sbi)
 {
+	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
+	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 	u32 blk_cnt;
 
 	fsck_init(sbi);
+
+	print_cp_state(flag);
 
 	fsck_chk_orphan_node(sbi);
 
@@ -175,22 +179,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 		goto cleanup;
 	}
 
-	MSG(0, "Info: checkpoint state = %x : ", flag);
-	if (flag & CP_FSCK_FLAG)
-		MSG(0, "%s", " fsck");
-	if (flag & CP_ERROR_FLAG)
-		MSG(0, "%s", " error");
-	if (flag & CP_COMPACT_SUM_FLAG)
-		MSG(0, "%s", " compacted_summary");
-	if (flag & CP_ORPHAN_PRESENT_FLAG)
-		MSG(0, "%s", " orphan_inodes");
-	if (flag & CP_FASTBOOT_FLAG)
-		MSG(0, "%s", " fastboot");
-	if (flag & CP_UMOUNT_FLAG)
-		MSG(0, "%s", " unmount");
-	else
-		MSG(0, "%s", " sudden-power-off");
-	MSG(0, "\n");
+	print_cp_state(flag);
 
 	dump_node(sbi, opt->nid);
 cleanup:

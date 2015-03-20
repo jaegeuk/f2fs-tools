@@ -96,6 +96,7 @@ extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, u32 *, u32 *, int);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		u32 *, u32 *);
 
+void print_cp_state(u32);
 extern void print_node_info(struct f2fs_node *);
 extern void print_inode_info(struct f2fs_inode *, int);
 extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
