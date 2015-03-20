@@ -103,8 +103,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 	if ((optind + 1) < argc) {
 		/* We have a sector count. */
 		config.total_sectors = atoll(argv[optind+1]);
-		MSG(0, "\ttotal_sectors=%08"PRIx64" (%s bytes)\n",
-				config.total_sectors, argv[optind+1]);
+		MSG(1, "\ttotal_sectors=%"PRIx64" (%"PRIx64" bytes)\n",
+				config.total_sectors,
+				config.total_sectors * 512);
 	}
 
 	config.reserved_segments  =

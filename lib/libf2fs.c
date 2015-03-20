@@ -497,8 +497,8 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 
 	}
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
-	MSG(0, "Info: total sectors = %"PRIu64" (in %u bytes)\n",
-					c->total_sectors, c->sector_size);
+	MSG(0, "Info: total sectors = %"PRIu64" (%"PRIu64" MB)\n",
+				c->total_sectors, c->total_sectors >> 11);
 	if (c->total_sectors <
 			(F2FS_MIN_VOLUME_SIZE / c->sector_size)) {
 		MSG(0, "Error: Min volume size supported is %d\n",
