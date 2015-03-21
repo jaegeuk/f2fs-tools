@@ -312,6 +312,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 int init_sb_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *raw_super = sbi->raw_super;
+	u64 total_sectors;
 
 	sbi->log_sectors_per_block =
 		le32_to_cpu(raw_super->log_sectors_per_block);
@@ -329,6 +330,11 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->node_ino_num = le32_to_cpu(raw_super->node_ino);
 	sbi->meta_ino_num = le32_to_cpu(raw_super->meta_ino);
 	sbi->cur_victim_sec = NULL_SEGNO;
+
+	total_sectors = le64_to_cpu(raw_super->block_count) <<
+					sbi->log_sectors_per_block;
+	MSG(0, "Info: total FS sectors = %"PRIu64" (%"PRIu64" MB)\n",
+				total_sectors, total_sectors >> 11);
 	return 0;
 }
 
