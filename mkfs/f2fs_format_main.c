@@ -81,9 +81,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 			config.extension_list = strdup(optarg);
 			break;
 		case 'l':		/*v: volume label */
-			if (strlen(optarg) > 512) {
+			if (strlen(optarg) > 1024) {
 				MSG(0, "Error: Volume Label should be less than\
-						512 characters\n");
+						512 UTF-16 characters\n");
 				mkfs_usage();
 			}
 			config.vol_label = optarg;
