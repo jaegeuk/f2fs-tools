@@ -33,6 +33,7 @@ static void mkfs_usage()
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -o overprovision ratio [default:5]\n");
+	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
@@ -40,25 +41,44 @@ static void mkfs_usage()
 	exit(1);
 }
 
+static void f2fs_show_info()
+{
+	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
+				F2FS_TOOLS_VERSION,
+				F2FS_TOOLS_DATE);
+	if (config.heap == 0)
+		MSG(0, "Info: Disable heap-based policy\n");
+
+	MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
+	if (config.extension_list)
+		MSG(0, "Info: Add new extension list\n");
+
+	if (config.vol_label)
+		MSG(0, "Info: Label = %s\n", config.vol_label);
+	MSG(0, "Info: Overprovision ratio = %u%%\n", config.overprovision);
+	MSG(0, "Info: Segments per section = %d\n", config.segs_per_sec);
+	MSG(0, "Info: Sections per zone = %d\n", config.secs_per_zone);
+	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
+}
+
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "a:d:e:l:o:s:z:t:";
+	static const char *option_string = "qa:d:e:l:o:s:z:t:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
 		switch (option) {
+		case 'q':
+			config.dbg_lv = -1;
+			break;
 		case 'a':
 			config.heap = atoi(optarg);
-			if (config.heap == 0)
-				MSG(0, "Info: Disable heap-based policy\n");
 			break;
 		case 'd':
 			config.dbg_lv = atoi(optarg);
-			MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
 			break;
 		case 'e':
 			config.extension_list = strdup(optarg);
-			MSG(0, "Info: Add new extension list\n");
 			break;
 		case 'l':		/*v: volume label */
 			if (strlen(optarg) > 512) {
@@ -67,25 +87,18 @@ static void f2fs_parse_options(int argc, char *argv[])
 				mkfs_usage();
 			}
 			config.vol_label = optarg;
-			MSG(0, "Info: Label = %s\n", config.vol_label);
 			break;
 		case 'o':
 			config.overprovision = atoi(optarg);
-			MSG(0, "Info: Overprovision ratio = %u%%\n",
-								atoi(optarg));
 			break;
 		case 's':
 			config.segs_per_sec = atoi(optarg);
-			MSG(0, "Info: Segments per section = %d\n",
-								atoi(optarg));
 			break;
 		case 'z':
 			config.secs_per_zone = atoi(optarg);
-			MSG(0, "Info: Sections per zone = %d\n", atoi(optarg));
 			break;
 		case 't':
 			config.trim = atoi(optarg);
-			MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
 			break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
@@ -116,12 +129,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
-				F2FS_TOOLS_VERSION,
-				F2FS_TOOLS_DATE);
 	f2fs_init_configuration(&config);
 
 	f2fs_parse_options(argc, argv);
+
+	f2fs_show_info();
 
 	if (f2fs_dev_is_umounted(&config) < 0)
 		return -1;
