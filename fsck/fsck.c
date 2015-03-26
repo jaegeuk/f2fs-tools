@@ -192,7 +192,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			struct f2fs_node *node_blk,
 			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-			struct node_info *ni)
+			struct node_info *ni, u8 *name)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	int ret;
@@ -263,6 +263,15 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 
+	if (ntype == TYPE_INODE && ftype == F2FS_FT_DIR) {
+		u32 len = le32_to_cpu(node_blk->i.i_namelen);
+		if (name && memcmp(name, node_blk->i.i_name, len)) {
+			ASSERT_MSG("mismatch name [0x%x] [%s vs. %s]",
+					nid, name, node_blk->i.i_name);
+			return -EINVAL;
+		}
+	}
+
 	/* workaround to fix later */
 	if (ftype != F2FS_FT_ORPHAN ||
 			f2fs_test_bit(nid, fsck->nat_area_bitmap) != 0)
@@ -297,7 +306,7 @@ static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 
 	/* Sanity check */
 	if (sanity_check_nid(sbi, x_nid, node_blk,
-				F2FS_FT_XATTR, TYPE_XATTR, &ni)) {
+				F2FS_FT_XATTR, TYPE_XATTR, &ni, NULL)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -311,7 +320,7 @@ out:
 }
 
 int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
-		u32 nid, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
+		u32 nid, u8 *name, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
 		u32 *blk_cnt)
 {
 	struct node_info ni;
@@ -320,7 +329,7 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
 	ASSERT(node_blk != NULL);
 
-	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni))
+	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni, name))
 		goto err;
 
 	if (ntype == TYPE_INODE) {
@@ -496,7 +505,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		if (le32_to_cpu(node_blk->i.i_nid[idx]) != 0) {
 			ret = fsck_chk_node_blk(sbi, &node_blk->i,
 					le32_to_cpu(node_blk->i.i_nid[idx]),
-					ftype, ntype, blk_cnt);
+					NULL, ftype, ntype, blk_cnt);
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (config.fix_on) {
@@ -591,7 +600,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
-				le32_to_cpu(node_blk->in.nid[i]),
+				le32_to_cpu(node_blk->in.nid[i]), NULL,
 				ftype, TYPE_DIRECT_NODE, blk_cnt);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
@@ -611,7 +620,7 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
-				le32_to_cpu(node_blk->in.nid[i]),
+				le32_to_cpu(node_blk->in.nid[i]), NULL,
 				ftype, TYPE_INDIRECT_NODE, blk_cnt);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
@@ -764,7 +773,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
-				NULL, le32_to_cpu(dentry[i].ino),
+				NULL, le32_to_cpu(dentry[i].ino), name,
 				ftype, TYPE_INODE, &blk_cnt);
 
 		if (ret && config.fix_on) {
@@ -927,7 +936,7 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 				continue;
 			}
 			blk_cnt = 1;
-			fsck_chk_node_blk(sbi, NULL, ino,
+			fsck_chk_node_blk(sbi, NULL, ino, NULL,
 					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt);
 		}
 		memset(orphan_blk, 0, BLOCK_SZ);

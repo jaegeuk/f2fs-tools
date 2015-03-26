@@ -80,7 +80,7 @@ enum seg_type {
 
 extern void fsck_chk_orphan_node(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
-		enum FILE_TYPE, enum NODE_TYPE, u32 *);
+		u8 *, enum FILE_TYPE, enum NODE_TYPE, u32 *);
 extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
 		struct f2fs_node *, u32 *, struct node_info *);
 extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
