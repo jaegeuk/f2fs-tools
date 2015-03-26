@@ -440,7 +440,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 						"i_links= 0x%x -> 0x%x",
 						nid, i_links, i_links + 1);
 				}
-				goto check;
+				goto skip_blkcnt_fix;
 			}
 			/* No need to go deep into the node */
 			return;
@@ -550,6 +550,18 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 check:
+	if (i_blocks != *blk_cnt) {
+		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
+				"but has %u blocks",
+				nid, i_blocks, *blk_cnt);
+		if (config.fix_on) {
+			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+			need_fix = 1;
+			FIX_MSG("[0x%x] i_blocks=0x%08"PRIx64" -> 0x%x",
+					nid, i_blocks, *blk_cnt);
+		}
+	}
+skip_blkcnt_fix:
 	if (ftype == F2FS_FT_DIR)
 		DBG(1, "Directory Inode: 0x%x [%s] depth: %d has %d files\n\n",
 				le32_to_cpu(node_blk->footer.ino),
@@ -562,17 +574,6 @@ check:
 				node_blk->i.i_name,
 				(u32)i_blocks);
 
-	if (i_blocks != *blk_cnt) {
-		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
-				"but has %u blocks",
-				nid, i_blocks, *blk_cnt);
-		if (config.fix_on) {
-			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
-			need_fix = 1;
-			FIX_MSG("[0x%x] i_blocks=0x%08"PRIx64" -> 0x%x",
-					nid, i_blocks, *blk_cnt);
-		}
-	}
 	if (ftype == F2FS_FT_DIR && i_links != child_cnt) {
 		ASSERT_MSG("ino: 0x%x has i_links: %u but real links: %u",
 				nid, i_links, child_cnt);
