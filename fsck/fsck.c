@@ -189,6 +189,30 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	return 0;
 }
 
+static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u32 mode)
+{
+	if (ftype >= F2FS_FT_MAX)
+		return 0;
+	if (S_ISLNK(mode) && ftype != F2FS_FT_SYMLINK)
+		goto err;
+	if (S_ISREG(mode) && ftype != F2FS_FT_REG_FILE)
+		goto err;
+	if (S_ISDIR(mode) && ftype != F2FS_FT_DIR)
+		goto err;
+	if (S_ISCHR(mode) && ftype != F2FS_FT_CHRDEV)
+		goto err;
+	if (S_ISBLK(mode) && ftype != F2FS_FT_BLKDEV)
+		goto err;
+	if (S_ISFIFO(mode) && ftype != F2FS_FT_FIFO)
+		goto err;
+	if (S_ISSOCK(mode) && ftype != F2FS_FT_SOCK)
+		goto err;
+	return 0;
+err:
+	ASSERT_MSG("mismatch i_mode [0x%x] [0x%x vs. 0x%x]", nid, ftype, mode);
+	return -1;
+}
+
 static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			struct f2fs_node *node_blk,
 			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
@@ -271,6 +295,10 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			return -EINVAL;
 		}
 	}
+
+	if (ntype == TYPE_INODE &&
+		__check_inode_mode(nid, ftype, le32_to_cpu(node_blk->i.i_mode)))
+		return -EINVAL;
 
 	/* workaround to fix later */
 	if (ftype != F2FS_FT_ORPHAN ||
