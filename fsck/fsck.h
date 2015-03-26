@@ -67,6 +67,7 @@ enum NODE_TYPE {
 struct hard_link_node {
 	u32 nid;
 	u32 links;
+	u32 actual_links;
 	struct hard_link_node *next;
 };
 

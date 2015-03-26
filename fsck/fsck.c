@@ -63,6 +63,7 @@ static int add_into_hard_link_list(struct f2fs_sb_info *sbi,
 
 	node->nid = nid;
 	node->links = link_cnt;
+	node->actual_links = 1;
 	node->next = NULL;
 
 	if (fsck->hard_link_list_head == NULL) {
@@ -112,6 +113,7 @@ static int find_and_dec_hard_link_list(struct f2fs_sb_info *sbi, u32 nid)
 
 	/* Decrease link count */
 	node->links = node->links - 1;
+	node->actual_links++;
 
 	/* if link count becomes one, remove the node */
 	if (node->links == 1) {
@@ -295,6 +297,10 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			return -EINVAL;
 		}
 	}
+
+	/* this if only from fix_hard_links */
+	if (ftype == F2FS_FT_MAX)
+		return 0;
 
 	if (ntype == TYPE_INODE &&
 		__check_inode_mode(nid, ftype, le32_to_cpu(node_blk->i.i_mode)))
@@ -999,6 +1005,40 @@ void fsck_init(struct f2fs_sb_info *sbi)
 	ASSERT(tree_mark != NULL);
 }
 
+static void fix_hard_links(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct hard_link_node *tmp, *node;
+	struct f2fs_node *node_blk = NULL;
+	struct node_info ni;
+	int ret;
+
+	if (fsck->hard_link_list_head == NULL)
+		return;
+
+	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk != NULL);
+
+	node = fsck->hard_link_list_head;
+	while (node) {
+		/* Sanity check */
+		if (sanity_check_nid(sbi, node->nid, node_blk,
+					F2FS_FT_MAX, TYPE_INODE, &ni, NULL))
+			FIX_MSG("Failed to fix, rerun fsck.f2fs");
+
+		node_blk->i.i_links = cpu_to_le32(node->actual_links);
+
+		FIX_MSG("File: 0x%x i_links= 0x%x -> 0x%x",
+				node->nid, node->links, node->actual_links);
+
+		ret = dev_write_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
+		tmp = node;
+		node = node->next;
+		free(tmp);
+	}
+}
+
 static void fix_nat_entries(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -1223,6 +1263,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 
 	/* fix global metadata */
 	if (force || (config.bug_on && config.fix_on)) {
+		fix_hard_links(sbi);
 		fix_nat_entries(sbi);
 		rewrite_sit_area_bitmap(sbi);
 		fix_checkpoint(sbi);
