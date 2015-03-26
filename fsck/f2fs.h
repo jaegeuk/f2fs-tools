@@ -340,7 +340,7 @@ static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
 
 	if (addr >= F2FS_RAW_SUPER(sbi)->block_count ||
 				addr < SM_I(sbi)->main_blkaddr) {
-		ASSERT_MSG("block addr [0x%x]\n", addr);
+		DBG(1, "block addr [0x%x]\n", addr);
 		return 0;
 	}
 
