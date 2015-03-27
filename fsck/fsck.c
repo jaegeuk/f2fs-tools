@@ -129,66 +129,137 @@ static int find_and_dec_hard_link_list(struct f2fs_sb_info *sbi, u32 nid)
 static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 							u32 blk_addr)
 {
-	int ret = 0;
-	struct f2fs_summary sum_entry;
+	struct f2fs_summary_block *sum_blk;
+	struct f2fs_summary *sum_entry;
+	u32 segno, offset;
+	int need_fix = 0, ret = 0;
+	int type;
 
-	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
+	segno = GET_SEGNO(sbi, blk_addr);
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
 
-	if (ret != SEG_TYPE_NODE && ret != SEG_TYPE_CUR_NODE) {
-		ASSERT_MSG("Summary footer is not for node segment");
-		return -EINVAL;
+	sum_blk = get_sum_block(sbi, segno, &type);
+
+	if (type != SEG_TYPE_NODE && type != SEG_TYPE_CUR_NODE) {
+		/* can't fix current summary, then drop the block */
+		if (!config.fix_on || type < 0) {
+			ASSERT_MSG("Summary footer is not for node segment");
+			ret = -EINVAL;
+			goto out;
+		}
+		FIX_MSG("Summary footer indicates a node segment: 0x%x", segno);
+		sum_blk->footer.entry_type = SUM_TYPE_NODE;
+		need_fix = 1;
 	}
 
-	if (le32_to_cpu(sum_entry.nid) != nid) {
-		DBG(0, "nid                       [0x%x]\n", nid);
-		DBG(0, "target blk_addr           [0x%x]\n", blk_addr);
-		DBG(0, "summary blk_addr          [0x%x]\n",
-					GET_SUM_BLKADDR(sbi,
-					GET_SEGNO(sbi, blk_addr)));
-		DBG(0, "seg no / offset           [0x%x / 0x%x]\n",
-					GET_SEGNO(sbi, blk_addr),
-					OFFSET_IN_SEG(sbi, blk_addr));
-		DBG(0, "summary_entry.nid         [0x%x]\n",
-					le32_to_cpu(sum_entry.nid));
-		DBG(0, "--> node block's nid      [0x%x]\n", nid);
-		ASSERT_MSG("Invalid node seg summary\n");
-		return -EINVAL;
+	sum_entry = &(sum_blk->entries[offset]);
+
+	if (le32_to_cpu(sum_entry->nid) != nid) {
+		if (!config.fix_on || type < 0) {
+			DBG(0, "nid                       [0x%x]\n", nid);
+			DBG(0, "target blk_addr           [0x%x]\n", blk_addr);
+			DBG(0, "summary blk_addr          [0x%x]\n",
+						GET_SUM_BLKADDR(sbi,
+						GET_SEGNO(sbi, blk_addr)));
+			DBG(0, "seg no / offset           [0x%x / 0x%x]\n",
+						GET_SEGNO(sbi, blk_addr),
+						OFFSET_IN_SEG(sbi, blk_addr));
+			DBG(0, "summary_entry.nid         [0x%x]\n",
+						le32_to_cpu(sum_entry->nid));
+			DBG(0, "--> node block's nid      [0x%x]\n", nid);
+			ASSERT_MSG("Invalid node seg summary\n");
+			ret = -EINVAL;
+		} else {
+			FIX_MSG("Set node summary 0x%x -> [0x%x] [0x%x]",
+						segno, nid, blk_addr);
+			sum_entry->nid = cpu_to_le32(nid);
+			need_fix = 1;
+		}
 	}
-	return 0;
+	if (need_fix) {
+		u64 ssa_blk;
+		int ret2;
+
+		ssa_blk = GET_SUM_BLKADDR(sbi, segno);
+		ret2 = dev_write_block(sum_blk, ssa_blk);
+		ASSERT(ret2 >= 0);
+	}
+out:
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX)
+		free(sum_blk);
+	return ret;
 }
 
 static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		u32 parent_nid, u16 idx_in_node, u8 version)
 {
-	int ret = 0;
-	struct f2fs_summary sum_entry;
+	struct f2fs_summary_block *sum_blk;
+	struct f2fs_summary *sum_entry;
+	u32 segno, offset;
+	int need_fix = 0, ret = 0;
+	int type;
 
-	ret = get_sum_entry(sbi, blk_addr, &sum_entry);
+	segno = GET_SEGNO(sbi, blk_addr);
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
 
-	if (ret != SEG_TYPE_DATA && ret != SEG_TYPE_CUR_DATA) {
-		ASSERT_MSG("Summary footer is not for data segment");
-		return -EINVAL;
+	sum_blk = get_sum_block(sbi, segno, &type);
+
+	if (type != SEG_TYPE_DATA && type != SEG_TYPE_CUR_DATA) {
+		/* can't fix current summary, then drop the block */
+		if (!config.fix_on || type < 0) {
+			ASSERT_MSG("Summary footer is not for data segment");
+			ret = -EINVAL;
+			goto out;
+		}
+		FIX_MSG("Summary footer indicates a data segment: 0x%x", segno);
+		sum_blk->footer.entry_type = SUM_TYPE_DATA;
+		need_fix = 1;
 	}
 
-	if (le32_to_cpu(sum_entry.nid) != parent_nid ||
-			sum_entry.version != version ||
-			le16_to_cpu(sum_entry.ofs_in_node) != idx_in_node) {
+	sum_entry = &(sum_blk->entries[offset]);
 
-		DBG(0, "summary_entry.nid         [0x%x]\n",
-					le32_to_cpu(sum_entry.nid));
-		DBG(0, "summary_entry.version     [0x%x]\n",
-					sum_entry.version);
-		DBG(0, "summary_entry.ofs_in_node [0x%x]\n",
-					le16_to_cpu(sum_entry.ofs_in_node));
-		DBG(0, "parent nid                [0x%x]\n", parent_nid);
-		DBG(0, "version from nat          [0x%x]\n", version);
-		DBG(0, "idx in parent node        [0x%x]\n", idx_in_node);
+	if (le32_to_cpu(sum_entry->nid) != parent_nid ||
+			sum_entry->version != version ||
+			le16_to_cpu(sum_entry->ofs_in_node) != idx_in_node) {
+		if (!config.fix_on || type < 0) {
+			DBG(0, "summary_entry.nid         [0x%x]\n",
+					le32_to_cpu(sum_entry->nid));
+			DBG(0, "summary_entry.version     [0x%x]\n",
+					sum_entry->version);
+			DBG(0, "summary_entry.ofs_in_node [0x%x]\n",
+					le16_to_cpu(sum_entry->ofs_in_node));
+			DBG(0, "parent nid                [0x%x]\n",
+					parent_nid);
+			DBG(0, "version from nat          [0x%x]\n", version);
+			DBG(0, "idx in parent node        [0x%x]\n",
+					idx_in_node);
 
-		DBG(0, "Target data block addr    [0x%x]\n", blk_addr);
-		ASSERT_MSG("Invalid data seg summary\n");
-		return -EINVAL;
+			DBG(0, "Target data block addr    [0x%x]\n", blk_addr);
+			ASSERT_MSG("Invalid data seg summary\n");
+			ret = -EINVAL;
+		} else {
+			FIX_MSG("Set data summary 0x%x -> [0x%x] [0x%x] [0x%x]",
+					segno, parent_nid, version, idx_in_node);
+			sum_entry->nid = cpu_to_le32(parent_nid);
+			sum_entry->version = version;
+			sum_entry->ofs_in_node = cpu_to_le16(idx_in_node);
+			need_fix = 1;
+		}
 	}
-	return 0;
+	if (need_fix) {
+		u64 ssa_blk;
+		int ret2;
+
+		ssa_blk = GET_SUM_BLKADDR(sbi, segno);
+		ret2 = dev_write_block(sum_blk, ssa_blk);
+		ASSERT(ret2 >= 0);
+	}
+out:
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX)
+		free(sum_blk);
+	return ret;
 }
 
 static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u32 mode)
@@ -928,7 +999,6 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	if (f2fs_test_main_bitmap(sbi, blk_addr) != 0)
 		ASSERT_MSG("Duplicated data [0x%x]. pnid[0x%x] idx[0x%x]",
 				blk_addr, parent_nid, idx_in_node);
-
 
 	fsck->chk.valid_blk_cnt++;
 
