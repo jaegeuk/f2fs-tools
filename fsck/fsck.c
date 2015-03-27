@@ -793,7 +793,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 	u16 name_len;;
 	int ret = 0;
 	int fixed = 0;
-	int i;
+	int i, slots;
 
 	/* readahead inode blocks */
 	for (i = 0; i < max; i++) {
@@ -864,6 +864,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 		memcpy(name, filenames[i], name_len);
 		hash_code = f2fs_dentry_hash((const unsigned char *)name,
 								name_len);
+		slots = (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
 
 		/* fix hash_code made by old buggy code */
 		if (le32_to_cpu(dentry[i].hash_code) != hash_code) {
@@ -874,12 +875,12 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 
 		/* Becareful. 'dentry.file_type' is not imode. */
 		if (ftype == F2FS_FT_DIR) {
-			*child_cnt = *child_cnt + 1;
 			if ((name[0] == '.' && name_len == 1) ||
 				(name[0] == '.' && name[1] == '.' &&
 							name_len == 2)) {
 				i++;
 				free(name);
+				*child_cnt = *child_cnt + 1;
 				continue;
 			}
 		}
@@ -899,23 +900,22 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 
 		if (ret && config.fix_on) {
 			int j;
-			int slots = (name_len + F2FS_SLOT_LEN - 1) /
-				F2FS_SLOT_LEN;
+
 			for (j = 0; j < slots; j++)
 				clear_bit(i + j, bitmap);
 			FIX_MSG("Unlink [0x%x] - %s len[0x%x], type[0x%x]",
 					le32_to_cpu(dentry[i].ino),
 					name, name_len,
 					dentry[i].file_type);
-			i += slots;
-			free(name);
 			fixed = 1;
-			continue;
+		} else if (ret == 0) {
+			if (ftype == F2FS_FT_DIR)
+				*child_cnt = *child_cnt + 1;
+			dentries++;
+			*child_files = *child_files + 1;
 		}
 
-		i += (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
-		dentries++;
-		*child_files = *child_files + 1;
+		i += slots;
 		free(name);
 	}
 	return fixed ? -1 : dentries;
