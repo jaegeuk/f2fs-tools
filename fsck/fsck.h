@@ -101,8 +101,8 @@ void print_cp_state(u32);
 extern void print_node_info(struct f2fs_node *);
 extern void print_inode_info(struct f2fs_inode *, int);
 extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
-extern int get_sum_block(struct f2fs_sb_info *, unsigned int,
-				struct f2fs_summary_block *);
+extern struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *,
+				unsigned int, int *);
 extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void nullify_nat_entry(struct f2fs_sb_info *, u32);

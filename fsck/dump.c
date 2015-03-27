@@ -15,11 +15,12 @@
 
 #define BUF_SZ	80
 
-const char *seg_type_name[SEG_TYPE_MAX] = {
+const char *seg_type_name[SEG_TYPE_MAX + 1] = {
 	"SEG_TYPE_DATA",
 	"SEG_TYPE_CUR_DATA",
 	"SEG_TYPE_NODE",
 	"SEG_TYPE_CUR_NODE",
+	"SEG_TYPE_NONE",
 };
 
 void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
@@ -65,7 +66,7 @@ void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
 
 void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 {
-	struct f2fs_summary_block sum_blk;
+	struct f2fs_summary_block *sum_blk;
 	char buf[BUF_SZ];
 	int segno, i, ret;
 	int fd;
@@ -80,7 +81,7 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 	ASSERT(ret >= 0);
 
 	for (segno = start_ssa; segno < end_ssa; segno++) {
-		ret = get_sum_block(sbi, segno, &sum_blk);
+		sum_blk = get_sum_block(sbi, segno, &ret);
 
 		memset(buf, 0, BUF_SZ);
 		switch (ret) {
@@ -108,10 +109,13 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 				ASSERT(ret >= 0);
 			}
 			snprintf(buf, BUF_SZ, "[%3d: %6x]", i,
-					le32_to_cpu(sum_blk.entries[i].nid));
+					le32_to_cpu(sum_blk->entries[i].nid));
 			ret = write(fd, buf, strlen(buf));
 			ASSERT(ret >= 0);
 		}
+		if (ret == SEG_TYPE_NODE || ret == SEG_TYPE_DATA ||
+					ret == SEG_TYPE_MAX)
+			free(sum_blk);
 	}
 	close(fd);
 }
@@ -418,7 +422,9 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	DBG(1, " - Segno              [0x%x]\n", GET_SEGNO(sbi, blk_addr));
 	DBG(1, " - Offset             [0x%x]\n", OFFSET_IN_SEG(sbi, blk_addr));
 	DBG(1, "SUM.nid               [0x%x]\n", nid);
-	DBG(1, "SUM.type              [%s]\n", seg_type_name[type]);
+	DBG(1, "SUM.type              [%s]\n", type >= 0 ?
+						seg_type_name[type] :
+						"Broken");
 	DBG(1, "SUM.version           [%d]\n", sum_entry.version);
 	DBG(1, "SUM.ofs_in_node       [0x%x]\n", sum_entry.ofs_in_node);
 	DBG(1, "NAT.blkaddr           [0x%x]\n", ni.blk_addr);

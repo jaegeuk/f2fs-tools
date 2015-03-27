@@ -382,5 +382,6 @@ static inline void node_info_from_raw_nat(struct node_info *ni,
 
 extern int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid, struct f2fs_nat_entry *ne);
 #define IS_SUM_NODE_SEG(footer)		(footer.entry_type == SUM_TYPE_NODE)
+#define IS_SUM_DATA_SEG(footer)		(footer.entry_type == SUM_TYPE_DATA)
 
 #endif /* _F2FS_H_ */

@@ -845,13 +845,16 @@ struct seg_entry *get_seg_entry(struct f2fs_sb_info *sbi,
 	return &sit_i->sentries[segno];
 }
 
-int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno,
-				struct f2fs_summary_block *sum_blk)
+struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *sbi,
+				unsigned int segno, int *ret_type)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
+	struct f2fs_summary_block *sum_blk;
 	struct curseg_info *curseg;
 	int type, ret;
 	u64 ssa_blk;
+
+	*ret_type= SEG_TYPE_MAX;
 
 	ssa_blk = GET_SUM_BLKADDR(sbi, segno);
 	for (type = 0; type < NR_CURSEG_NODE_TYPE; type++) {
@@ -861,10 +864,11 @@ int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno,
 				ASSERT_MSG("segno [0x%x] indicates a data "
 						"segment, but should be node",
 						segno);
-				return -EINVAL;
+				*ret_type = -SEG_TYPE_CUR_NODE;
+			} else {
+				*ret_type = SEG_TYPE_CUR_NODE;
 			}
-			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
-			return SEG_TYPE_CUR_NODE;
+			return curseg->sum_blk;
 		}
 	}
 
@@ -875,23 +879,26 @@ int get_sum_block(struct f2fs_sb_info *sbi, unsigned int segno,
 				ASSERT_MSG("segno [0x%x] indicates a node "
 						"segment, but should be data",
 						segno);
-				return -EINVAL;
+				*ret_type = -SEG_TYPE_CUR_DATA;
+			} else {
+				*ret_type = SEG_TYPE_CUR_DATA;
 			}
-			DBG(2, "segno [0x%x] is current data seg[0x%x]\n",
-								segno, type);
-			memcpy(sum_blk, curseg->sum_blk, BLOCK_SZ);
-			return SEG_TYPE_CUR_DATA;
+			return curseg->sum_blk;
 		}
 	}
+
+	sum_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(sum_blk);
 
 	ret = dev_read_block(sum_blk, ssa_blk);
 	ASSERT(ret >= 0);
 
 	if (IS_SUM_NODE_SEG(sum_blk->footer))
-		return SEG_TYPE_NODE;
-	else
-		return SEG_TYPE_DATA;
+		*ret_type = SEG_TYPE_NODE;
+	else if (IS_SUM_DATA_SEG(sum_blk->footer))
+		*ret_type = SEG_TYPE_DATA;
 
+	return sum_blk;
 }
 
 int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr,
@@ -899,18 +906,18 @@ int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr,
 {
 	struct f2fs_summary_block *sum_blk;
 	u32 segno, offset;
-	int ret;
+	int type;
 
 	segno = GET_SEGNO(sbi, blk_addr);
 	offset = OFFSET_IN_SEG(sbi, blk_addr);
 
-	sum_blk = calloc(BLOCK_SZ, 1);
-
-	ret = get_sum_block(sbi, segno, sum_blk);
+	sum_blk = get_sum_block(sbi, segno, &type);
 	memcpy(sum_entry, &(sum_blk->entries[offset]),
 				sizeof(struct f2fs_summary));
-	free(sum_blk);
-	return ret;
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX)
+		free(sum_blk);
+	return type;
 }
 
 static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
