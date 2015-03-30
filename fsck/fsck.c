@@ -476,7 +476,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		u32 *blk_cnt, struct node_info *ni)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	struct child_info child = {0, 0};
+	struct child_info child = {2, 0, 0};
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
@@ -631,26 +631,38 @@ check:
 		}
 	}
 skip_blkcnt_fix:
-	if (ftype == F2FS_FT_DIR)
-		DBG(1, "Directory Inode: 0x%x [%s] depth: %d has %d files\n\n",
-				le32_to_cpu(node_blk->footer.ino),
-				node_blk->i.i_name,
-				le32_to_cpu(node_blk->i.i_current_depth),
-				child.files);
 	if (ftype == F2FS_FT_ORPHAN)
 		DBG(1, "Orphan Inode: 0x%x [%s] i_blocks: %u\n\n",
 				le32_to_cpu(node_blk->footer.ino),
 				node_blk->i.i_name,
 				(u32)i_blocks);
 
-	if (ftype == F2FS_FT_DIR && i_links != child.links) {
-		ASSERT_MSG("ino: 0x%x has i_links: %u but real links: %u",
-				nid, i_links, child.links);
-		if (config.fix_on) {
-			node_blk->i.i_links = cpu_to_le32(child.links);
-			need_fix = 1;
-			FIX_MSG("Dir: 0x%x i_links= 0x%x -> 0x%x",
+	if (ftype == F2FS_FT_DIR) {
+		DBG(1, "Directory Inode: 0x%x [%s] depth: %d has %d files\n\n",
+				le32_to_cpu(node_blk->footer.ino),
+				node_blk->i.i_name,
+				le32_to_cpu(node_blk->i.i_current_depth),
+				child.files);
+
+		if (i_links != child.links) {
+			ASSERT_MSG("ino: 0x%x i_links: %u, real links: %u",
+					nid, i_links, child.links);
+			if (config.fix_on) {
+				node_blk->i.i_links = cpu_to_le32(child.links);
+				need_fix = 1;
+				FIX_MSG("Dir: 0x%x i_links= 0x%x -> 0x%x",
 						nid, i_links, child.links);
+			}
+		}
+		if (child.dots < 2 &&
+				!(node_blk->i.i_inline & F2FS_INLINE_DOTS)) {
+			ASSERT_MSG("ino: 0x%x dots: %u",
+					nid, child.dots);
+			if (config.fix_on) {
+				node_blk->i.i_inline |= F2FS_INLINE_DOTS;
+				need_fix = 1;
+				FIX_MSG("Dir: 0x%x set inline_dots", nid);
+			}
 		}
 	}
 
@@ -877,7 +889,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 							name_len == 2)) {
 				i++;
 				free(name);
-				child->links++;
+				child->dots++;
 				continue;
 			}
 		}

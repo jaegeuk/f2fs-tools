@@ -22,6 +22,7 @@ struct orphan_info {
 struct child_info {
 	u32 links;
 	u32 files;
+	u8 dots;
 };
 
 struct f2fs_fsck {
