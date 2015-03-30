@@ -19,6 +19,11 @@ struct orphan_info {
 	u32 *ino_list;
 };
 
+struct child_info {
+	u32 links;
+	u32 files;
+};
+
 struct f2fs_fsck {
 	struct f2fs_sb_info sbi;
 
@@ -81,21 +86,22 @@ enum seg_type {
 
 extern void fsck_chk_orphan_node(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
-		u8 *, enum FILE_TYPE, enum NODE_TYPE, u32 *, u32 *, u32 *);
+		u8 *, enum FILE_TYPE, enum NODE_TYPE, u32 *, struct child_info *);
 extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
 		struct f2fs_node *, u32 *, struct node_info *);
 extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
-		u32, enum FILE_TYPE, struct f2fs_node *, u32 *, u32 *, u32 *,
-		struct node_info *);
+		u32, enum FILE_TYPE, struct f2fs_node *, u32 *,
+		struct child_info *, struct node_info *);
 extern int fsck_chk_idnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
-		enum FILE_TYPE, struct f2fs_node *, u32 *, u32 *, u32 *);
+		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
 extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
-		enum FILE_TYPE, struct f2fs_node *, u32 *, u32 *, u32 *);
-extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, u32 *, u32 *,
+		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
+extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, struct child_info *,
 		int, enum FILE_TYPE, u32, u16, u8);
-extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, u32 *, u32 *, int);
+extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, struct child_info *,
+		int);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
-		u32 *, u32 *);
+		struct child_info *);
 
 void print_cp_state(u32);
 extern void print_node_info(struct f2fs_node *);
