@@ -426,7 +426,7 @@ out:
 
 int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 nid, u8 *name, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-		u32 *blk_cnt)
+		u32 *blk_cnt, u32 *child_cnt, u32 *child_files)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk = NULL;
@@ -445,19 +445,19 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_WARM_NODE);
 			fsck_chk_dnode_blk(sbi, inode, nid, ftype, node_blk,
-					blk_cnt, &ni);
+					blk_cnt, child_cnt, child_files, &ni);
 			break;
 		case TYPE_INDIRECT_NODE:
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_COLD_NODE);
 			fsck_chk_idnode_blk(sbi, inode, ftype, node_blk,
-					blk_cnt);
+					blk_cnt, child_cnt, child_files);
 			break;
 		case TYPE_DOUBLE_INDIRECT_NODE:
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_COLD_NODE);
 			fsck_chk_didnode_blk(sbi, inode, ftype, node_blk,
-					blk_cnt);
+					blk_cnt, child_cnt, child_files);
 			break;
 		default:
 			ASSERT(0);
@@ -610,7 +610,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		if (le32_to_cpu(node_blk->i.i_nid[idx]) != 0) {
 			ret = fsck_chk_node_blk(sbi, &node_blk->i,
 					le32_to_cpu(node_blk->i.i_nid[idx]),
-					NULL, ftype, ntype, blk_cnt);
+					NULL, ftype, ntype, blk_cnt,
+					&child_cnt, &child_files);
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (config.fix_on) {
@@ -667,10 +668,10 @@ skip_blkcnt_fix:
 
 int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 nid, enum FILE_TYPE ftype, struct f2fs_node *node_blk,
-		u32 *blk_cnt, struct node_info *ni)
+		u32 *blk_cnt, u32 *child_cnt, u32 *child_files,
+		struct node_info *ni)
 {
 	int idx, ret;
-	u32 child_cnt = 0, child_files = 0;
 	int need_fix = 0;
 
 	for (idx = 0; idx < ADDRS_PER_BLOCK; idx++) {
@@ -678,7 +679,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			continue;
 		ret = fsck_chk_data_blk(sbi,
 			le32_to_cpu(node_blk->dn.addr[idx]),
-			&child_cnt, &child_files,
+			child_cnt, child_files,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version);
 		if (!ret) {
@@ -697,7 +698,8 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 }
 
 int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
-		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt)
+		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt,
+		u32 *child_cnt, u32 *child_files)
 {
 	int ret;
 	int i = 0;
@@ -707,7 +709,8 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
 				le32_to_cpu(node_blk->in.nid[i]), NULL,
-				ftype, TYPE_DIRECT_NODE, blk_cnt);
+				ftype, TYPE_DIRECT_NODE, blk_cnt,
+				child_cnt, child_files);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
 		else if (ret == -EINVAL)
@@ -717,7 +720,8 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 }
 
 int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
-		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt)
+		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt,
+		u32 *child_cnt, u32 *child_files)
 {
 	int i = 0;
 	int ret = 0;
@@ -727,7 +731,8 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
 				le32_to_cpu(node_blk->in.nid[i]), NULL,
-				ftype, TYPE_INDIRECT_NODE, blk_cnt);
+				ftype, TYPE_INDIRECT_NODE, blk_cnt,
+				child_cnt, child_files);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
 		else if (ret == -EINVAL)
@@ -896,7 +901,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, u32 *child_cnt,
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
 				NULL, le32_to_cpu(dentry[i].ino), name,
-				ftype, TYPE_INODE, &blk_cnt);
+				ftype, TYPE_INODE, &blk_cnt, NULL, NULL);
 
 		if (ret && config.fix_on) {
 			int j;
@@ -1060,7 +1065,8 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			DBG(1, "[%3d] ino [0x%x]\n", i, ino);
 			blk_cnt = 1;
 			ret = fsck_chk_node_blk(sbi, NULL, ino, NULL,
-					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt);
+					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt,
+					NULL, NULL);
 			if (!ret)
 				new_blk->ino[new_entry_count++] =
 							orphan_blk->ino[j];
