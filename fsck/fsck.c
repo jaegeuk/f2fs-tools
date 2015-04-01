@@ -493,7 +493,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
 			f2fs_set_main_bitmap(sbi, ni->blk_addr,
 							CURSEG_WARM_NODE);
-			if (i_links > 1) {
+			if (i_links > 1 && ftype != F2FS_FT_ORPHAN) {
 				/* First time. Create new hard link node */
 				add_into_hard_link_list(sbi, nid, i_links);
 				fsck->chk.multi_hard_link_files++;
@@ -666,9 +666,16 @@ skip_blkcnt_fix:
 		}
 	}
 
-	if (ftype == F2FS_FT_ORPHAN && i_links)
+	if (ftype == F2FS_FT_ORPHAN && i_links) {
 		ASSERT_MSG("ino: 0x%x is orphan inode, but has i_links: %u",
 				nid, i_links);
+		if (config.fix_on) {
+			node_blk->i.i_links = 0;
+			need_fix = 1;
+			FIX_MSG("ino: 0x%x orphan_inode, i_links= 0x%x -> 0",
+					nid, i_links);
+		}
+	}
 	if (need_fix) {
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
