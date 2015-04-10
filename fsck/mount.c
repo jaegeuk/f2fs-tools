@@ -400,7 +400,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *raw_sb = sbi->raw_super;
 	void *cp1, *cp2, *cur_page;
 	unsigned long blk_size = sbi->blocksize;
-	unsigned long long cp1_version = 0, cp2_version = 0;
+	unsigned long long cp1_version = 0, cp2_version = 0, version;
 	unsigned long long cp_start_blk_no;
 	unsigned int cp_blks = 1 + le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
 	int ret;
@@ -423,21 +423,27 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 		if (ver_after(cp2_version, cp1_version)) {
 			cur_page = cp2;
 			sbi->cur_cp = 2;
+			version = cp2_version;
 		} else {
 			cur_page = cp1;
 			sbi->cur_cp = 1;
+			version = cp1_version;
 		}
 	} else if (cp1) {
 		cur_page = cp1;
 		sbi->cur_cp = 1;
+		version = cp1_version;
 	} else if (cp2) {
 		cur_page = cp2;
 		sbi->cur_cp = 2;
+		version = cp2_version;
 	} else {
 		free(cp1);
 		free(cp2);
 		goto fail_no_cp;
 	}
+
+	MSG(0, "Info: CKPT version = %"PRIx64"\n", version);
 
 	memcpy(sbi->ckpt, cur_page, blk_size);
 
