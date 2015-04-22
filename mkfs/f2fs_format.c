@@ -364,6 +364,8 @@ static int f2fs_prepare_super_block(void)
 	memcpy(sb.version, config.version, VERSION_LEN);
 	memcpy(sb.init_version, config.version, VERSION_LEN);
 
+	sb.feature = config.feature;
+
 	return 0;
 }
 

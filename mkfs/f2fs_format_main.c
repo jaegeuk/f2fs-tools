@@ -33,6 +33,7 @@ static void mkfs_usage()
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -o overprovision ratio [default:5]\n");
+	MSG(0, "  -O set feature\n");
 	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
@@ -61,9 +62,19 @@ static void f2fs_show_info()
 	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
 }
 
+static void parse_feature(char *features)
+{
+	if (!strcmp(features, "encrypt")) {
+		config.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+	} else {
+		MSG(0, "Error: Wrong features\n");
+		mkfs_usage();
+	}
+}
+
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:d:e:l:o:s:z:t:";
+	static const char *option_string = "qa:d:e:l:o:O:s:z:t:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -90,6 +101,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'o':
 			config.overprovision = atoi(optarg);
+			break;
+		case 'O':
+			parse_feature(strdup(optarg));
 			break;
 		case 's':
 			config.segs_per_sec = atoi(optarg);

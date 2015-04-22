@@ -251,6 +251,7 @@ struct f2fs_configuration {
 	int fix_on;
 	int bug_on;
 	int auto_fix;
+	__le32 feature;			/* defined features */
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -315,6 +316,8 @@ enum {
 #define MAX_ACTIVE_NODE_LOGS	8
 #define MAX_ACTIVE_DATA_LOGS	8
 
+#define F2FS_FEATURE_ENCRYPT	0x0001
+
 /*
  * For superblock
  */
@@ -353,6 +356,10 @@ struct f2fs_super_block {
 	__le32 cp_payload;
 	__u8 version[VERSION_LEN];	/* the kernel version */
 	__u8 init_version[VERSION_LEN];	/* the initial kernel version */
+	__le32 feature;			/* defined features */
+	__u8 encryption_level;		/* versioning level for encryption */
+	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
+	__u8 reserved[871];		/* valid reserved region */
 } __attribute__((packed));
 
 /*
