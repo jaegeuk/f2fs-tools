@@ -224,6 +224,23 @@ void print_cp_state(u32 flag)
 	MSG(0, "\n");
 }
 
+void print_sb_state(struct f2fs_super_block *sb)
+{
+	__le32 f = sb->feature;
+	int i;
+
+	MSG(0, "Info: superblock features = %x : ", f);
+	if (f & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
+		MSG(0, "%s", " encrypt");
+	}
+	MSG(0, "\n");
+	MSG(0, "Info: superblock encrypt level = %d, salt = ",
+					sb->encryption_level);
+	for (i = 0; i < 16; i++)
+		MSG(0, "%02x", sb->encrypt_pw_salt[i]);
+	MSG(0, "\n");
+}
+
 int sanity_check_raw_super(struct f2fs_super_block *raw_super)
 {
 	unsigned int blocksize;
@@ -300,6 +317,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 			config.auto_fix = 0;
 			config.fix_on = 1;
 		}
+		print_sb_state(sbi->raw_super);
 		return 0;
 	}
 
