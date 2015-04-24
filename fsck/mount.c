@@ -26,6 +26,7 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	}
 
 	DISP_u32(inode, i_mode);
+	DISP_u32(inode, i_advise);
 	DISP_u32(inode, i_uid);
 	DISP_u32(inode, i_gid);
 	DISP_u32(inode, i_links);
