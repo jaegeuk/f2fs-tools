@@ -453,6 +453,15 @@ struct f2fs_extent {
 
 #define DEF_DIR_LEVEL		0
 
+/*
+ * i_advise uses FADVISE_XXX_BIT. We can add additional hints later.
+ */
+#define FADVISE_COLD_BIT       0x01
+#define FADVISE_LOST_PINO_BIT  0x02
+#define FADVISE_ENCRYPT_BIT    0x04
+
+#define file_is_encrypt(i_advise)      ((i_advise) & FADVISE_ENCRYPT_BIT)
+
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
 	__u8 i_advise;			/* file hints */
