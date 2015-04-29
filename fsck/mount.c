@@ -462,7 +462,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 		goto fail_no_cp;
 	}
 
-	MSG(0, "Info: CKPT version = %"PRIx64"\n", version);
+	MSG(0, "Info: CKPT version = %llx\n", version);
 
 	memcpy(sbi->ckpt, cur_page, blk_size);
 
