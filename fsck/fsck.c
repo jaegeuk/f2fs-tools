@@ -191,6 +191,47 @@ out:
 	return ret;
 }
 
+static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
+							u32 blk_addr)
+{
+	u16 ofs_in_node = le16_to_cpu(sum->ofs_in_node);
+	u32 nid = le32_to_cpu(sum->nid);
+	struct f2fs_node *node_blk = NULL;
+	__le32 target_blk_addr;
+	struct node_info ni;
+	int ret = 0;
+
+	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk != NULL);
+
+	if (!IS_VALID_NID(sbi, nid))
+		goto out;
+
+	get_node_info(sbi, nid, &ni);
+
+	if (!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+		goto out;
+
+	/* read node_block */
+	ret = dev_read_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+
+	if (le32_to_cpu(node_blk->footer.nid) != nid)
+		goto out;
+
+	/* check its block address */
+	if (node_blk->footer.nid == node_blk->footer.ino)
+		target_blk_addr = node_blk->i.i_addr[ofs_in_node];
+	else
+		target_blk_addr = node_blk->dn.addr[ofs_in_node];
+
+	if (blk_addr == le32_to_cpu(target_blk_addr))
+		ret = 1;
+out:
+	free(node_blk);
+	return ret;
+}
+
 static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		u32 parent_nid, u16 idx_in_node, u8 version)
 {
@@ -237,6 +278,9 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 
 			DBG(0, "Target data block addr    [0x%x]\n", blk_addr);
 			ASSERT_MSG("Invalid data seg summary\n");
+			ret = -EINVAL;
+		} else if (is_valid_summary(sbi, sum_entry, blk_addr)) {
+			/* delete wrong index */
 			ret = -EINVAL;
 		} else {
 			FIX_MSG("Set data summary 0x%x -> [0x%x] [0x%x] [0x%x]",
