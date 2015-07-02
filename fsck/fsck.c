@@ -722,6 +722,8 @@ skip_blkcnt_fix:
 		}
 	}
 	if (need_fix) {
+		/* drop extent information to avoid potential wrong access */
+		node_blk->i.i_ext.len = 0;
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
 	}
