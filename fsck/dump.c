@@ -45,7 +45,7 @@ void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
 		ret = write(fd, buf, strlen(buf));
 		ASSERT(ret >= 0);
 
-		DBG(4, "SIT[0x%3x] : 0x%x\n", segno, se->valid_blocks);
+		DBG(4, "SIT[0x%3x] : 0x%3x : %d\n", segno, se->valid_blocks, se->type);
 		if (se->valid_blocks == 0x0) {
 			free_segs++;
 		} else {
