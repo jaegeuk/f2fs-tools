@@ -21,7 +21,7 @@ mkfs.f2fs \- create an F2FS file system
 ]
 [
 .B \-s
-.I log-based-#-of-segments-per-section
+.I #-of-segments-per-section
 ]
 [
 .B \-z
@@ -60,10 +60,10 @@ Specify the volume label to the partition mounted as F2FS.
 Specify the percentage over the volume size for overprovision area. This area
 is hidden to users, and utilized by F2FS cleaner. The default percentage is 5%.
 .TP
-.BI \-s " log-based-#-of-segments-per-section"
-Specify the log-based number of segments per section. A section consists of
+.BI \-s " #-of-segments-per-section"
+Specify the number of segments per section. A section consists of
 multiple consecutive segments, and is the unit of garbage collection.
-The default number is 0, which means one segment is assigned to a section.
+The default number is 1, which means one segment is assigned to a section.
 .TP
 .BI \-z " #-of-sections-per-zone"
 Specify the number of sections per zone. A zone consists of multiple sections.
