@@ -353,8 +353,8 @@ void f2fs_init_configuration(struct f2fs_configuration *c)
 	c->blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
 
 	/* calculated by overprovision ratio */
-	c->reserved_segments = 48;
-	c->overprovision = 5;
+	c->reserved_segments = 0;
+	c->overprovision = 0;
 	c->segs_per_sec = 1;
 	c->secs_per_zone = 1;
 	c->segs_per_zone = 1;
