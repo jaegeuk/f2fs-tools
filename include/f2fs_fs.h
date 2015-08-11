@@ -209,7 +209,6 @@ static inline uint64_t bswap_64(uint64_t val)
 #define CHECKSUM_OFFSET		4092
 
 /* for mkfs */
-#define F2FS_MIN_VOLUME_SIZE	104857600
 #define	F2FS_NUMBER_OF_CHECKPOINT_PACK	2
 #define	DEFAULT_SECTOR_SIZE		512
 #define	DEFAULT_SECTORS_PER_BLOCK	8
