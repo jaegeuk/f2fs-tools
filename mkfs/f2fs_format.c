@@ -171,7 +171,8 @@ static u_int32_t get_best_overprovision(void)
 	}
 
 	for (; candidate <= end; candidate += diff) {
-		reserved = 2 * (100 / candidate + 1) + 6;
+		reserved = (2 * (100 / candidate + 1) + 6) *
+						get_sb(segs_per_sec);
 		ovp = (get_sb(segment_count_main) - reserved) * candidate / 100;
 		space = get_sb(segment_count_main) - reserved - ovp;
 		if (max_space < space) {
