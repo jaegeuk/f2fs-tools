@@ -58,7 +58,8 @@ Specify the volume label to the partition mounted as F2FS.
 .TP
 .BI \-o " overprovision-ratio-percentage"
 Specify the percentage over the volume size for overprovision area. This area
-is hidden to users, and utilized by F2FS cleaner. The default percentage is 5%.
+is hidden to users, and utilized by F2FS cleaner. If not specified, the best
+number will be assigned automatically accoring to the partition size.
 .TP
 .BI \-s " #-of-segments-per-section"
 Specify the number of segments per section. A section consists of
