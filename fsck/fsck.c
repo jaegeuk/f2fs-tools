@@ -18,21 +18,19 @@ static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct seg_entry *se;
+	int fix = 0;
 
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk));
-	if (se->type != type) {
-		if (type == CURSEG_WARM_DATA) {
-			if (se->type != CURSEG_COLD_DATA) {
-				DBG(1, "Wrong segment type [0x%x] %x -> %x",
-						GET_SEGNO(sbi, blk), se->type,
-						CURSEG_WARM_DATA);
-				se->type = CURSEG_WARM_DATA;
-			}
-		} else {
-			DBG(1, "Wrong segment type [0x%x] %x -> %x",
+	if (se->type < 0 || se->type >= NO_CHECK_TYPE)
+		fix = 1;
+	else if (IS_DATASEG(se->type) != IS_DATASEG(type))
+		fix = 1;
+
+	/* just check data and node types */
+	if (fix) {
+		DBG(1, "Wrong segment type [0x%x] %x -> %x",
 				GET_SEGNO(sbi, blk), se->type, type);
-			se->type = type;
-		}
+		se->type = type;
 	}
 	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->main_area_bitmap);
 }
