@@ -155,19 +155,19 @@ static void configure_extension_list(void)
 	free(config.extension_list);
 }
 
-static u_int32_t get_best_overprovision(void)
+static double get_best_overprovision(void)
 {
-	u_int32_t reserved, ovp, candidate, end, diff, space;
-	u_int32_t max_ovp = 0, max_space = 0;
+	double reserved, ovp, candidate, end, diff, space;
+	double max_ovp = 0, max_space = 0;
 
 	if (get_sb(segment_count_main) < 256) {
 		candidate = 10;
 		end = 95;
 		diff = 5;
 	} else {
-		candidate = 1;
+		candidate = 0.01;
 		end = 10;
-		diff = 1;
+		diff = 0.01;
 	}
 
 	for (; candidate <= end; candidate += diff) {
@@ -533,7 +533,7 @@ static int f2fs_write_check_point_pack(void)
 	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
 			get_cp(rsvd_segment_count));
 
-	MSG(0, "Info: Overprovision ratio = %u%%\n", config.overprovision);
+	MSG(0, "Info: Overprovision ratio = %.3lf%%\n", config.overprovision);
 	MSG(0, "Info: Overprovision segments = %u (GC reserved = %u)\n",
 					get_cp(overprov_segment_count),
 					config.reserved_segments);

@@ -225,7 +225,7 @@ enum f2fs_config_func {
 struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
-	u_int32_t overprovision;
+	double overprovision;
 	u_int32_t cur_seg[6];
 	u_int32_t segs_per_sec;
 	u_int32_t secs_per_zone;
