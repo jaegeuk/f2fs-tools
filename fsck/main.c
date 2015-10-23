@@ -20,6 +20,7 @@ void fsck_usage()
 	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
+	MSG(0, "  -p preen mode [default is same as -a]\n");
 	MSG(0, "  -t show directory tree [-d -1]\n");
 	exit(1);
 }
@@ -43,12 +44,13 @@ void f2fs_parse_options(int argc, char *argv[])
 	char *prog = basename(argv[0]);
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = "ad:ft";
+		const char *option_string = "ad:fpt";
 
 		config.func = FSCK;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
 			case 'a':
+			case 'p':
 				config.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption.\n");
 				break;
