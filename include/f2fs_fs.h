@@ -220,6 +220,7 @@ static inline uint64_t bswap_64(uint64_t val)
 enum f2fs_config_func {
 	FSCK,
 	DUMP,
+	DEFRAG,
 };
 
 struct f2fs_configuration {
@@ -252,6 +253,12 @@ struct f2fs_configuration {
 	int auto_fix;
 	int ro;
 	__le32 feature;			/* defined features */
+
+	/* defragmentation parameters */
+	int defrag_shrink;
+	u_int64_t defrag_start;
+	u_int64_t defrag_len;
+	u_int64_t defrag_target;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT

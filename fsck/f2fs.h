@@ -74,6 +74,7 @@ struct seg_entry {
 	unsigned char type;             /* segment type like CURSEG_XXX_TYPE */
 	unsigned char orig_type;        /* segment type like CURSEG_XXX_TYPE */
 	unsigned long long mtime;       /* modification time of the segment */
+	int dirty;
 };
 
 struct sec_entry {

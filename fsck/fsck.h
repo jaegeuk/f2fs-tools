@@ -121,6 +121,8 @@ extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
 extern struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *,
 				unsigned int, int *);
 extern int get_sum_entry(struct f2fs_sb_info *, u32, struct f2fs_summary *);
+extern void update_sum_entry(struct f2fs_sb_info *, block_t,
+				struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void nullify_nat_entry(struct f2fs_sb_info *, u32);
 extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
@@ -132,9 +134,14 @@ extern void fsck_free(struct f2fs_sb_info *);
 extern int f2fs_do_mount(struct f2fs_sb_info *);
 extern void f2fs_do_umount(struct f2fs_sb_info *);
 
+extern void flush_journal_entries(struct f2fs_sb_info *);
+extern void flush_sit_entries(struct f2fs_sb_info *);
 extern void move_curseg_info(struct f2fs_sb_info *, u64);
 extern void write_curseg_info(struct f2fs_sb_info *);
 extern int find_next_free_block(struct f2fs_sb_info *, u64 *, int, int);
+extern void write_checkpoint(struct f2fs_sb_info *);
+extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t);
+extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, block_t);
 
 extern void print_raw_sb_info(struct f2fs_super_block *);
 
@@ -152,5 +159,8 @@ extern void sit_dump(struct f2fs_sb_info *, int, int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
 extern void dump_node(struct f2fs_sb_info *, nid_t);
 extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
+
+/* defrag.c */
+int f2fs_defragment(struct f2fs_sb_info *, u64, u64, u64, int);
 
 #endif /* _FSCK_H_ */

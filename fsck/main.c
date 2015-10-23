@@ -3,6 +3,8 @@
  *
  * Copyright (c) 2013 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
+ * Copyright (c) 2015 Jaegeuk Kim <jaegeuk@kernel.org>
+ *  : implement defrag.f2fs
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,6 +37,18 @@ void dump_usage()
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -b blk_addr (in 4KB)\n");
 
+	exit(1);
+}
+
+void defrag_usage()
+{
+	MSG(0, "\nUsage: defrag.f2fs [options] device\n");
+	MSG(0, "[options]:\n");
+	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -s start block address [default: main_blkaddr]\n");
+	MSG(0, "  -l length [default:512 (2MB)]\n");
+	MSG(0, "  -t target block address [default: main_blkaddr + 2MB]\n");
+	MSG(0, "  -i set direction as shrink [default: expand]\n");
 	exit(1);
 }
 
@@ -128,6 +142,53 @@ void f2fs_parse_options(int argc, char *argv[])
 		}
 
 		config.private = &dump_opt;
+	} else if (!strcmp("defrag.f2fs", prog)) {
+		const char *option_string = "d:s:l:t:i";
+
+		config.func = DEFRAG;
+		while ((option = getopt(argc, argv, option_string)) != EOF) {
+			int ret = 0;
+
+			switch (option) {
+			case 'd':
+				config.dbg_lv = atoi(optarg);
+				MSG(0, "Info: Debug level = %d\n",
+							config.dbg_lv);
+				break;
+			case 's':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%"PRIu64"",
+							&config.defrag_start);
+				else
+					ret = sscanf(optarg, "%"PRIx64"",
+							&config.defrag_start);
+				break;
+			case 'l':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%"PRIu64"",
+							&config.defrag_len);
+				else
+					ret = sscanf(optarg, "%"PRIx64"",
+							&config.defrag_len);
+				break;
+			case 't':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%"PRIu64"",
+							&config.defrag_target);
+				else
+					ret = sscanf(optarg, "%"PRIx64"",
+							&config.defrag_target);
+				break;
+			case 'i':
+				config.defrag_shrink = 1;
+				break;
+			default:
+				MSG(0, "\tError: Unknown option %c\n", option);
+				defrag_usage();
+				break;
+			}
+			ASSERT(ret >= 0);
+		}
 	}
 
 	if ((optind + 1) != argc) {
@@ -136,6 +197,8 @@ void f2fs_parse_options(int argc, char *argv[])
 			fsck_usage();
 		else if (config.func == DUMP)
 			dump_usage();
+		else if (config.func == DEFRAG)
+			defrag_usage();
 	}
 	config.device_name = argv[optind];
 }
@@ -188,6 +251,55 @@ cleanup:
 	fsck_free(sbi);
 }
 
+static int do_defrag(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (config.defrag_start > get_sb(block_count))
+		goto out_range;
+	if (config.defrag_start < SM_I(sbi)->main_blkaddr)
+		config.defrag_start = SM_I(sbi)->main_blkaddr;
+
+	if (config.defrag_len == 0)
+		config.defrag_len = sbi->blocks_per_seg;
+
+	if (config.defrag_start + config.defrag_len > get_sb(block_count))
+		config.defrag_len = get_sb(block_count) - config.defrag_start;
+
+	if (config.defrag_target == 0) {
+		config.defrag_target = config.defrag_start - 1;
+		if (!config.defrag_shrink)
+			config.defrag_target += config.defrag_len + 1;
+	}
+
+	if (config.defrag_target < SM_I(sbi)->main_blkaddr ||
+			config.defrag_target > get_sb(block_count))
+		goto out_range;
+	if (config.defrag_target >= config.defrag_start &&
+		config.defrag_target < config.defrag_start + config.defrag_len)
+		goto out_range;
+
+	if (config.defrag_start > config.defrag_target)
+		MSG(0, "Info: Move 0x%"PRIx64" <- [0x%"PRIx64"-0x%"PRIx64"]\n",
+				config.defrag_target,
+				config.defrag_start,
+				config.defrag_start + config.defrag_len - 1);
+	else
+		MSG(0, "Info: Move [0x%"PRIx64"-0x%"PRIx64"] -> 0x%"PRIx64"\n",
+				config.defrag_start,
+				config.defrag_start + config.defrag_len - 1,
+				config.defrag_target);
+
+	return f2fs_defragment(sbi, config.defrag_start, config.defrag_len,
+			config.defrag_target, config.defrag_shrink);
+out_range:
+	ASSERT_MSG("Out-of-range [0x%"PRIx64" ~ 0x%"PRIx64"] to 0x%"PRIx64"",
+				config.defrag_start,
+				config.defrag_start + config.defrag_len - 1,
+				config.defrag_target);
+	return -1;
+}
+
 int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
@@ -198,7 +310,7 @@ int main(int argc, char **argv)
 	f2fs_parse_options(argc, argv);
 
 	if (f2fs_dev_is_umounted(&config) < 0) {
-		if (!config.ro) {
+		if (!config.ro || config.func == DEFRAG) {
 			MSG(0, "\tError: Not available on mounted device!\n");
 			return -1;
 		}
@@ -218,12 +330,8 @@ fsck_again:
 	sbi = &gfsck.sbi;
 
 	ret = f2fs_do_mount(sbi);
-	if (ret == 1) {
-		free(sbi->ckpt);
-		free(sbi->raw_super);
-		goto out;
-	} else if (ret < 0)
-		return -1;
+	if (ret != 0)
+		goto out_err;
 
 	switch (config.func) {
 	case FSCK:
@@ -232,10 +340,14 @@ fsck_again:
 	case DUMP:
 		do_dump(sbi);
 		break;
+	case DEFRAG:
+		if (do_defrag(sbi))
+			goto out_err;
+		break;
 	}
 
 	f2fs_do_umount(sbi);
-out:
+
 	if (config.func == FSCK && config.bug_on) {
 		if (!config.ro && config.fix_on == 0 && config.auto_fix == 0) {
 			char ans[255] = {0};
@@ -258,4 +370,11 @@ retry:
 
 	printf("\nDone.\n");
 	return 0;
+
+out_err:
+	if (sbi->ckpt)
+		free(sbi->ckpt);
+	if (sbi->raw_super)
+		free(sbi->raw_super);
+	return -1;
 }

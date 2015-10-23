@@ -718,6 +718,33 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	free(sum_blk);
 }
 
+void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
+					struct f2fs_summary *sum)
+{
+	struct f2fs_summary_block *sum_blk;
+	u32 segno, offset;
+	int type, ret;
+	struct seg_entry *se;
+
+	segno = GET_SEGNO(sbi, blk_addr);
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
+
+	se = get_seg_entry(sbi, segno);
+
+	sum_blk = get_sum_block(sbi, segno, &type);
+	memcpy(&sum_blk->entries[offset], sum, sizeof(*sum));
+	sum_blk->footer.entry_type = IS_NODESEG(se->type) ? SUM_TYPE_NODE :
+							SUM_TYPE_DATA;
+
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX) {
+		u64 ssa_blk = GET_SUM_BLKADDR(sbi, segno);
+		ret = dev_write_block(sum_blk, ssa_blk);
+		ASSERT(ret >= 0);
+		free(sum_blk);
+	}
+}
+
 static void restore_curseg_summaries(struct f2fs_sb_info *sbi)
 {
 	int type = CURSEG_HOT_DATA;
@@ -965,6 +992,88 @@ static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
 	free(nat_block);
 }
 
+void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
+				u16 ofs_in_node, block_t newaddr)
+{
+	struct f2fs_node *node_blk = NULL;
+	struct node_info ni;
+	block_t oldaddr, startaddr, endaddr;
+	int ret;
+
+	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk != NULL);
+
+	get_node_info(sbi, nid, &ni);
+
+	/* read node_block */
+	ret = dev_read_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+
+	/* check its block address */
+	if (node_blk->footer.nid == node_blk->footer.ino) {
+		oldaddr = le32_to_cpu(node_blk->i.i_addr[ofs_in_node]);
+		node_blk->i.i_addr[ofs_in_node] = cpu_to_le32(newaddr);
+	} else {
+		oldaddr = le32_to_cpu(node_blk->dn.addr[ofs_in_node]);
+		node_blk->dn.addr[ofs_in_node] = cpu_to_le32(newaddr);
+	}
+
+	ret = dev_write_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+
+	/* check extent cache entry */
+	if (node_blk->footer.nid != node_blk->footer.ino) {
+		get_node_info(sbi, le32_to_cpu(node_blk->footer.ino), &ni);
+
+		/* read inode block */
+		ret = dev_read_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
+	}
+
+	startaddr = le32_to_cpu(node_blk->i.i_ext.blk_addr);
+	endaddr = startaddr + le32_to_cpu(node_blk->i.i_ext.len);
+	if (oldaddr >= startaddr && oldaddr < endaddr) {
+		node_blk->i.i_ext.len = 0;
+
+		/* update inode block */
+		ret = dev_write_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
+	}
+	free(node_blk);
+}
+
+void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t nid, block_t newaddr)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct f2fs_nat_block *nat_block;
+	pgoff_t block_off;
+	pgoff_t block_addr;
+	int seg_off, entry_off;
+	int ret;
+
+	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+
+	block_off = nid / NAT_ENTRY_PER_BLOCK;
+	entry_off = nid % NAT_ENTRY_PER_BLOCK;
+
+	seg_off = block_off >> sbi->log_blocks_per_seg;
+	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
+			(seg_off << sbi->log_blocks_per_seg << 1) +
+			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
+
+	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+		block_addr += sbi->blocks_per_seg;
+
+	ret = dev_read_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+
+	nat_block->entries[entry_off].block_addr = cpu_to_le32(newaddr);
+
+	ret = dev_write_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+	free(nat_block);
+}
+
 void get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
 {
 	struct f2fs_nat_entry raw_nat;
@@ -1133,6 +1242,123 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	}
 }
 
+static void flush_sit_journal_entries(struct f2fs_sb_info *sbi)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
+	struct f2fs_summary_block *sum = curseg->sum_blk;
+	struct sit_info *sit_i = SIT_I(sbi);
+	unsigned int segno;
+	int i;
+
+	for (i = 0; i < sits_in_cursum(sum); i++) {
+		struct f2fs_sit_block *sit_blk;
+		struct f2fs_sit_entry *sit;
+		struct seg_entry *se;
+
+		segno = segno_in_journal(sum, i);
+		se = get_seg_entry(sbi, segno);
+
+		sit_blk = get_current_sit_page(sbi, segno);
+		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
+
+		memcpy(sit->valid_map, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
+		sit->vblocks = cpu_to_le16((se->type << SIT_VBLOCKS_SHIFT) |
+							se->valid_blocks);
+		sit->mtime = cpu_to_le64(se->mtime);
+
+		rewrite_current_sit_page(sbi, segno, sit_blk);
+		free(sit_blk);
+	}
+	sum->n_sits = 0;
+}
+
+static void flush_nat_journal_entries(struct f2fs_sb_info *sbi)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
+	struct f2fs_summary_block *sum = curseg->sum_blk;
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct f2fs_nat_block *nat_block;
+	pgoff_t block_off;
+	pgoff_t block_addr;
+	int seg_off, entry_off;
+	nid_t nid;
+	int ret;
+	int i = 0;
+
+next:
+	if (i >= nats_in_cursum(sum)) {
+		sum->n_nats = 0;
+		return;
+	}
+
+	nid = le32_to_cpu(nid_in_journal(sum, i));
+	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+
+	block_off = nid / NAT_ENTRY_PER_BLOCK;
+	entry_off = nid % NAT_ENTRY_PER_BLOCK;
+
+	seg_off = block_off >> sbi->log_blocks_per_seg;
+	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
+			(seg_off << sbi->log_blocks_per_seg << 1) +
+			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
+
+	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+		block_addr += sbi->blocks_per_seg;
+
+	ret = dev_read_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+
+	memcpy(&nat_block->entries[entry_off], &nat_in_journal(sum, i),
+					sizeof(struct f2fs_nat_entry));
+
+	ret = dev_write_block(nat_block, block_addr);
+	ASSERT(ret >= 0);
+	free(nat_block);
+	i++;
+	goto next;
+}
+
+void flush_journal_entries(struct f2fs_sb_info *sbi)
+{
+	flush_nat_journal_entries(sbi);
+	flush_sit_journal_entries(sbi);
+	write_checkpoint(sbi);
+}
+
+void flush_sit_entries(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	struct sit_info *sit_i = SIT_I(sbi);
+	unsigned int segno = 0;
+	u32 free_segs = 0;
+
+	/* update free segments */
+	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+		struct f2fs_sit_block *sit_blk;
+		struct f2fs_sit_entry *sit;
+		struct seg_entry *se;
+
+		se = get_seg_entry(sbi, segno);
+
+		if (!se->dirty)
+			continue;
+
+		sit_blk = get_current_sit_page(sbi, segno);
+		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
+		memcpy(sit->valid_map, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
+		sit->vblocks = cpu_to_le16((se->type << SIT_VBLOCKS_SHIFT) |
+							se->valid_blocks);
+		rewrite_current_sit_page(sbi, segno, sit_blk);
+		free(sit_blk);
+
+		if (se->valid_blocks == 0x0 &&
+				!IS_CUR_SEGNO(sbi, segno, NO_CHECK_TYPE))
+			free_segs++;
+	}
+
+	set_cp(free_segment_count, free_segs);
+}
+
 int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 {
 	struct seg_entry *se;
@@ -1291,6 +1517,70 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	ret = dev_write_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
 	free(nat_block);
+}
+
+void write_checkpoint(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	block_t orphan_blks = 0;
+	u32 free_segs = 0;
+	unsigned long long cp_blk_no;
+	u32 flags = CP_UMOUNT_FLAG;
+	unsigned int segno;
+	int i, ret;
+	u_int32_t crc = 0;
+
+	if (is_set_ckpt_flags(cp, CP_ORPHAN_PRESENT_FLAG)) {
+		orphan_blks = __start_sum_addr(sbi) - 1;
+		flags |= CP_ORPHAN_PRESENT_FLAG;
+	}
+
+	set_cp(ckpt_flags, flags);
+
+	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+		struct seg_entry *se = get_seg_entry(sbi, segno);
+
+		if (se->valid_blocks == 0x0 &&
+				!IS_CUR_SEGNO(sbi, segno, NO_CHECK_TYPE))
+			free_segs++;
+	}
+	set_cp(free_segment_count, free_segs);
+	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
+
+	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, cp, CHECKSUM_OFFSET);
+	*((__le32 *)((unsigned char *)cp + CHECKSUM_OFFSET)) = cpu_to_le32(crc);
+
+	cp_blk_no = get_sb(cp_blkaddr);
+	if (sbi->cur_cp == 2)
+		cp_blk_no += 1 << get_sb(log_blocks_per_seg);
+
+	/* write the first cp */
+	ret = dev_write_block(cp, cp_blk_no++);
+	ASSERT(ret >= 0);
+
+	/* skip payload */
+	cp_blk_no += get_sb(cp_payload);
+	/* skip orphan blocks */
+	cp_blk_no += orphan_blks;
+
+	/* update summary blocks having nullified journal entries */
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+		u64 ssa_blk;
+
+		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
+		ASSERT(ret >= 0);
+
+		/* update original SSA too */
+		ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
+		ret = dev_write_block(curseg->sum_blk, ssa_blk);
+		ASSERT(ret >= 0);
+	}
+
+	/* write the last cp */
+	ret = dev_write_block(cp, cp_blk_no++);
+	ASSERT(ret >= 0);
 }
 
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
