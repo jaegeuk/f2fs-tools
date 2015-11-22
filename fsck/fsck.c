@@ -1137,14 +1137,13 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	u32 blk_cnt = 0;
 	block_t start_blk, orphan_blkaddr, i, j;
 	struct f2fs_orphan_block *orphan_blk, *new_blk;
-	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	u32 entry_count;
 
-	if (!is_set_ckpt_flags(ckpt, CP_ORPHAN_PRESENT_FLAG))
+	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_ORPHAN_PRESENT_FLAG))
 		return;
 
-	start_blk = __start_cp_addr(sbi) + 1 +
-		le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload);
+	start_blk = __start_cp_addr(sbi) + 1 + get_sb(cp_payload);
 	orphan_blkaddr = __start_sum_addr(sbi) - 1;
 
 	orphan_blk = calloc(BLOCK_SZ, 1);
@@ -1262,8 +1261,8 @@ static void fix_nat_entries(struct f2fs_sb_info *sbi)
 static void fix_checkpoint(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	struct f2fs_super_block *raw_sb = sbi->raw_super;
-	struct f2fs_checkpoint *ckp = F2FS_CKPT(sbi);
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	unsigned long long cp_blk_no;
 	u32 flags = CP_UMOUNT_FLAG;
 	block_t orphan_blks = 0;
@@ -1271,33 +1270,31 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	int ret;
 	u_int32_t crc = 0;
 
-	if (is_set_ckpt_flags(ckp, CP_ORPHAN_PRESENT_FLAG)) {
+	if (is_set_ckpt_flags(cp, CP_ORPHAN_PRESENT_FLAG)) {
 		orphan_blks = __start_sum_addr(sbi) - 1;
 		flags |= CP_ORPHAN_PRESENT_FLAG;
 	}
 
-	ckp->ckpt_flags = cpu_to_le32(flags);
-	ckp->cp_pack_total_block_count =
-		cpu_to_le32(8 + orphan_blks + le32_to_cpu(raw_sb->cp_payload));
+	set_cp(ckpt_flags, flags);
+	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
-	ckp->free_segment_count = cpu_to_le32(fsck->chk.free_segs);
-	ckp->valid_block_count = cpu_to_le32(fsck->chk.valid_blk_cnt);
-	ckp->valid_node_count = cpu_to_le32(fsck->chk.valid_node_cnt);
-	ckp->valid_inode_count = cpu_to_le32(fsck->chk.valid_inode_cnt);
+	set_cp(free_segment_count, fsck->chk.free_segs);
+	set_cp(valid_block_count, fsck->chk.valid_blk_cnt);
+	set_cp(valid_node_count, fsck->chk.valid_node_cnt);
+	set_cp(valid_inode_count, fsck->chk.valid_inode_cnt);
 
-	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, ckp, CHECKSUM_OFFSET);
-	*((__le32 *)((unsigned char *)ckp + CHECKSUM_OFFSET)) =
-							cpu_to_le32(crc);
+	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, cp, CHECKSUM_OFFSET);
+	*((__le32 *)((unsigned char *)cp + CHECKSUM_OFFSET)) = cpu_to_le32(crc);
 
-	cp_blk_no = le32_to_cpu(raw_sb->cp_blkaddr);
+	cp_blk_no = get_sb(cp_blkaddr);
 	if (sbi->cur_cp == 2)
-		cp_blk_no += 1 << le32_to_cpu(raw_sb->log_blocks_per_seg);
+		cp_blk_no += 1 << get_sb(log_blocks_per_seg);
 
-	ret = dev_write_block(ckp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++);
 	ASSERT(ret >= 0);
 
-	for (i = 0; i < le32_to_cpu(raw_sb->cp_payload); i++) {
-		ret = dev_write_block(((unsigned char *)ckp) + i * F2FS_BLKSIZE,
+	for (i = 0; i < get_sb(cp_payload); i++) {
+		ret = dev_write_block(((unsigned char *)cp) + i * F2FS_BLKSIZE,
 								cp_blk_no++);
 		ASSERT(ret >= 0);
 	}
@@ -1311,7 +1308,7 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 		ASSERT(ret >= 0);
 	}
 
-	ret = dev_write_block(ckp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++);
 	ASSERT(ret >= 0);
 }
 
