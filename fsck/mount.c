@@ -778,7 +778,7 @@ static void build_curseg(struct f2fs_sb_info *sbi)
 	restore_curseg_summaries(sbi);
 }
 
-inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
+static inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
 {
 	unsigned int end_segno = SM_I(sbi)->segment_count - 1;
 	ASSERT(segno <= end_segno);
