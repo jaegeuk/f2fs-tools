@@ -197,8 +197,17 @@ int main(int argc, char **argv)
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_dev_is_umounted(&config) < 0)
-		return -1;
+	if (f2fs_dev_is_umounted(&config) < 0) {
+		if (!config.ro) {
+			MSG(0, "\tError: Not available on mounted device!\n");
+			return -1;
+		}
+
+		/* allow ro-mounted partition */
+		MSG(0, "Info: Check FS only due to RO\n");
+		config.fix_on = 0;
+		config.auto_fix = 0;
+	}
 
 	/* Get device */
 	if (f2fs_get_device_info(&config) < 0)
@@ -228,7 +237,7 @@ fsck_again:
 	f2fs_do_umount(sbi);
 out:
 	if (config.func == FSCK && config.bug_on) {
-		if (config.fix_on == 0 && config.auto_fix == 0) {
+		if (!config.ro && config.fix_on == 0 && config.auto_fix == 0) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");

@@ -174,7 +174,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 			need_fix = 1;
 		}
 	}
-	if (need_fix) {
+	if (need_fix && !config.ro) {
 		u64 ssa_blk;
 		int ret2;
 
@@ -289,7 +289,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			need_fix = 1;
 		}
 	}
-	if (need_fix) {
+	if (need_fix && !config.ro) {
 		u64 ssa_blk;
 		int ret2;
 
@@ -719,7 +719,7 @@ skip_blkcnt_fix:
 					nid, i_links);
 		}
 	}
-	if (need_fix) {
+	if (need_fix && !config.ro) {
 		/* drop extent information to avoid potential wrong access */
 		node_blk->i.i_ext.len = 0;
 		ret = dev_write_block(node_blk, ni->blk_addr);
@@ -750,7 +750,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			FIX_MSG("[0x%x] dn.addr[%d] = 0", nid, idx);
 		}
 	}
-	if (need_fix) {
+	if (need_fix && !config.ro) {
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
 	}
@@ -1069,7 +1069,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			de_blk->dentry, de_blk->filename,
 			NR_DENTRY_IN_BLOCK, last_blk, encrypted);
 
-	if (dentries < 0) {
+	if (dentries < 0 && !config.ro) {
 		ret = dev_write_block(de_blk, blk_addr);
 		ASSERT(ret >= 0);
 		DBG(1, "[%3d] Dentry Block [0x%x] Fixed hash_codes\n\n",
@@ -1172,7 +1172,8 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			else if (ret)
 				ASSERT_MSG("[0x%x] wrong orphan inode", ino);
 		}
-		if (config.fix_on && entry_count != new_entry_count) {
+		if (!config.ro && config.fix_on &&
+				entry_count != new_entry_count) {
 			new_blk->entry_count = cpu_to_le32(new_entry_count);
 			ret = dev_write_block(new_blk, start_blk + i);
 			ASSERT(ret >= 0);
@@ -1475,7 +1476,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 
 	/* fix global metadata */
-	if (force || (config.bug_on && config.fix_on)) {
+	if (force || (config.bug_on && config.fix_on && !config.ro)) {
 		fix_hard_links(sbi);
 		fix_nat_entries(sbi);
 		rewrite_sit_area_bitmap(sbi);
