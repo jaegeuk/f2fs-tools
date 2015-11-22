@@ -263,6 +263,62 @@ struct f2fs_configuration {
 #define BIT_MASK(nr)	(1 << (nr % BITS_PER_LONG))
 #define BIT_WORD(nr)	(nr / BITS_PER_LONG)
 
+#define set_sb_le64(member, val)		(sb->member = cpu_to_le64(val))
+#define set_sb_le32(member, val)		(sb->member = cpu_to_le32(val))
+#define set_sb_le16(member, val)		(sb->member = cpu_to_le16(val))
+#define get_sb_le64(member)			le64_to_cpu(sb->member)
+#define get_sb_le32(member)			le32_to_cpu(sb->member)
+#define get_sb_le16(member)			le16_to_cpu(sb->member)
+
+#define set_sb(member, val)	\
+			do {						\
+				typeof(sb->member) t;			\
+				switch (sizeof(t)) {			\
+				case 8: set_sb_le64(member, val); break; \
+				case 4: set_sb_le32(member, val); break; \
+				case 2: set_sb_le16(member, val); break; \
+				} \
+			} while(0)
+
+#define get_sb(member)		\
+			({						\
+				typeof(sb->member) t;			\
+				switch (sizeof(t)) {			\
+				case 8: t = get_sb_le64(member); break; \
+				case 4: t = get_sb_le32(member); break; \
+				case 2: t = get_sb_le16(member); break; \
+				} 					\
+				t; \
+			})
+
+#define set_cp_le64(member, val)		(cp->member = cpu_to_le64(val))
+#define set_cp_le32(member, val)		(cp->member = cpu_to_le32(val))
+#define set_cp_le16(member, val)		(cp->member = cpu_to_le16(val))
+#define get_cp_le64(member)			le64_to_cpu(cp->member)
+#define get_cp_le32(member)			le32_to_cpu(cp->member)
+#define get_cp_le16(member)			le16_to_cpu(cp->member)
+
+#define set_cp(member, val)	\
+			do {						\
+				typeof(cp->member) t;			\
+				switch (sizeof(t)) {			\
+				case 8: set_cp_le64(member, val); break; \
+				case 4: set_cp_le32(member, val); break; \
+				case 2: set_cp_le16(member, val); break; \
+				} \
+			} while(0)
+
+#define get_cp(member)		\
+			({						\
+				typeof(cp->member) t;			\
+				switch (sizeof(t)) {			\
+				case 8: t = get_cp_le64(member); break; \
+				case 4: t = get_cp_le32(member); break; \
+				case 2: t = get_cp_le16(member); break; \
+				} 					\
+				t; \
+			})
+
 /*
  * Copied from fs/f2fs/f2fs.h
  */
