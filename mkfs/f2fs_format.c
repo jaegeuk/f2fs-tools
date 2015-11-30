@@ -118,6 +118,19 @@ const char *media_ext_lists[] = {
 	NULL
 };
 
+static bool is_extension_exist(const char *name)
+{
+	int i;
+
+	for (i = 0; i < F2FS_MAX_EXTENSION; i++) {
+		char *ext = (char *)sb.extension_list[i];
+		if (!strcmp(ext, name))
+			return 1;
+	}
+
+	return 0;
+}
+
 static void configure_extension_list(void)
 {
 	const char **extlist = media_ext_lists;
@@ -141,11 +154,12 @@ static void configure_extension_list(void)
 		return;
 
 	/* add user ext list */
-	ue = strtok(ext_str, ",");
+	ue = strtok(ext_str, ", ");
 	while (ue != NULL) {
 		name_len = strlen(ue);
-		memcpy(sb.extension_list[i++], ue, name_len);
-		ue = strtok(NULL, ",");
+		if (!is_extension_exist(ue))
+			memcpy(sb.extension_list[i++], ue, name_len);
+		ue = strtok(NULL, ", ");
 		if (i >= F2FS_MAX_EXTENSION)
 			break;
 	}
