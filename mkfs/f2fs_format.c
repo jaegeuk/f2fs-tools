@@ -157,8 +157,13 @@ static void configure_extension_list(void)
 	ue = strtok(ext_str, ", ");
 	while (ue != NULL) {
 		name_len = strlen(ue);
+		if (name_len >= 8) {
+			MSG(0, "\tWarn: Extension name (%s) is too long\n", ue);
+			goto next;
+		}
 		if (!is_extension_exist(ue))
 			memcpy(sb.extension_list[i++], ue, name_len);
+next:
 		ue = strtok(NULL, ", ");
 		if (i >= F2FS_MAX_EXTENSION)
 			break;
