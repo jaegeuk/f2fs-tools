@@ -843,7 +843,10 @@ static void print_dentry(__u32 depth, __u8 *name,
 
 	if (tree_mark_size <= depth) {
 		tree_mark_size *= 2;
-		tree_mark = realloc(tree_mark, tree_mark_size);
+		char *tree_mark_old = realloc(tree_mark, tree_mark_size);
+		ASSERT(tree_mark_old != NULL);
+		tree_mark = tree_mark_old;
+		free(tree_mark_old);
 	}
 
 	if (last_de)
