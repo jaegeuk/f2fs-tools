@@ -783,6 +783,32 @@ static int f2fs_write_super_block(void)
 	return 0;
 }
 
+static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
+{
+	do {
+		if (offset < get_sb(main_blkaddr) ||
+			offset >= get_sb(main_blkaddr) + get_sb(block_count))
+			break;
+
+		if (dev_read_block(raw_node, offset)) {
+			MSG(1, "\tError: While traversing direct node!!!\n");
+			return -1;
+		}
+
+		if (le64_to_cpu(raw_node->footer.cp_ver) == 1)
+			raw_node->footer.cp_ver = 0;
+
+		DBG(1, "\tDiscard dnode, at offset 0x%08"PRIx64"\n", offset);
+		if (dev_write_block(raw_node, offset)) {
+			MSG(1, "\tError: While discarding direct node!!!\n");
+			return -1;
+		}
+		offset = le32_to_cpu(raw_node->footer.next_blkaddr);
+	} while (1);
+
+	return 0;
+}
+
 static int f2fs_write_root_inode(void)
 {
 	struct f2fs_node *raw_node = NULL;
@@ -844,20 +870,16 @@ static int f2fs_write_root_inode(void)
 		return -1;
 	}
 
-	memset(raw_node, 0xff, sizeof(struct f2fs_node));
-
 	/* avoid power-off-recovery based on roll-forward policy */
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += config.cur_seg[CURSEG_WARM_NODE] *
 					config.blks_per_seg;
-        main_area_node_seg_blk_offset *= blk_size_bytes;
 
-	DBG(1, "\tWriting root inode (warm node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
-	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
-		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+	if (discard_obsolete_dnode(raw_node, main_area_node_seg_blk_offset)) {
 		free(raw_node);
 		return -1;
 	}
+
 	free(raw_node);
 	return 0;
 }
