@@ -503,7 +503,8 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 	}
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
 	MSG(0, "Info: total sectors = %"PRIu64" (%"PRIu64" MB)\n",
-				c->total_sectors, c->total_sectors >> 11);
+				c->total_sectors, (c->total_sectors *
+					(c->sector_size >> 9)) >> 11);
 	return 0;
 }
 

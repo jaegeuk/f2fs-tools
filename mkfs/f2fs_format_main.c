@@ -126,13 +126,8 @@ static void f2fs_parse_options(int argc, char *argv[])
 	}
 	config.device_name = argv[optind];
 
-	if ((optind + 1) < argc) {
-		/* We have a sector count. */
+	if ((optind + 1) < argc)
 		config.total_sectors = atoll(argv[optind+1]);
-		MSG(1, "\ttotal_sectors=%"PRIx64" (%"PRIx64" bytes)\n",
-				config.total_sectors,
-				config.total_sectors * 512);
-	}
 	config.segs_per_zone = config.segs_per_sec * config.secs_per_zone;
 }
 
