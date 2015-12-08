@@ -468,7 +468,8 @@ out:
 
 int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 nid, u8 *name, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-		u32 *blk_cnt, struct child_info *child)
+		u32 *blk_cnt, struct child_info *child,
+		struct extent_info *i_ext)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk = NULL;
@@ -487,19 +488,19 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_WARM_NODE);
 			fsck_chk_dnode_blk(sbi, inode, nid, ftype, node_blk,
-					blk_cnt, child, &ni);
+					blk_cnt, child, &ni, i_ext);
 			break;
 		case TYPE_INDIRECT_NODE:
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_COLD_NODE);
 			fsck_chk_idnode_blk(sbi, inode, ftype, node_blk,
-					blk_cnt, child);
+					blk_cnt, child, i_ext);
 			break;
 		case TYPE_DOUBLE_INDIRECT_NODE:
 			f2fs_set_main_bitmap(sbi, ni.blk_addr,
 							CURSEG_COLD_NODE);
 			fsck_chk_didnode_blk(sbi, inode, ftype, node_blk,
-					blk_cnt, child);
+					blk_cnt, child, i_ext);
 			break;
 		default:
 			ASSERT(0);
@@ -512,6 +513,26 @@ err:
 	return -EINVAL;
 }
 
+static void update_i_extent(struct extent_info *i_ext, block_t blkaddr)
+{
+	block_t end_addr;
+
+	if (!i_ext)
+		return;
+
+	end_addr = i_ext->ext.blk_addr + i_ext->ext.len;
+
+	/* TODO: check its file offset later */
+	if (blkaddr >= i_ext->ext.blk_addr && blkaddr < end_addr) {
+		unsigned int offset = blkaddr - i_ext->ext.blk_addr;
+
+		if (f2fs_set_bit(offset, i_ext->map))
+			i_ext->fail = 1;
+		else
+			i_ext->len--;
+	}
+}
+
 /* start with valid nid and blkaddr */
 void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk,
@@ -522,6 +543,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
+	struct extent_info i_extent;
 	unsigned int idx = 0;
 	int need_fix = 0;
 	int ret;
@@ -619,16 +641,28 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 
+	i_extent.ext = node_blk->i.i_ext;
+	i_extent.len = le32_to_cpu(i_extent.ext.len);
+	i_extent.fail = 0;
+	if (i_extent.len) {
+		/* max 126KB */
+		i_extent.map = calloc(i_extent.len, 1);
+		ASSERT(i_extent.map != NULL);
+	}
+
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i); idx++) {
-		if (le32_to_cpu(node_blk->i.i_addr[idx]) != 0) {
+		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[idx]);
+
+		if (blkaddr != 0) {
 			ret = fsck_chk_data_blk(sbi,
-					le32_to_cpu(node_blk->i.i_addr[idx]),
+					blkaddr,
 					&child, (i_blocks == *blk_cnt),
 					ftype, nid, idx, ni->version,
 					file_is_encrypt(node_blk->i.i_advise));
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
+				update_i_extent(&i_extent, blkaddr);
 			} else if (config.fix_on) {
 				node_blk->i.i_addr[idx] = 0;
 				need_fix = 1;
@@ -639,6 +673,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	/* check node blocks in inode */
 	for (idx = 0; idx < 5; idx++) {
+		block_t blkaddr = le32_to_cpu(node_blk->i.i_nid[idx]);
+
 		if (idx == 0 || idx == 1)
 			ntype = TYPE_DIRECT_NODE;
 		else if (idx == 2 || idx == 3)
@@ -648,10 +684,11 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		else
 			ASSERT(0);
 
-		if (le32_to_cpu(node_blk->i.i_nid[idx]) != 0) {
+		if (blkaddr != 0) {
 			ret = fsck_chk_node_blk(sbi, &node_blk->i,
-					le32_to_cpu(node_blk->i.i_nid[idx]),
-					NULL, ftype, ntype, blk_cnt, &child);
+					blkaddr,
+					NULL, ftype, ntype, blk_cnt, &child,
+					&i_extent);
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (config.fix_on) {
@@ -660,6 +697,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 				FIX_MSG("[0x%x] i_nid[%d] = 0", nid, idx);
 			}
 		}
+	}
+	if (i_extent.len || i_extent.fail) {
+		ASSERT_MSG("ino: 0x%x has wrong ext: untouched=%d, overlap=%d",
+					nid, i_extent.len, i_extent.fail);
+		if (config.fix_on)
+			need_fix = 1;
 	}
 check:
 	if (i_blocks != *blk_cnt) {
@@ -729,21 +772,25 @@ skip_blkcnt_fix:
 
 int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 nid, enum FILE_TYPE ftype, struct f2fs_node *node_blk,
-		u32 *blk_cnt, struct child_info *child, struct node_info *ni)
+		u32 *blk_cnt, struct child_info *child, struct node_info *ni,
+		struct extent_info *i_ext)
 {
 	int idx, ret;
 	int need_fix = 0;
 
 	for (idx = 0; idx < ADDRS_PER_BLOCK; idx++) {
-		if (le32_to_cpu(node_blk->dn.addr[idx]) == 0x0)
+		block_t blkaddr = le32_to_cpu(node_blk->dn.addr[idx]);
+
+		if (blkaddr == 0x0)
 			continue;
 		ret = fsck_chk_data_blk(sbi,
-			le32_to_cpu(node_blk->dn.addr[idx]),
-			child, le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
+			blkaddr, child,
+			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version,
 			file_is_encrypt(inode->i_advise));
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
+			update_i_extent(i_ext, blkaddr);
 		} else if (config.fix_on) {
 			node_blk->dn.addr[idx] = 0;
 			need_fix = 1;
@@ -759,7 +806,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 
 int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt,
-		struct child_info *child)
+		struct child_info *child, struct extent_info *i_ext)
 {
 	int ret;
 	int i = 0;
@@ -769,7 +816,8 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
 				le32_to_cpu(node_blk->in.nid[i]), NULL,
-				ftype, TYPE_DIRECT_NODE, blk_cnt, child);
+				ftype, TYPE_DIRECT_NODE, blk_cnt, child,
+				i_ext);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
 		else if (ret == -EINVAL)
@@ -780,7 +828,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 
 int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt,
-		struct child_info *child)
+		struct child_info *child, struct extent_info *i_ext)
 {
 	int i = 0;
 	int ret = 0;
@@ -790,7 +838,8 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			continue;
 		ret = fsck_chk_node_blk(sbi, inode,
 				le32_to_cpu(node_blk->in.nid[i]), NULL,
-				ftype, TYPE_INDIRECT_NODE, blk_cnt, child);
+				ftype, TYPE_INDIRECT_NODE, blk_cnt, child,
+				i_ext);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
 		else if (ret == -EINVAL)
@@ -999,7 +1048,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
 				NULL, le32_to_cpu(dentry[i].ino), name,
-				ftype, TYPE_INODE, &blk_cnt, NULL);
+				ftype, TYPE_INODE, &blk_cnt, NULL, NULL);
 
 		if (ret && config.fix_on) {
 			int j;
@@ -1165,7 +1214,7 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			blk_cnt = 1;
 			ret = fsck_chk_node_blk(sbi, NULL, ino, NULL,
 					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt,
-					NULL);
+					NULL, NULL);
 			if (!ret)
 				new_blk->ino[new_entry_count++] =
 							orphan_blk->ino[j];
