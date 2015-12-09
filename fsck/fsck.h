@@ -132,6 +132,8 @@ extern void fsck_free(struct f2fs_sb_info *);
 extern int f2fs_do_mount(struct f2fs_sb_info *);
 extern void f2fs_do_umount(struct f2fs_sb_info *);
 
+extern void print_raw_sb_info(struct f2fs_super_block *);
+
 /* dump.c */
 struct dump_option {
 	nid_t nid;

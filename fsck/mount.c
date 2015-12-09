@@ -99,10 +99,8 @@ void print_node_info(struct f2fs_node *node_block)
 	}
 }
 
-void print_raw_sb_info(struct f2fs_sb_info *sbi)
+void print_raw_sb_info(struct f2fs_super_block *sb)
 {
-	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
-
 	if (!config.dbg_lv)
 		return;
 
@@ -1292,7 +1290,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 			return -1;
 	}
 
-	print_raw_sb_info(sbi);
+	print_raw_sb_info(F2FS_RAW_SUPER(sbi));
 
 	init_sb_info(sbi);
 
