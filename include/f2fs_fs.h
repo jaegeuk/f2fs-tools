@@ -221,18 +221,22 @@ enum f2fs_config_func {
 	FSCK,
 	DUMP,
 	DEFRAG,
+	RESIZE,
 };
 
 struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
+	u_int32_t new_reserved_segments;
 	double overprovision;
+	double new_overprovision;
 	u_int32_t cur_seg[6];
 	u_int32_t segs_per_sec;
 	u_int32_t secs_per_zone;
 	u_int32_t segs_per_zone;
 	u_int32_t start_sector;
 	u_int64_t total_sectors;
+	u_int64_t target_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
 	__u8 init_version[VERSION_LEN + 1];
@@ -277,6 +281,9 @@ struct f2fs_configuration {
 #define get_sb_le64(member)			le64_to_cpu(sb->member)
 #define get_sb_le32(member)			le32_to_cpu(sb->member)
 #define get_sb_le16(member)			le16_to_cpu(sb->member)
+#define get_newsb_le64(member)			le64_to_cpu(new_sb->member)
+#define get_newsb_le32(member)			le32_to_cpu(new_sb->member)
+#define get_newsb_le16(member)			le16_to_cpu(new_sb->member)
 
 #define set_sb(member, val)	\
 			do {						\
@@ -295,6 +302,16 @@ struct f2fs_configuration {
 				case 8: t = get_sb_le64(member); break; \
 				case 4: t = get_sb_le32(member); break; \
 				case 2: t = get_sb_le16(member); break; \
+				} 					\
+				t; \
+			})
+#define get_newsb(member)		\
+			({						\
+				typeof(new_sb->member) t;		\
+				switch (sizeof(t)) {			\
+				case 8: t = get_newsb_le64(member); break; \
+				case 4: t = get_newsb_le32(member); break; \
+				case 2: t = get_newsb_le16(member); break; \
 				} 					\
 				t; \
 			})

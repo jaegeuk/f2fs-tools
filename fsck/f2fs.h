@@ -323,9 +323,9 @@ static inline block_t sum_blk_addr(struct f2fs_sb_info *sbi, int base, int type)
 #define segno_in_journal(jnl, i)        (jnl->sit_j.entries[i].segno)
 
 #define SIT_ENTRY_OFFSET(sit_i, segno)                                  \
-	(segno % sit_i->sents_per_block)
+	((segno) % sit_i->sents_per_block)
 #define SIT_BLOCK_OFFSET(sit_i, segno)                                  \
-	(segno / SIT_ENTRY_PER_BLOCK)
+	((segno) / SIT_ENTRY_PER_BLOCK)
 #define TOTAL_SEGS(sbi) (SM_I(sbi)->main_segments)
 
 static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)

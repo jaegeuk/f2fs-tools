@@ -52,6 +52,15 @@ void defrag_usage()
 	exit(1);
 }
 
+void resize_usage()
+{
+	MSG(0, "\nUsage: resize.f2fs [options] device\n");
+	MSG(0, "[options]:\n");
+	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -t target sectors [default: device size]\n");
+	exit(1);
+}
+
 void f2fs_parse_options(int argc, char *argv[])
 {
 	int option = 0;
@@ -203,6 +212,34 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 			ASSERT(ret >= 0);
 		}
+	} else if (!strcmp("resize.f2fs", prog)) {
+		const char *option_string = "d:t:";
+
+		config.func = RESIZE;
+		while ((option = getopt(argc, argv, option_string)) != EOF) {
+			int ret = 0;
+
+			switch (option) {
+			case 'd':
+				config.dbg_lv = atoi(optarg);
+				MSG(0, "Info: Debug level = %d\n",
+							config.dbg_lv);
+				break;
+			case 't':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%"PRIu64"",
+							&config.target_sectors);
+				else
+					ret = sscanf(optarg, "%"PRIx64"",
+							&config.target_sectors);
+				break;
+			default:
+				MSG(0, "\tError: Unknown option %c\n", option);
+				resize_usage();
+				break;
+			}
+			ASSERT(ret >= 0);
+		}
 	}
 
 	if ((optind + 1) != argc) {
@@ -213,6 +250,8 @@ void f2fs_parse_options(int argc, char *argv[])
 			dump_usage();
 		else if (config.func == DEFRAG)
 			defrag_usage();
+		else if (config.func == RESIZE)
+			resize_usage();
 	}
 	config.device_name = argv[optind];
 }
@@ -345,6 +384,27 @@ out_range:
 	return -1;
 }
 
+static int do_resize(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (!config.target_sectors)
+		config.target_sectors = config.total_sectors;
+
+	if (config.target_sectors > config.total_sectors) {
+		ASSERT_MSG("Out-of-range Target=0x%"PRIx64" / 0x%"PRIx64"",
+				config.target_sectors, config.total_sectors);
+		return -1;
+	}
+
+	if (config.target_sectors ==
+			(get_sb(block_count) << get_sb(log_sectors_per_block))) {
+		ASSERT_MSG("Nothing to resize; it's same");
+		return -1;
+	}
+	return f2fs_resize(sbi);
+}
+
 int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
@@ -393,6 +453,10 @@ fsck_again:
 	case DEFRAG:
 		ret = do_defrag(sbi);
 		if (ret)
+			goto out_err;
+		break;
+	case RESIZE:
+		if (do_resize(sbi))
 			goto out_err;
 		break;
 	}

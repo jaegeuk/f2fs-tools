@@ -179,4 +179,6 @@ extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
 /* defrag.c */
 int f2fs_defragment(struct f2fs_sb_info *, u64, u64, u64, int);
 
+/* resize.c */
+int f2fs_resize(struct f2fs_sb_info *);
 #endif /* _FSCK_H_ */
