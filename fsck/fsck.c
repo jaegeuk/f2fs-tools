@@ -820,7 +820,7 @@ static void convert_encrypted_name(unsigned char *name, int len,
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
-		unsigned long *bitmap,
+		unsigned char *bitmap,
 		struct f2fs_dir_entry *dentry,
 		int max, int idx, int last_blk, int encrypted)
 {
@@ -837,7 +837,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	name_len = le16_to_cpu(dentry[idx].name_len);
 	next_idx = idx + (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
 
-	bit_offset = find_next_bit(bitmap, max, next_idx);
+	bit_offset = find_next_bit_le(bitmap, max, next_idx);
 	if (bit_offset >= max && last_blk)
 		last_de = 1;
 
@@ -889,7 +889,7 @@ static int f2fs_check_hash_code(struct f2fs_dir_entry *dentry,
 }
 
 static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
-			unsigned long *bitmap,
+			unsigned char *bitmap,
 			struct f2fs_dir_entry *dentry,
 			__u8 (*filenames)[F2FS_SLOT_LEN],
 			int max, int last_blk, int encrypted)
@@ -946,7 +946,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 		ftype = dentry[i].file_type;
 		if ((ftype <= F2FS_FT_UNKNOWN || ftype > F2FS_FT_LAST_FILE_TYPE)) {
-			ASSERT_MSG("Bad dentry 0x%x with unexpected ftype 0x%x", i, ftype);
+			ASSERT_MSG("Bad dentry 0x%x with unexpected ftype 0x%x", ino, ftype);
 			if (config.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x with bad ftype 0x%x",
 					i, ftype);
@@ -1036,7 +1036,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 
 	fsck->dentry_depth++;
 	dentries = __chk_dentries(sbi, child,
-			(unsigned long *)de_blk->dentry_bitmap,
+			de_blk->dentry_bitmap,
 			de_blk->dentry, de_blk->filename,
 			NR_INLINE_DENTRY, 1,
 			file_is_encrypt(node_blk->i.i_advise));
@@ -1068,7 +1068,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 
 	fsck->dentry_depth++;
 	dentries = __chk_dentries(sbi, child,
-			(unsigned long *)de_blk->dentry_bitmap,
+			de_blk->dentry_bitmap,
 			de_blk->dentry, de_blk->filename,
 			NR_DENTRY_IN_BLOCK, last_blk, encrypted);
 

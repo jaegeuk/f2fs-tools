@@ -75,10 +75,10 @@ int get_bits_in_byte(unsigned char n)
 	return bits_in_byte[n];
 }
 
-int set_bit(unsigned int nr,void * addr)
+int set_bit(unsigned int nr, void *addr)
 {
-	int             mask, retval;
-	unsigned char   *ADDR = (unsigned char *) addr;
+	int mask, retval;
+	unsigned char *ADDR = (unsigned char *)addr;
 
 	ADDR += nr >> 3;
 	mask = 1 << ((nr & 0x07));
@@ -87,10 +87,10 @@ int set_bit(unsigned int nr,void * addr)
 	return retval;
 }
 
-int clear_bit(unsigned int nr, void * addr)
+int clear_bit(unsigned int nr, void *addr)
 {
-	int             mask, retval;
-	unsigned char   *ADDR = (unsigned char *) addr;
+	int mask, retval;
+	unsigned char *ADDR = (unsigned char *)addr;
 
 	ADDR += nr >> 3;
 	mask = 1 << ((nr & 0x07));
@@ -99,7 +99,7 @@ int clear_bit(unsigned int nr, void * addr)
 	return retval;
 }
 
-int test_bit(unsigned int nr, const void * addr)
+int test_bit(unsigned int nr, const void *addr)
 {
 	const __u32 *p = (const __u32 *)addr;
 
@@ -142,24 +142,10 @@ int f2fs_clear_bit(unsigned int nr, char *addr)
 	return ret;
 }
 
-static inline unsigned long __ffs(unsigned long word)
+static inline unsigned long __ffs(unsigned char word)
 {
 	int num = 0;
 
-#if BITS_PER_LONG == 64
-	if ((word & 0xffffffff) == 0) {
-		num += 32;
-		word >>= 32;
-	}
-#endif
-	if ((word & 0xffff) == 0) {
-		num += 16;
-		word >>= 16;
-	}
-	if ((word & 0xff) == 0) {
-		num += 8;
-		word >>= 8;
-	}
 	if ((word & 0xf) == 0) {
 		num += 4;
 		word >>= 4;
@@ -173,43 +159,45 @@ static inline unsigned long __ffs(unsigned long word)
 	return num;
 }
 
-unsigned long find_next_bit(const unsigned long *addr, unsigned long size,
-                unsigned long offset)
+/* Copied from linux/lib/find_bit.c */
+#define BITMAP_FIRST_BYTE_MASK(start) (0xff << ((start) & (BITS_PER_BYTE - 1)))
+
+static unsigned long _find_next_bit_le(const unsigned char *addr,
+		unsigned long nbits, unsigned long start, char invert)
 {
-        const unsigned long *p = addr + BIT_WORD(offset);
-        unsigned long result = offset & ~(BITS_PER_LONG-1);
-        unsigned long tmp;
+	unsigned char tmp;
 
-        if (offset >= size)
-                return size;
-        size -= result;
-        offset %= BITS_PER_LONG;
-        if (offset) {
-                tmp = *(p++);
-                tmp &= (~0UL << offset);
-                if (size < BITS_PER_LONG)
-                        goto found_first;
-                if (tmp)
-                        goto found_middle;
-                size -= BITS_PER_LONG;
-                result += BITS_PER_LONG;
-        }
-        while (size & ~(BITS_PER_LONG-1)) {
-                if ((tmp = *(p++)))
-                        goto found_middle;
-                result += BITS_PER_LONG;
-                size -= BITS_PER_LONG;
-        }
-        if (!size)
-                return result;
-        tmp = *p;
+	if (!nbits || start >= nbits)
+		return nbits;
 
-found_first:
-        tmp &= (~0UL >> (BITS_PER_LONG - size));
-        if (tmp == 0UL)		/* Are any bits set? */
-                return result + size;   /* Nope. */
-found_middle:
-        return result + __ffs(tmp);
+	tmp = addr[start / BITS_PER_BYTE] ^ invert;
+
+	/* Handle 1st word. */
+	tmp &= BITMAP_FIRST_BYTE_MASK(start);
+	start = round_down(start, BITS_PER_BYTE);
+
+	while (!tmp) {
+		start += BITS_PER_BYTE;
+		if (start >= nbits)
+			return nbits;
+
+		tmp = addr[start / BITS_PER_BYTE] ^ invert;
+	}
+
+	return min(start + __ffs(tmp), nbits);
+}
+
+unsigned long find_next_bit_le(const unsigned char *addr, unsigned long size,
+		unsigned long offset)
+{
+	return _find_next_bit_le(addr, size, offset, 0);
+}
+
+
+unsigned long find_next_zero_bit_le(const unsigned char *addr,
+		unsigned long size, unsigned long offset)
+{
+	return _find_next_bit_le(addr, size, offset, 0xff);
 }
 
 /*

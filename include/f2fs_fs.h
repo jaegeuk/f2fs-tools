@@ -320,6 +320,23 @@ struct f2fs_configuration {
 			})
 
 /*
+ * Copied from include/linux/kernel.h
+ */
+#define __round_mask(x, y)	((__typeof__(x))((y)-1))
+#define round_down(x, y)	((x) & ~__round_mask(x, y))
+#define min(x, y) ({				\
+	typeof(x) _min1 = (x);			\
+	typeof(y) _min2 = (y);			\
+	(void) (&_min1 == &_min2);		\
+	_min1 < _min2 ? _min1 : _min2; })
+
+#define max(x, y) ({				\
+	typeof(x) _max1 = (x);			\
+	typeof(y) _max2 = (y);			\
+	(void) (&_max1 == &_max2);		\
+	_max1 > _max2 ? _max1 : _max2; })
+
+/*
  * Copied from fs/f2fs/f2fs.h
  */
 #define	NR_CURSEG_DATA_TYPE	(3)
@@ -834,8 +851,10 @@ extern int test_bit(unsigned int nr, const void * addr);
 extern int f2fs_test_bit(unsigned int, const char *);
 extern int f2fs_set_bit(unsigned int, char *);
 extern int f2fs_clear_bit(unsigned int, char *);
-extern unsigned long find_next_bit(const unsigned long *,
-				unsigned long, unsigned long);
+extern unsigned long find_next_bit_le(const unsigned char *, unsigned long,
+		unsigned long);
+extern unsigned long find_next_zero_bit_le(const unsigned char *, unsigned long,
+		unsigned long);
 
 extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
