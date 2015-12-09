@@ -886,4 +886,32 @@ extern struct f2fs_configuration config;
 #define ZONE_ALIGN(blks)	ALIGN(blks, config.blks_per_seg * \
 					config.segs_per_zone)
 
+static inline double get_best_overprovision(struct f2fs_super_block *sb)
+{
+	double reserved, ovp, candidate, end, diff, space;
+	double max_ovp = 0, max_space = 0;
+
+	if (get_sb(segment_count_main) < 256) {
+		candidate = 10;
+		end = 95;
+		diff = 5;
+	} else {
+		candidate = 0.01;
+		end = 10;
+		diff = 0.01;
+	}
+
+	for (; candidate <= end; candidate += diff) {
+		reserved = (2 * (100 / candidate + 1) + 6) *
+						get_sb(segs_per_sec);
+		ovp = (get_sb(segment_count_main) - reserved) * candidate / 100;
+		space = get_sb(segment_count_main) - reserved - ovp;
+		if (max_space < space) {
+			max_space = space;
+			max_ovp = candidate;
+		}
+	}
+	return max_ovp;
+}
+
 #endif	/*__F2FS_FS_H */

@@ -117,34 +117,6 @@ next:
 	free(config.extension_list);
 }
 
-static double get_best_overprovision(void)
-{
-	double reserved, ovp, candidate, end, diff, space;
-	double max_ovp = 0, max_space = 0;
-
-	if (get_sb(segment_count_main) < 256) {
-		candidate = 10;
-		end = 95;
-		diff = 5;
-	} else {
-		candidate = 0.01;
-		end = 10;
-		diff = 0.01;
-	}
-
-	for (; candidate <= end; candidate += diff) {
-		reserved = (2 * (100 / candidate + 1) + 6) *
-						get_sb(segs_per_sec);
-		ovp = (get_sb(segment_count_main) - reserved) * candidate / 100;
-		space = get_sb(segment_count_main) - reserved - ovp;
-		if (max_space < space) {
-			max_space = space;
-			max_ovp = candidate;
-		}
-	}
-	return max_ovp;
-}
-
 static int f2fs_prepare_super_block(void)
 {
 	u_int32_t blk_size_bytes;
@@ -302,7 +274,7 @@ static int f2fs_prepare_super_block(void)
 
 	/* Let's determine the best reserved and overprovisioned space */
 	if (config.overprovision == 0)
-		config.overprovision = get_best_overprovision();
+		config.overprovision = get_best_overprovision(sb);
 
 	config.reserved_segments =
 			(2 * (100 / config.overprovision + 1) + 6)
