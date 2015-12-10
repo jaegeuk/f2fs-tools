@@ -60,6 +60,7 @@ struct f2fs_nm_info {
 
 	char *nat_bitmap;
 	int bitmap_size;
+	char *nid_bitmap;
 };
 
 struct seg_entry {
@@ -124,6 +125,44 @@ struct f2fs_sm_info {
 	unsigned int ovp_segments;
 };
 
+struct f2fs_dentry_ptr {
+	struct inode *inode;
+	u8 *bitmap;
+	struct f2fs_dir_entry *dentry;
+	__u8 (*filename)[F2FS_SLOT_LEN];
+	int max;
+};
+
+struct dentry {
+	char *path;
+	char *full_path;
+	const u8 *name;
+	int len;
+	char *link;
+	unsigned long size;
+	u8 file_type;
+	u16 mode;
+	u16 uid;
+	u16 gid;
+	u32 *inode;
+	u32 mtime;
+	char *secon;
+	uint64_t capabilities;
+	nid_t ino;
+	nid_t pino;
+};
+
+/* different from dnode_of_data in kernel */
+struct dnode_of_data {
+	struct f2fs_node *inode_blk;	/* inode page */
+	struct f2fs_node *node_blk;	/* cached direct node page */
+	nid_t nid;
+	unsigned int ofs_in_node;
+	block_t data_blkaddr;
+	block_t node_blkaddr;
+	int idirty, ndirty;
+};
+
 struct f2fs_sb_info {
 	struct f2fs_fsck *fsck;
 
@@ -160,6 +199,7 @@ struct f2fs_sb_info {
 	u32 s_next_generation;                  /* for NFS support */
 
 	unsigned int cur_victim_sec;            /* current victim section num */
+	u32 free_segments;
 };
 
 static inline struct f2fs_super_block *F2FS_RAW_SUPER(struct f2fs_sb_info *sbi)
@@ -313,7 +353,6 @@ static inline block_t sum_blk_addr(struct f2fs_sb_info *sbi, int base, int type)
 		- (base + 1) + type;
 }
 
-
 #define nats_in_cursum(jnl)             (le16_to_cpu(jnl->n_nats))
 #define sits_in_cursum(jnl)             (le16_to_cpu(jnl->n_sits))
 
@@ -395,6 +434,42 @@ static inline void node_info_from_raw_nat(struct node_info *ni,
 	ni->ino = le32_to_cpu(raw_nat->ino);
 	ni->blk_addr = le32_to_cpu(raw_nat->block_addr);
 	ni->version = raw_nat->version;
+}
+
+static inline void set_summary(struct f2fs_summary *sum, nid_t nid,
+			unsigned int ofs_in_node, unsigned char version)
+{
+	sum->nid = cpu_to_le32(nid);
+	sum->ofs_in_node = cpu_to_le16(ofs_in_node);
+	sum->version = version;
+}
+
+#define S_SHIFT 12
+static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
+	[S_IFREG >> S_SHIFT]    = F2FS_FT_REG_FILE,
+	[S_IFDIR >> S_SHIFT]    = F2FS_FT_DIR,
+	[S_IFCHR >> S_SHIFT]    = F2FS_FT_CHRDEV,
+	[S_IFBLK >> S_SHIFT]    = F2FS_FT_BLKDEV,
+	[S_IFIFO >> S_SHIFT]    = F2FS_FT_FIFO,
+	[S_IFSOCK >> S_SHIFT]   = F2FS_FT_SOCK,
+	[S_IFLNK >> S_SHIFT]    = F2FS_FT_SYMLINK,
+};
+
+static inline void set_de_type(struct f2fs_dir_entry *de, umode_t mode)
+{
+	de->file_type = f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
+}
+
+static inline void *inline_xattr_addr(struct f2fs_inode *inode)
+{
+	return (void *)&(inode->i_addr[DEF_ADDRS_PER_INODE_INLINE_XATTR]);
+}
+
+static inline int inline_xattr_size(struct f2fs_inode *inode)
+{
+	if (inode->i_inline & F2FS_INLINE_XATTR)
+		return F2FS_INLINE_XATTR_ADDRS << 2;
+	return 0;
 }
 
 extern int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid, struct f2fs_nat_entry *ne);

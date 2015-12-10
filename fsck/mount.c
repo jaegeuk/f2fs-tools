@@ -25,6 +25,16 @@ static u32 get_free_segments(struct f2fs_sb_info *sbi)
 	return free_segs;
 }
 
+void update_free_segments(struct f2fs_sb_info *sbi)
+{
+	char *progress = "-*|*-";
+	static int i = 0;
+
+	MSG(0, "\r [ %c ] Free segments: 0x%x", progress[i % 5], get_free_segments(sbi));
+	fflush(stdout);
+	i++;
+}
+
 void print_inode_info(struct f2fs_inode *inode, int name)
 {
 	unsigned int i = 0;
@@ -624,6 +634,74 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+static pgoff_t current_nat_addr(struct f2fs_sb_info *sbi, nid_t start)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	pgoff_t block_off;
+	pgoff_t block_addr;
+	int seg_off;
+
+	block_off = NAT_BLOCK_OFFSET(start);
+	seg_off = block_off >> sbi->log_blocks_per_seg;
+
+	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
+			(seg_off << sbi->log_blocks_per_seg << 1) +
+			(block_off & ((1 << sbi->log_blocks_per_seg) -1)));
+
+	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+		block_addr += sbi->blocks_per_seg;
+
+	return block_addr;
+}
+
+static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	int nid_bitmap_size = (nm_i->max_nid + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
+	struct f2fs_summary_block *sum = curseg->sum_blk;
+	struct f2fs_journal *journal = &sum->journal;
+	struct f2fs_nat_block nat_block;
+	block_t start_blk;
+	nid_t nid;
+	int i;
+
+	if (!(config.func == SLOAD))
+		return 0;
+
+	nm_i->nid_bitmap = (char *)calloc(nid_bitmap_size, 1);
+	if (!nm_i->nid_bitmap)
+		return -ENOMEM;
+
+	/* arbitrarily set 0 bit */
+	f2fs_set_bit(0, nm_i->nid_bitmap);
+
+	memset((void *)&nat_block, 0, sizeof(struct f2fs_nat_block));
+
+	for (nid = 0; nid < nm_i->max_nid; nid++) {
+		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
+			int ret;
+
+			start_blk = current_nat_addr(sbi, nid);
+			ret = dev_read_block((void *)&nat_block, start_blk);
+			ASSERT(ret >= 0);
+		}
+
+		if (nat_block.entries[nid % NAT_ENTRY_PER_BLOCK].block_addr)
+			f2fs_set_bit(nid, nm_i->nid_bitmap);
+	}
+
+	for (i = 0; i < nats_in_cursum(journal); i++) {
+		block_t addr;
+
+		addr = le32_to_cpu(nat_in_journal(journal, i).block_addr);
+		nid = le32_to_cpu(nid_in_journal(journal, i));
+		if (addr != NULL_ADDR)
+			f2fs_set_bit(nid, nm_i->nid_bitmap);
+	}
+	return 0;
+}
+
 int init_node_manager(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
@@ -654,7 +732,7 @@ int init_node_manager(struct f2fs_sb_info *sbi)
 
 	/* copy version bitmap */
 	memcpy(nm_i->nat_bitmap, version_bitmap, nm_i->bitmap_size);
-	return 0;
+	return f2fs_init_nid_bitmap(sbi);
 }
 
 int build_node_manager(struct f2fs_sb_info *sbi)
@@ -1171,7 +1249,8 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 	free(node_blk);
 }
 
-void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t nid, block_t newaddr)
+void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
+					nid_t nid, block_t newaddr)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
@@ -1196,6 +1275,8 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t nid, block_t newaddr)
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
 
+	if (ino)
+		nat_block->entries[entry_off].ino = cpu_to_le32(ino);
 	nat_block->entries[entry_off].block_addr = cpu_to_le32(newaddr);
 
 	ret = dev_write_block(nat_block, block_addr);
@@ -1567,7 +1648,7 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
 		/* update se->types */
 		reset_curseg(sbi, i);
 
-		DBG(0, "Move curseg[%d] %x -> %x after %"PRIx64"\n",
+		DBG(1, "Move curseg[%d] %x -> %x after %"PRIx64"\n",
 				i, old_segno, curseg->segno, from);
 	}
 }
@@ -1682,6 +1763,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	set_cp(ckpt_flags, flags);
 
 	set_cp(free_segment_count, get_free_segments(sbi));
+	set_cp(valid_block_count, sbi->total_valid_block_count);
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
 	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, cp, CHECKSUM_OFFSET);
@@ -1915,6 +1997,8 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	unsigned int i;
 
 	/* free nm_info */
+	if (config.func == SLOAD)
+		free(nm_i->nid_bitmap);
 	free(nm_i->nat_bitmap);
 	free(sbi->nm_info);
 

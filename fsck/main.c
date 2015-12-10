@@ -5,6 +5,11 @@
  *             http://www.samsung.com/
  * Copyright (c) 2015 Jaegeuk Kim <jaegeuk@kernel.org>
  *  : implement defrag.f2fs
+ * Copyright (C) 2015 Huawei Ltd.
+ *   Hou Pengyang <houpengyang@huawei.com>
+ *   Liu Shuoran <liushuoran@huawei.com>
+ *   Jaegeuk Kim <jaegeuk@kernel.org>
+ *  : add sload.f2fs
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -58,6 +63,16 @@ void resize_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -t target sectors [default: device size]\n");
+	exit(1);
+}
+
+void sload_usage()
+{
+	MSG(0, "\nUsage: sload.f2fs [options] device\n");
+	MSG(0, "[options]:\n");
+	MSG(0, "  -f source directory [path of the source directory]\n");
+	MSG(0, "  -t mount point [prefix of target fs path, default:/]\n");
+	MSG(0, "  -d debug level [default:0]\n");
 	exit(1);
 }
 
@@ -240,6 +255,29 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 			ASSERT(ret >= 0);
 		}
+	} else if (!strcmp("sload.f2fs", prog)) {
+		const char *option_string = "d:f:t:";
+
+		config.func = SLOAD;
+		while ((option = getopt(argc, argv, option_string)) != EOF) {
+			switch (option) {
+			case 'd':
+				config.dbg_lv = atoi(optarg);
+				MSG(0, "Info: Debug level = %d\n",
+						config.dbg_lv);
+				break;
+			case 'f':
+				config.from_dir = (char *)optarg;
+				break;
+			case 't':
+				config.mount_point = (char *)optarg;
+				break;
+			default:
+				MSG(0, "\tError: Unknown option %c\n", option);
+				sload_usage();
+				break;
+			}
+		}
 	}
 
 	if ((optind + 1) != argc) {
@@ -252,6 +290,8 @@ void f2fs_parse_options(int argc, char *argv[])
 			defrag_usage();
 		else if (config.func == RESIZE)
 			resize_usage();
+		else if (config.func == SLOAD)
+			sload_usage();
 	}
 	config.device_name = argv[optind];
 }
@@ -405,6 +445,19 @@ static int do_resize(struct f2fs_sb_info *sbi)
 	return f2fs_resize(sbi);
 }
 
+static int do_sload(struct f2fs_sb_info *sbi)
+{
+	if (!config.from_dir) {
+		MSG(0, "\tError: Need source directory\n");
+		sload_usage();
+		return -1;
+	}
+	if (!config.mount_point)
+		config.mount_point = "/";
+
+	return f2fs_sload(sbi, config.from_dir, config.mount_point, NULL, NULL);
+}
+
 int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
@@ -458,6 +511,9 @@ fsck_again:
 	case RESIZE:
 		if (do_resize(sbi))
 			goto out_err;
+		break;
+	case SLOAD:
+		do_sload(sbi);
 		break;
 	}
 

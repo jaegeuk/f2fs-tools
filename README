@@ -12,6 +12,7 @@ Your should install the following packages.
  - pkg-config
  - autoconf
  - libtool
+ - libselinux1-dev
 
 Initial compilation
 -------------------

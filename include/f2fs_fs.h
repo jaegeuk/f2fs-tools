@@ -28,6 +28,7 @@ typedef u32		block_t;
 typedef u32		nid_t;
 typedef u8		bool;
 typedef unsigned long	pgoff_t;
+typedef unsigned short	umode_t;
 
 #if HAVE_BYTESWAP_H
 #include <byteswap.h>
@@ -208,6 +209,9 @@ static inline uint64_t bswap_64(uint64_t val)
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 #define CHECKSUM_OFFSET		4092
 
+#define F2FS_BYTES_TO_BLK(bytes)    ((bytes) >> F2FS_BLKSIZE_BITS)
+#define F2FS_BLKSIZE_BITS 12
+
 /* for mkfs */
 #define	F2FS_NUMBER_OF_CHECKPOINT_PACK	2
 #define	DEFAULT_SECTOR_SIZE		512
@@ -222,6 +226,7 @@ enum f2fs_config_func {
 	DUMP,
 	DEFRAG,
 	RESIZE,
+	SLOAD,
 };
 
 struct f2fs_configuration {
@@ -264,6 +269,10 @@ struct f2fs_configuration {
 	u_int64_t defrag_start;
 	u_int64_t defrag_len;
 	u_int64_t defrag_target;
+
+	/* sload parameters */
+	char *from_dir;
+	char *mount_point;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -529,7 +538,9 @@ struct f2fs_extent {
 #define F2FS_NAME_LEN		255
 #define F2FS_INLINE_XATTR_ADDRS	50	/* 200 bytes for inline xattrs */
 #define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
-#define ADDRS_PER_INODE(fi)	addrs_per_inode(fi)
+#define ADDRS_PER_INODE(i)	addrs_per_inode(i)
+#define DEF_ADDRS_PER_INODE_INLINE_XATTR				\
+		(DEF_ADDRS_PER_INODE - F2FS_INLINE_XATTR_ADDRS)
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
 
@@ -545,8 +556,8 @@ struct f2fs_extent {
 #define F2FS_DATA_EXIST		0x08	/* file inline data exist flag */
 #define F2FS_INLINE_DOTS	0x10	/* file having implicit dot dentries */
 
-#define MAX_INLINE_DATA		(sizeof(__le32) * (DEF_ADDRS_PER_INODE - \
-						F2FS_INLINE_XATTR_ADDRS - 1))
+#define MAX_INLINE_DATA (sizeof(__le32) *				\
+			(DEF_ADDRS_PER_INODE_INLINE_XATTR - 1))
 
 #define INLINE_DATA_OFFSET	(PAGE_CACHE_SIZE - sizeof(struct node_footer) \
 				- sizeof(__le32)*(DEF_ADDRS_PER_INODE + 5 - 1))
@@ -634,6 +645,7 @@ struct f2fs_node {
  * For NAT entries
  */
 #define NAT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_nat_entry))
+#define NAT_BLOCK_OFFSET(start_nid) (start_nid / NAT_ENTRY_PER_BLOCK)
 
 struct f2fs_nat_entry {
 	__u8 version;		/* latest version of cached nat entry */

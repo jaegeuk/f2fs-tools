@@ -51,7 +51,7 @@ static int migrate_block(struct f2fs_sb_info *sbi, u64 from, u64 to)
 		update_data_blkaddr(sbi, le32_to_cpu(sum.nid),
 				le16_to_cpu(sum.ofs_in_node), to);
 	else
-		update_nat_blkaddr(sbi, le32_to_cpu(sum.nid), to);
+		update_nat_blkaddr(sbi, 0, le32_to_cpu(sum.nid), to);
 
 	DBG(0, "Migrate %s block %"PRIx64" -> %"PRIx64"\n",
 					IS_DATASEG(type) ? "data" : "node",
