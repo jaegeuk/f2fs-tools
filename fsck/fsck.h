@@ -132,6 +132,10 @@ extern void fsck_free(struct f2fs_sb_info *);
 extern int f2fs_do_mount(struct f2fs_sb_info *);
 extern void f2fs_do_umount(struct f2fs_sb_info *);
 
+extern void move_curseg_info(struct f2fs_sb_info *, u64);
+extern void write_curseg_info(struct f2fs_sb_info *);
+extern int find_next_free_block(struct f2fs_sb_info *, u64 *, int, int);
+
 extern void print_raw_sb_info(struct f2fs_super_block *);
 
 /* dump.c */

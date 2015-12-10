@@ -1368,12 +1368,23 @@ int check_curseg_offset(struct f2fs_sb_info *sbi)
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
 		struct seg_entry *se;
+		int j, nblocks;
 
 		se = get_seg_entry(sbi, curseg->segno);
 		if (f2fs_test_bit(curseg->next_blkoff,
-				(const char *)se->cur_valid_map) == 1) {
+					(const char *)se->cur_valid_map)) {
 			ASSERT_MSG("Next block offset is not free, type:%d", i);
 			return -EINVAL;
+		}
+		if (curseg->alloc_type == SSR)
+			return 0;
+
+		nblocks = sbi->blocks_per_seg;
+		for (j = curseg->next_blkoff + 1; j < nblocks; j++) {
+			if (f2fs_test_bit(j, (const char *)se->cur_valid_map)) {
+				ASSERT_MSG("LFS must have free section:%d", i);
+				return -EINVAL;
+			}
 		}
 	}
 	return 0;
@@ -1528,6 +1539,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (force || (config.bug_on && config.fix_on && !config.ro)) {
 		fix_hard_links(sbi);
 		fix_nat_entries(sbi);
+		move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
+		write_curseg_info(sbi);
 		rewrite_sit_area_bitmap(sbi);
 		fix_checkpoint(sbi);
 	}

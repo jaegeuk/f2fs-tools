@@ -1133,6 +1133,103 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	}
 }
 
+int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
+{
+	struct seg_entry *se;
+	u32 segno;
+	u64 offset;
+
+	while (*to >= SM_I(sbi)->main_blkaddr &&
+			*to < F2FS_RAW_SUPER(sbi)->block_count) {
+		segno = GET_SEGNO(sbi, *to);
+		offset = OFFSET_IN_SEG(sbi, *to);
+
+		se = get_seg_entry(sbi, segno);
+
+		if (se->valid_blocks == sbi->blocks_per_seg)
+			goto next;
+
+		if (se->valid_blocks == 0 && !(segno % sbi->segs_per_sec) &&
+					!IS_CUR_SEGNO(sbi, segno, type)) {
+			struct seg_entry *se2;
+			int i;
+
+			for (i = 0; i < sbi->segs_per_sec; i++) {
+				se2 = get_seg_entry(sbi, segno + i);
+				if (se2->valid_blocks)
+					break;
+			}
+			if (i == sbi->segs_per_sec)
+				return 0;
+		}
+
+		if (se->type == type &&
+			!f2fs_test_bit(offset, (const char *)se->cur_valid_map))
+			return 0;
+next:
+		*to = left ? *to - 1: *to + 1;
+	}
+	return -1;
+}
+
+void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
+{
+	int i, ret;
+
+	/* update summary blocks having nullified journal entries */
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+		u32 old_segno;
+		u64 ssa_blk, to;
+
+		/* update original SSA too */
+		ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
+		ret = dev_write_block(curseg->sum_blk, ssa_blk);
+		ASSERT(ret >= 0);
+
+		to = from;
+		ret = find_next_free_block(sbi, &to, 0, i);
+		ASSERT(ret == 0);
+
+		old_segno = curseg->segno;
+		curseg->segno = GET_SEGNO(sbi, to);
+		curseg->next_blkoff = OFFSET_IN_SEG(sbi, to);
+		curseg->alloc_type = SSR;
+
+		/* update new segno */
+		ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
+		ret = dev_read_block(curseg->sum_blk, ssa_blk);
+		ASSERT(ret >= 0);
+
+		/* update se->types */
+		reset_curseg(sbi, i);
+
+		DBG(0, "Move curseg[%d] %x -> %x after %"PRIx64"\n",
+				i, old_segno, curseg->segno, from);
+	}
+}
+
+void write_curseg_info(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	int i;
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		cp->alloc_type[i] = CURSEG_I(sbi, i)->alloc_type;
+		if (i < CURSEG_HOT_NODE) {
+			set_cp(cur_data_segno[i], CURSEG_I(sbi, i)->segno);
+			set_cp(cur_data_blkoff[i],
+					CURSEG_I(sbi, i)->next_blkoff);
+		} else {
+			int n = i - CURSEG_HOT_NODE;
+
+			set_cp(cur_node_segno[n], CURSEG_I(sbi, i)->segno);
+			set_cp(cur_node_blkoff[n],
+					CURSEG_I(sbi, i)->next_blkoff);
+		}
+	}
+}
+
 int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
 					struct f2fs_nat_entry *raw_nat)
 {
