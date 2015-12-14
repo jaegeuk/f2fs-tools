@@ -892,7 +892,9 @@ static void print_dentry(__u32 depth, __u8 *name,
 
 	if (tree_mark_size <= depth) {
 		tree_mark_size *= 2;
+		ASSERT(tree_mark_size != 0);
 		tree_mark = realloc(tree_mark, tree_mark_size);
+		ASSERT(tree_mark != NULL);
 	}
 
 	if (last_de)
@@ -1256,6 +1258,7 @@ void fsck_init(struct f2fs_sb_info *sbi)
 
 	build_sit_area_bitmap(sbi);
 
+	ASSERT(tree_mark_size != 0);
 	tree_mark = calloc(tree_mark_size, 1);
 	ASSERT(tree_mark != NULL);
 }
