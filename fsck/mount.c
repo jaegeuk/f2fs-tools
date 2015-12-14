@@ -99,6 +99,14 @@ void print_node_info(struct f2fs_node *node_block)
 	}
 }
 
+static void DISP_label(u_int16_t *name)
+{
+	char buffer[MAX_VOLUME_NAME];
+
+	utf16_to_utf8(buffer, name, MAX_VOLUME_NAME, MAX_VOLUME_NAME);
+	printf("%-30s" "\t\t[%s]\n", "volum_name", buffer);
+}
+
 void print_raw_sb_info(struct f2fs_super_block *sb)
 {
 	if (!config.dbg_lv)
@@ -111,6 +119,9 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 
 	DISP_u32(sb, magic);
 	DISP_u32(sb, major_ver);
+
+	DISP_label(sb->volume_name);
+
 	DISP_u32(sb, minor_ver);
 	DISP_u32(sb, log_sectorsize);
 	DISP_u32(sb, log_sectors_per_block);

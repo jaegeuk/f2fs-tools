@@ -398,6 +398,8 @@ enum {
 
 #define F2FS_FEATURE_ENCRYPT	0x0001
 
+#define MAX_VOLUME_NAME		512
+
 /*
  * For superblock
  */
@@ -430,7 +432,7 @@ struct f2fs_super_block {
 	__le32 node_ino;		/* node inode number */
 	__le32 meta_ino;		/* meta inode number */
 	__u8 uuid[16];			/* 128-bit uuid for volume */
-	__le16 volume_name[512];	/* volume name */
+	__le16 volume_name[MAX_VOLUME_NAME];	/* volume name */
 	__le32 extension_count;		/* # of extensions below */
 	__u8 extension_list[F2FS_MAX_EXTENSION][8];	/* extension array */
 	__le32 cp_payload;
@@ -847,7 +849,8 @@ enum {
 	SSR
 };
 
-extern void ASCIIToUNICODE(u_int16_t *, u_int8_t *);
+extern int utf8_to_utf16(u_int16_t *, const char *, size_t, size_t);
+extern int utf16_to_utf8(char *, const u_int16_t *, size_t, size_t);
 extern int log_base_2(u_int32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
