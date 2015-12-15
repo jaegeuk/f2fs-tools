@@ -769,8 +769,8 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_addr[0] = cpu_to_le32(data_blk_nor);
 
 	raw_node->i.i_ext.fofs = 0;
-	raw_node->i.i_ext.blk_addr = cpu_to_le32(data_blk_nor);
-	raw_node->i.i_ext.len = cpu_to_le32(1);
+	raw_node->i.i_ext.blk_addr = 0;
+	raw_node->i.i_ext.len = 0;
 
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += config.cur_seg[CURSEG_HOT_NODE] *
