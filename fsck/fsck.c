@@ -869,8 +869,7 @@ static void convert_encrypted_name(unsigned char *name, int len,
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
-		unsigned char *bitmap,
-		struct f2fs_dir_entry *dentry,
+		u8 *bitmap, struct f2fs_dir_entry *dentry,
 		int max, int idx, int last_blk, int encrypted)
 {
 	int last_de = 0;
@@ -937,8 +936,7 @@ static int f2fs_check_hash_code(struct f2fs_dir_entry *dentry,
 }
 
 static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
-			unsigned char *bitmap,
-			struct f2fs_dir_entry *dentry,
+			u8 *bitmap, struct f2fs_dir_entry *dentry,
 			__u8 (*filenames)[F2FS_SLOT_LEN],
 			int max, int last_blk, int encrypted)
 {

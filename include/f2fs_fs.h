@@ -855,16 +855,14 @@ extern int log_base_2(u_int32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
 extern int get_bits_in_byte(unsigned char n);
-extern int test_and_set_bit_le(unsigned int, unsigned char *);
-extern int test_and_clear_bit_le(unsigned int, unsigned char*);
-extern int test_bit_le(unsigned int, const unsigned char *);
+extern int test_and_set_bit_le(u32, u8 *);
+extern int test_and_clear_bit_le(u32, u8 *);
+extern int test_bit_le(u32, const u8 *);
 extern int f2fs_test_bit(unsigned int, const char *);
 extern int f2fs_set_bit(unsigned int, char *);
 extern int f2fs_clear_bit(unsigned int, char *);
-extern unsigned long find_next_bit_le(const unsigned char *, unsigned long,
-		unsigned long);
-extern unsigned long find_next_zero_bit_le(const unsigned char *, unsigned long,
-		unsigned long);
+extern unsigned long find_next_bit_le(const u8 *, u64, u64);
+extern unsigned long find_next_zero_bit_le(const u8 *, u64, u64);
 
 extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
