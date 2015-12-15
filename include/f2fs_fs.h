@@ -855,9 +855,9 @@ extern int log_base_2(u_int32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
 
 extern int get_bits_in_byte(unsigned char n);
-extern int set_bit(unsigned int nr,void * addr);
-extern int clear_bit(unsigned int nr, void * addr);
-extern int test_bit(unsigned int nr, const void * addr);
+extern int test_and_set_bit_le(unsigned int, unsigned char *);
+extern int test_and_clear_bit_le(unsigned int, unsigned char*);
+extern int test_bit_le(unsigned int, const unsigned char *);
 extern int f2fs_test_bit(unsigned int, const char *);
 extern int f2fs_set_bit(unsigned int, char *);
 extern int f2fs_clear_bit(unsigned int, char *);

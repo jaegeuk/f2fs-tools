@@ -862,7 +862,8 @@ static int f2fs_add_default_dentry_root(void)
 	memcpy(dent_blk->filename[1], "..", 2);
 
 	/* bitmap for . and .. */
-	dent_blk->dentry_bitmap[0] = (1 << 1) | (1 << 0);
+	test_and_set_bit_le(0, dent_blk->dentry_bitmap);
+	test_and_set_bit_le(1, dent_blk->dentry_bitmap);
 	blk_size_bytes = 1 << get_sb(log_blocksize);
 	data_blk_offset = get_sb(main_blkaddr);
 	data_blk_offset += config.cur_seg[CURSEG_HOT_DATA] *

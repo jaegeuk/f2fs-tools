@@ -955,7 +955,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 	/* readahead inode blocks */
 	for (i = 0; i < max; i++) {
-		if (test_bit(i, bitmap) == 0)
+		if (test_bit_le(i, bitmap) == 0)
 			continue;
 
 		ino = le32_to_cpu(dentry[i].ino);
@@ -975,7 +975,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 	}
 
 	for (i = 0; i < max;) {
-		if (test_bit(i, bitmap) == 0) {
+		if (test_bit_le(i, bitmap) == 0) {
 			i++;
 			continue;
 		}
@@ -985,7 +985,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			if (config.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x with bad ino 0x%x",
 					i, le32_to_cpu(dentry[i].ino));
-				clear_bit(i, bitmap);
+				test_and_clear_bit_le(i, bitmap);
 				fixed = 1;
 			}
 			i++;
@@ -998,7 +998,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			if (config.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x with bad ftype 0x%x",
 					i, ftype);
-				clear_bit(i, bitmap);
+				test_and_clear_bit_le(i, bitmap);
 				fixed = 1;
 			}
 			i++;
@@ -1011,7 +1011,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			ASSERT_MSG("Bad dentry 0x%x with zero name_len", i);
 			if (config.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x", i);
-				clear_bit(i, bitmap);
+				test_and_clear_bit_le(i, bitmap);
 				fixed = 1;
 			}
 			i++;
@@ -1053,7 +1053,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			int j;
 
 			for (j = 0; j < slots; j++)
-				clear_bit(i + j, bitmap);
+				test_and_clear_bit_le(i + j, bitmap);
 			FIX_MSG("Unlink [0x%x] - %s len[0x%x], type[0x%x]",
 					le32_to_cpu(dentry[i].ino),
 					name, name_len,

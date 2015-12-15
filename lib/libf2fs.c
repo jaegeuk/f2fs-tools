@@ -234,37 +234,31 @@ int get_bits_in_byte(unsigned char n)
 	return bits_in_byte[n];
 }
 
-int set_bit(unsigned int nr, void *addr)
+int test_and_set_bit_le(unsigned int nr, unsigned char *addr)
 {
 	int mask, retval;
-	unsigned char *ADDR = (unsigned char *)addr;
 
-	ADDR += nr >> 3;
+	addr += nr >> 3;
 	mask = 1 << ((nr & 0x07));
-	retval = mask & *ADDR;
-	*ADDR |= mask;
+	retval = mask & *addr;
+	*addr |= mask;
 	return retval;
 }
 
-int clear_bit(unsigned int nr, void *addr)
+int test_and_clear_bit_le(unsigned int nr, unsigned char *addr)
 {
 	int mask, retval;
-	unsigned char *ADDR = (unsigned char *)addr;
 
-	ADDR += nr >> 3;
+	addr += nr >> 3;
 	mask = 1 << ((nr & 0x07));
-	retval = mask & *ADDR;
-	*ADDR &= ~mask;
+	retval = mask & *addr;
+	*addr &= ~mask;
 	return retval;
 }
 
-int test_bit(unsigned int nr, const void *addr)
+int test_bit_le(unsigned int nr, const unsigned char *addr)
 {
-	const __u32 *p = (const __u32 *)addr;
-
-	nr = nr ^ 0;
-
-	return ((1 << (nr & 31)) & (p[nr >> 5])) != 0;
+	return ((1 << (nr & 7)) & (addr[nr >> 3]));
 }
 
 int f2fs_test_bit(unsigned int nr, const char *p)
