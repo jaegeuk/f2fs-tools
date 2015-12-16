@@ -1383,11 +1383,11 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 
 		se = get_seg_entry(sbi, segno);
 
-		if (se->valid_blocks == sbi->blocks_per_seg)
+		if (se->valid_blocks == sbi->blocks_per_seg ||
+				IS_CUR_SEGNO(sbi, segno, type))
 			goto next;
 
-		if (se->valid_blocks == 0 && !(segno % sbi->segs_per_sec) &&
-					!IS_CUR_SEGNO(sbi, segno, type)) {
+		if (se->valid_blocks == 0 && !(segno % sbi->segs_per_sec)) {
 			struct seg_entry *se2;
 			int i;
 
