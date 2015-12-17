@@ -295,7 +295,7 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 #define GET_R2L_SEGNO(sbi, segno)	(segno + FREE_I_START_SEGNO(sbi))
 
 #define START_BLOCK(sbi, segno)	(SM_I(sbi)->main_blkaddr +		\
-	(segno << sbi->log_blocks_per_seg))
+	((segno) << sbi->log_blocks_per_seg))
 
 static inline struct curseg_info *CURSEG_I(struct f2fs_sb_info *sbi, int type)
 {

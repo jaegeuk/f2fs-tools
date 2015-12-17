@@ -1401,9 +1401,11 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 		se = get_seg_entry(sbi, segno);
 
 		if (se->valid_blocks == sbi->blocks_per_seg ||
-				IS_CUR_SEGNO(sbi, segno, type))
-			goto next;
-
+				IS_CUR_SEGNO(sbi, segno, type)) {
+			*to = left ? START_BLOCK(sbi, segno) - 1:
+						START_BLOCK(sbi, segno + 1);
+			continue;
+		}
 		if (se->valid_blocks == 0 && !(segno % sbi->segs_per_sec)) {
 			struct seg_entry *se2;
 			int i;
@@ -1420,7 +1422,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 		if (se->type == type &&
 			!f2fs_test_bit(offset, (const char *)se->cur_valid_map))
 			return 0;
-next:
+
 		*to = left ? *to - 1: *to + 1;
 	}
 	return -1;
