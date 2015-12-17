@@ -11,6 +11,20 @@
 #include "fsck.h"
 #include <locale.h>
 
+static u32 get_free_segments(struct f2fs_sb_info *sbi)
+{
+	u32 i, free_segs = 0;
+
+	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+		struct seg_entry *se = get_seg_entry(sbi, i);
+
+		if (se->valid_blocks == 0x0 &&
+				!IS_CUR_SEGNO(sbi, i, NO_CHECK_TYPE))
+			free_segs++;
+	}
+	return free_segs;
+}
+
 void print_inode_info(struct f2fs_inode *inode, int name)
 {
 	unsigned int i = 0;
@@ -1376,6 +1390,9 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 	u32 segno;
 	u64 offset;
 
+	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
+		return -1;
+
 	while (*to >= SM_I(sbi)->main_blkaddr &&
 			*to < F2FS_RAW_SUPER(sbi)->block_count) {
 		segno = GET_SEGNO(sbi, *to);
@@ -1543,10 +1560,8 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t orphan_blks = 0;
-	u32 free_segs = 0;
 	unsigned long long cp_blk_no;
 	u32 flags = CP_UMOUNT_FLAG;
-	unsigned int segno;
 	int i, ret;
 	u_int32_t crc = 0;
 
@@ -1557,14 +1572,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 
 	set_cp(ckpt_flags, flags);
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
-		struct seg_entry *se = get_seg_entry(sbi, segno);
-
-		if (se->valid_blocks == 0x0 &&
-				!IS_CUR_SEGNO(sbi, segno, NO_CHECK_TYPE))
-			free_segs++;
-	}
-	set_cp(free_segment_count, free_segs);
+	set_cp(free_segment_count, get_free_segments(sbi));
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
 	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, cp, CHECKSUM_OFFSET);
