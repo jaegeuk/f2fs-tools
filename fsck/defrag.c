@@ -90,6 +90,7 @@ int f2fs_defragment(struct f2fs_sb_info *sbi, u64 from, u64 len, u64 to, int lef
 
 	/* update curseg info; can update sit->types */
 	move_curseg_info(sbi, to);
+	zero_journal_entries(sbi);
 	write_curseg_info(sbi);
 
 	/* flush dirty sit entries */

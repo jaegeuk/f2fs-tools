@@ -1446,6 +1446,14 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
 	}
 }
 
+void zero_journal_entries(struct f2fs_sb_info *sbi)
+{
+	int i;
+
+	for (i = 0; i < NO_CHECK_TYPE; i++)
+		CURSEG_I(sbi, i)->sum_blk->n_nats = 0;
+}
+
 void write_curseg_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
