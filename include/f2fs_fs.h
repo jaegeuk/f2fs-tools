@@ -861,8 +861,8 @@ extern int test_bit_le(u32, const u8 *);
 extern int f2fs_test_bit(unsigned int, const char *);
 extern int f2fs_set_bit(unsigned int, char *);
 extern int f2fs_clear_bit(unsigned int, char *);
-extern unsigned long find_next_bit_le(const u8 *, u64, u64);
-extern unsigned long find_next_zero_bit_le(const u8 *, u64, u64);
+extern u64 find_next_bit_le(const u8 *, u64, u64);
+extern u64 find_next_zero_bit_le(const u8 *, u64, u64);
 
 extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
