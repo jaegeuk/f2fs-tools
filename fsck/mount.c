@@ -761,13 +761,16 @@ void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
 	sum_blk->footer.entry_type = IS_NODESEG(se->type) ? SUM_TYPE_NODE :
 							SUM_TYPE_DATA;
 
-	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
-					type == SEG_TYPE_MAX) {
+	/* write SSA all the time */
+	if (type < SEG_TYPE_MAX) {
 		u64 ssa_blk = GET_SUM_BLKADDR(sbi, segno);
 		ret = dev_write_block(sum_blk, ssa_blk);
 		ASSERT(ret >= 0);
-		free(sum_blk);
 	}
+
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX)
+		free(sum_blk);
 }
 
 static void restore_curseg_summaries(struct f2fs_sb_info *sbi)
