@@ -1438,6 +1438,7 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
 	/* update summary blocks having nullified journal entries */
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
+		struct f2fs_summary_block buf;
 		u32 old_segno;
 		u64 ssa_blk, to;
 
@@ -1457,8 +1458,10 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
 
 		/* update new segno */
 		ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
-		ret = dev_read_block(curseg->sum_blk, ssa_blk);
+		ret = dev_read_block(&buf, ssa_blk);
 		ASSERT(ret >= 0);
+
+		memcpy(curseg->sum_blk, &buf, SUM_ENTRIES_SIZE);
 
 		/* update se->types */
 		reset_curseg(sbi, i);
