@@ -432,7 +432,7 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	sum_compact = calloc(F2FS_BLKSIZE, 1);
-	if (sum == NULL) {
+	if (sum_compact == NULL) {
 		MSG(1, "\tError: Calloc Failed for summay buffer!!!\n");
 		goto free_sum;
 	}
