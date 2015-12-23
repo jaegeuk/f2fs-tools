@@ -2,7 +2,7 @@
 .\"             http://www.samsung.com/
 .\"  Written by Jaegeuk Kim <jaegeuk.kim@samsung.com>
 .\"
-.TH MKFS.F2FS 8 "January 2013" "f2fs-tools version 1.2.0"
+.TH MKFS.F2FS 8
 .SH NAME
 mkfs.f2fs \- create an F2FS file system
 .SH SYNOPSIS
@@ -36,11 +36,13 @@ mkfs.f2fs \- create an F2FS file system
 .I debugging-level
 ]
 .I device
+.I [sectors]
 .SH DESCRIPTION
 .B mkfs.f2fs
 is used to create a f2fs file system (usually in a disk partition).
 \fIdevice\fP is the special file corresponding to the device (e.g.
 \fI/dev/sdXX\fP).
+\fIsectors\fP is optionally given for specifing the filesystem size.
 .PP
 The exit code returned by
 .B mkfs.f2fs
