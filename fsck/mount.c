@@ -469,11 +469,8 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 		cur_page = cp2;
 		sbi->cur_cp = 2;
 		version = cp2_version;
-	} else {
-		free(cp1);
-		free(cp2);
+	} else
 		goto fail_no_cp;
-	}
 
 	MSG(0, "Info: CKPT version = %llx\n", version);
 
@@ -495,8 +492,10 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 			memcpy(ckpt + i * blk_size, cur_page, blk_size);
 		}
 	}
-	free(cp1);
-	free(cp2);
+	if (cp1)
+		free(cp1);
+	if (cp2)
+		free(cp2);
 	return 0;
 
 fail_no_cp:
