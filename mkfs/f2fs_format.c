@@ -126,7 +126,8 @@ static int f2fs_prepare_super_block(void)
 	u_int32_t sit_segments;
 	u_int32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
 	u_int32_t total_valid_blks_available;
-	u_int64_t zone_align_start_offset, diff, total_meta_segments;
+	u_int64_t zone_align_start_offset, diff;
+	u_int64_t total_meta_zones, total_meta_segments;
 	u_int32_t sit_bitmap_size, max_sit_bitmap_size;
 	u_int32_t max_nat_bitmap_size, max_nat_segments;
 	u_int32_t total_zones;
@@ -259,16 +260,16 @@ static int f2fs_prepare_super_block(void)
 		set_sb(segment_count_ssa, get_sb(segment_count_ssa) +
 			(config.segs_per_zone - diff));
 
-	set_sb(main_blkaddr, get_sb(ssa_blkaddr) + get_sb(segment_count_ssa) *
-			 config.blks_per_seg);
+	total_meta_zones = ZONE_ALIGN(total_meta_segments *
+						config.blks_per_seg);
 
-	set_sb(segment_count_main, get_sb(segment_count) -
-			(get_sb(segment_count_ckpt) +
-			 get_sb(segment_count_sit) +
-			 get_sb(segment_count_nat) +
-			 get_sb(segment_count_ssa)));
+	set_sb(main_blkaddr, get_sb(segment0_blkaddr) + total_meta_zones *
+				config.segs_per_zone * config.blks_per_seg);
 
-	set_sb(section_count, get_sb(segment_count_main) / config.segs_per_sec);
+	total_zones = get_sb(segment_count) / (config.segs_per_zone) -
+							total_meta_zones;
+
+	set_sb(section_count, total_zones * config.secs_per_zone);
 
 	set_sb(segment_count_main, get_sb(section_count) * config.segs_per_sec);
 
@@ -297,7 +298,6 @@ static int f2fs_prepare_super_block(void)
 	set_sb(meta_ino, 2);
 	set_sb(root_ino, 3);
 
-	total_zones = get_sb(segment_count_main) / (config.segs_per_zone);
 	if (total_zones <= 6) {
 		MSG(1, "\tError: %d zones: Need more zones \
 			by shrinking zone size\n", total_zones);
