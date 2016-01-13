@@ -21,7 +21,7 @@ static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
 	int fix = 0;
 
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk));
-	if (se->type < 0 || se->type >= NO_CHECK_TYPE)
+	if (se->type >= NO_CHECK_TYPE)
 		fix = 1;
 	else if (IS_DATASEG(se->type) != IS_DATASEG(type))
 		fix = 1;
@@ -945,7 +945,6 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 	int dentries = 0;
 	u32 blk_cnt;
 	u8 *name;
-	u32 ino;
 	u16 name_len;;
 	int ret = 0;
 	int fixed = 0;
@@ -953,6 +952,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 	/* readahead inode blocks */
 	for (i = 0; i < max; i++) {
+		u32 ino;
+
 		if (test_bit_le(i, bitmap) == 0)
 			continue;
 
@@ -992,7 +993,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 		ftype = dentry[i].file_type;
 		if ((ftype <= F2FS_FT_UNKNOWN || ftype > F2FS_FT_LAST_FILE_TYPE)) {
-			ASSERT_MSG("Bad dentry 0x%x with unexpected ftype 0x%x", ino, ftype);
+			ASSERT_MSG("Bad dentry 0x%x with unexpected ftype 0x%x",
+						le32_to_cpu(dentry[i].ino), ftype);
 			if (config.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x with bad ftype 0x%x",
 					i, ftype);
