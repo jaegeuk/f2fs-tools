@@ -390,7 +390,7 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 	if (crc_offset >= blk_size)
 		goto invalid_cp1;
 
-	crc = *(unsigned int *)((unsigned char *)cp + crc_offset);
+	crc = le32_to_cpu(*(__le32 *)((unsigned char *)cp + crc_offset));
 	if (f2fs_crc_valid(crc, cp, crc_offset))
 		goto invalid_cp1;
 
@@ -408,7 +408,7 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 	if (crc_offset >= blk_size)
 		goto invalid_cp2;
 
-	crc = *(unsigned int *)((unsigned char *)cp + crc_offset);
+	crc = le32_to_cpu(*(__le32 *)((unsigned char *)cp + crc_offset));
 	if (f2fs_crc_valid(crc, cp, crc_offset))
 		goto invalid_cp2;
 
