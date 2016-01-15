@@ -1725,6 +1725,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		ERR_MSG("Checkpoint is polluted\n");
 		return -1;
 	}
+	cp = F2FS_CKPT(sbi);
 
 	print_ckpt_info(sbi);
 
@@ -1739,7 +1740,6 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	config.bug_on = 0;
 
-	cp = F2FS_CKPT(sbi);
 	sbi->total_valid_node_count = get_cp(valid_node_count);
 	sbi->total_valid_inode_count = get_cp(valid_inode_count);
 	sbi->user_block_count = get_cp(user_block_count);
