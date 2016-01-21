@@ -339,6 +339,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 	}
 
 	free(sbi->raw_super);
+	sbi->raw_super = NULL;
 	MSG(0, "\tCan't find a valid F2FS superblock at 0x%x\n", block);
 
 	return -EINVAL;
