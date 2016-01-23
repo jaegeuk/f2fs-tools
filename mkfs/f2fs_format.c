@@ -710,8 +710,7 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 			return -1;
 		}
 
-		if (le64_to_cpu(raw_node->footer.cp_ver) == 1)
-			raw_node->footer.cp_ver = 0;
+		memset(raw_node, 0, F2FS_BLKSIZE);
 
 		DBG(1, "\tDiscard dnode, at offset 0x%08"PRIx64"\n", offset);
 		if (dev_write_block(raw_node, offset)) {
