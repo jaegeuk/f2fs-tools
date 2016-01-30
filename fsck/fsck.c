@@ -129,6 +129,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 {
 	struct f2fs_summary_block *sum_blk;
 	struct f2fs_summary *sum_entry;
+	struct seg_entry * se;
 	u32 segno, offset;
 	int need_fix = 0, ret = 0;
 	int type;
@@ -145,9 +146,16 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 			ret = -EINVAL;
 			goto out;
 		}
-		FIX_MSG("Summary footer indicates a node segment: 0x%x", segno);
-		sum_blk->footer.entry_type = SUM_TYPE_NODE;
+
 		need_fix = 1;
+		se = get_seg_entry(sbi, segno);
+		if(IS_NODESEG(se->type)) {
+			FIX_MSG("Summary footer indicates a node segment: 0x%x", segno);
+			sum_blk->footer.entry_type = SUM_TYPE_NODE;
+		} else {
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	sum_entry = &(sum_blk->entries[offset]);
@@ -235,6 +243,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 {
 	struct f2fs_summary_block *sum_blk;
 	struct f2fs_summary *sum_entry;
+	struct seg_entry * se;
 	u32 segno, offset;
 	int need_fix = 0, ret = 0;
 	int type;
@@ -251,9 +260,16 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			ret = -EINVAL;
 			goto out;
 		}
-		FIX_MSG("Summary footer indicates a data segment: 0x%x", segno);
-		sum_blk->footer.entry_type = SUM_TYPE_DATA;
+
 		need_fix = 1;
+		se = get_seg_entry(sbi, segno);
+		if (IS_DATASEG(se->type)) {
+			FIX_MSG("Summary footer indicates a data segment: 0x%x", segno);
+			sum_blk->footer.entry_type = SUM_TYPE_DATA;
+		} else {
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	sum_entry = &(sum_blk->entries[offset]);
@@ -352,11 +368,6 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		return -EINVAL;
 	}
 
-	if (is_valid_ssa_node_blk(sbi, nid, ni->blk_addr)) {
-		ASSERT_MSG("summary node block is not valid. [0x%x]", nid);
-		return -EINVAL;
-	}
-
 	ret = dev_read_block(node_blk, ni->blk_addr);
 	ASSERT(ret >= 0);
 
@@ -426,6 +437,11 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	else
 		ASSERT_MSG("orphan or xattr nid is duplicated [0x%x]\n",
 				nid);
+
+	if (is_valid_ssa_node_blk(sbi, nid, ni->blk_addr)) {
+		ASSERT_MSG("summary node block is not valid. [0x%x]", nid);
+		return -EINVAL;
+	}
 
 	if (f2fs_test_sit_bitmap(sbi, ni->blk_addr) == 0)
 		ASSERT_MSG("SIT bitmap is 0x0. blk_addr[0x%x]",
