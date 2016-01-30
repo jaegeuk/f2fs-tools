@@ -358,6 +358,11 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	get_node_info(sbi, nid, ni);
+	if (ni->ino == 0) {
+		ASSERT_MSG("nid[0x%x] ino is 0", nid);
+		return -EINVAL;
+	}
+
 	if (ni->blk_addr == NEW_ADDR) {
 		ASSERT_MSG("nid is NEW_ADDR. [0x%x]", nid);
 		return -EINVAL;
