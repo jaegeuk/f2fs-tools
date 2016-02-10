@@ -874,6 +874,36 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	return 0;
 }
 
+static const char *lookup_table =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
+
+/**
+ * digest_encode() -
+ *
+ * Encodes the input digest using characters from the set [a-zA-Z0-9_+].
+ * The encoded string is roughly 4/3 times the size of the input string.
+ */
+static int digest_encode(const char *src, int len, char *dst)
+{
+	int i = 0, bits = 0, ac = 0;
+	char *cp = dst;
+
+	while (i < len) {
+		ac += (((unsigned char) src[i]) << bits);
+		bits += 8;
+		do {
+			*cp++ = lookup_table[ac & 0x3f];
+			ac >>= 6;
+			bits -= 6;
+		} while (bits >= 6);
+		i++;
+	}
+	if (bits)
+		*cp++ = lookup_table[ac & 0x3f];
+	*cp = 0;
+	return cp - dst;
+}
+
 static void convert_encrypted_name(unsigned char *name, int len,
 				unsigned char *new, int encrypted)
 {
@@ -883,15 +913,8 @@ static void convert_encrypted_name(unsigned char *name, int len,
 		return;
 	}
 
-	while (len--) {
-		*new = *name++;
-		if (*new > 128)
-			*new -= 128;
-		if (*new < 32 || *new == 0x7f)
-			*new ^= 0x40;	/* ^@, ^A, ^B; ^? for DEL */
-		new++;
-	}
-	*new = 0;
+	*new = '_';
+	digest_encode((const char *)name, 24, (char *)new + 1);
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
