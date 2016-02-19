@@ -530,17 +530,17 @@ int f2fs_dev_is_umounted(struct f2fs_configuration *c)
 	struct stat st_buf;
 	int ret = 0;
 
-	ret = is_mounted(MOUNTED, c->device_name);
+	/*
+	 * try with /proc/mounts fist to detect RDONLY.
+	 * f2fs_stop_checkpoint makes RO in /proc/mounts while RW in /etc/mtab.
+	 */
+	ret = is_mounted("/proc/mounts", c->device_name);
 	if (ret) {
 		MSG(0, "Info: Mounted device!\n");
 		return -1;
 	}
 
-	/*
-	 * if failed due to /etc/mtab file not present
-	 * try with /proc/mounts.
-	 */
-	ret = is_mounted("/proc/mounts", c->device_name);
+	ret = is_mounted(MOUNTED, c->device_name);
 	if (ret) {
 		MSG(0, "Info: Mounted device!\n");
 		return -1;
