@@ -834,7 +834,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk, u32 *blk_cnt,
 		struct child_info *child, struct extent_info *i_ext)
 {
-	int ret;
+	int need_fix = 0, ret;
 	int i = 0;
 
 	for (i = 0 ; i < NIDS_PER_BLOCK; i++) {
@@ -846,9 +846,26 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				i_ext);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
-		else if (ret == -EINVAL)
-			printf("delete in.nid[i] = 0;\n");
+		else if (ret == -EINVAL) {
+			if (!config.fix_on)
+				printf("should delete in.nid[i] = 0;\n");
+			else {
+				node_blk->in.nid[i] = 0;
+				need_fix = 1;
+				FIX_MSG("Set indirect node 0x%x -> 0\n", i);
+			}
+		}
 	}
+
+	if (need_fix && !config.ro) {
+		struct node_info ni;
+		nid_t nid = le32_to_cpu(node_blk->footer.nid);
+
+		get_node_info(sbi, nid, &ni);
+		ret = dev_write_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
+	}
+
 	return 0;
 }
 
@@ -857,7 +874,7 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		struct child_info *child, struct extent_info *i_ext)
 {
 	int i = 0;
-	int ret = 0;
+	int need_fix = 0, ret = 0;
 
 	for (i = 0; i < NIDS_PER_BLOCK; i++) {
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
@@ -868,9 +885,26 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				i_ext);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
-		else if (ret == -EINVAL)
-			printf("delete in.nid[i] = 0;\n");
+		else if (ret == -EINVAL) {
+			if (!config.fix_on)
+				printf("should delete in.nid[i] = 0;\n");
+			else {
+				node_blk->in.nid[i] = 0;
+				need_fix = 1;
+				FIX_MSG("Set double indirect node 0x%x -> 0\n", i);
+			}
+		}
 	}
+
+	if (need_fix && !config.ro) {
+		struct node_info ni;
+		nid_t nid = le32_to_cpu(node_blk->footer.nid);
+
+		get_node_info(sbi, nid, &ni);
+		ret = dev_write_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
+	}
+
 	return 0;
 }
 
