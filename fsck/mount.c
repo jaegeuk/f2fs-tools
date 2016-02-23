@@ -1683,7 +1683,18 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 						&nat_block->entries[i]);
 				if (ni.blk_addr == 0)
 					continue;
-				ASSERT(nid + i != 0x0);
+				if (nid + i == 0) {
+					/*
+					 * nat entry [0] must be null.  If
+					 * it is corrupted, set its bit in
+					 * nat_area_bitmap, fsck_verify will
+					 * nullify it
+					 */
+					ASSERT_MSG("Invalid nat entry[0]: blk_addr[0x%x]\n",
+						ni.blk_addr);
+					config.fix_on = 1;
+					fsck->chk.valid_nat_entry_cnt--;
+				}
 
 				DBG(3, "nid[0x%8x] addr[0x%16x] ino[0x%8x]\n",
 					nid + i, ni.blk_addr, ni.ino);
