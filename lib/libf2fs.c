@@ -640,6 +640,11 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 		c->total_sectors = wanted_total_sectors;
 
 	}
+	if (c->total_sectors * c->sector_size >
+		(u_int64_t)F2FS_MAX_SEGMENT * 2 * 1024 * 1024) {
+		MSG(0, "\tError: F2FS can support 16TB at most!!!\n");
+		return -1;
+	}
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
 	MSG(0, "Info: total sectors = %"PRIu64" (%"PRIu64" MB)\n",
 				c->total_sectors, (c->total_sectors *
