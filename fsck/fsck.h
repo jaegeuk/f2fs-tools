@@ -23,6 +23,8 @@ struct child_info {
 	u32 links;
 	u32 files;
 	u8 dots;
+	u32 p_ino;		/*parent ino*/
+	u32 pp_ino;		/*parent parent ino*/
 };
 
 struct extent_info {

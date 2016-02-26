@@ -569,6 +569,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
+	child.p_ino = nid;
+	child.pp_ino = le32_to_cpu(node_blk->i.i_pino);
 	struct extent_info i_extent;
 	unsigned int idx = 0;
 	int need_fix = 0;
@@ -803,6 +805,8 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 {
 	int idx, ret;
 	int need_fix = 0;
+	child->p_ino = nid;
+	child->pp_ino = le32_to_cpu(inode->i_pino);
 
 	for (idx = 0; idx < ADDRS_PER_BLOCK; idx++) {
 		block_t blkaddr = le32_to_cpu(node_blk->dn.addr[idx]);
@@ -1018,6 +1022,60 @@ static int f2fs_check_hash_code(struct f2fs_dir_entry *dentry,
 	return 0;
 }
 
+static int __chk_dots_dentries(struct f2fs_sb_info *sbi,
+			       struct f2fs_dir_entry *dentry,
+			       struct child_info *child,
+			       u8 *name, int len,
+			       __u8 (*filename)[F2FS_SLOT_LEN],
+			       int encrypted)
+{
+	int fixed = 0;
+
+	if ((name[0] == '.' && len == 1)) {
+		if (le32_to_cpu(dentry->ino) != child->p_ino) {
+			ASSERT_MSG("Bad inode number[0x%x] for '.', parent_ino is [0x%x]\n",
+				le32_to_cpu(dentry->ino), child->p_ino);
+			dentry->ino = cpu_to_le32(child->p_ino);
+			fixed = 1;
+		}
+	}
+
+	if (name[0] == '.' && name[1] == '.' && len == 2) {
+		if (child->p_ino == F2FS_ROOT_INO(sbi)) {
+			if (le32_to_cpu(dentry->ino) != F2FS_ROOT_INO(sbi)) {
+				ASSERT_MSG("Bad inode number[0x%x] for '..'\n",
+					le32_to_cpu(dentry->ino));
+				dentry->ino = cpu_to_le32(F2FS_ROOT_INO(sbi));
+				fixed = 1;
+			}
+		} else if (le32_to_cpu(dentry->ino) != child->pp_ino) {
+			ASSERT_MSG("Bad inode number[0x%x] for '..', parent parent ino is [0x%x]\n",
+				le32_to_cpu(dentry->ino), child->pp_ino);
+			dentry->ino = cpu_to_le32(child->pp_ino);
+			fixed = 1;
+		}
+	}
+
+	if (f2fs_check_hash_code(dentry, name, len, encrypted))
+		fixed = 1;
+
+	if (name[len] != '\0') {
+		ASSERT_MSG("'.' is not NULL terminated\n");
+		name[len] = '\0';
+		memcpy(*filename, name, len);
+		fixed = 1;
+	}
+	return fixed;
+}
+
+static void nullify_dentry(struct f2fs_dir_entry *dentry, int offs,
+			   __u8 (*filename)[F2FS_SLOT_LEN], u8 **bitmap)
+{
+	memset(dentry, 0, sizeof(struct f2fs_dir_entry));
+	test_and_clear_bit_le(offs, *bitmap);
+	memset(*filename, 0, F2FS_SLOT_LEN);
+}
+
 static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			u8 *bitmap, struct f2fs_dir_entry *dentry,
 			__u8 (*filenames)[F2FS_SLOT_LEN],
@@ -1109,9 +1167,27 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			if ((name[0] == '.' && name_len == 1) ||
 				(name[0] == '.' && name[1] == '.' &&
 							name_len == 2)) {
+				ret = __chk_dots_dentries(sbi, &dentry[i],
+					child, name, name_len, &filenames[i],
+					encrypted);
+				switch (ret) {
+				case 1:
+					fixed = 1;
+				case 0:
+					child->dots++;
+					break;
+				}
+
+				if (child->dots > 2) {
+					ASSERT_MSG("More than one '.' or '..', should delete the extra one\n");
+					nullify_dentry(&dentry[i], i,
+						       &filenames[i], &bitmap);
+					child->dots--;
+					fixed = 1;
+				}
+
 				i++;
 				free(name);
-				child->dots++;
 				continue;
 			}
 		}
