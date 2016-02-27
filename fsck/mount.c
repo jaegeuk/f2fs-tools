@@ -367,7 +367,8 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 
 	total_sectors = get_sb(block_count) << sbi->log_sectors_per_block;
 	MSG(0, "Info: total FS sectors = %"PRIu64" (%"PRIu64" MB)\n",
-				total_sectors, total_sectors >> 11);
+				total_sectors, total_sectors >>
+						(20 - get_sb(log_sectorsize)));
 	return 0;
 }
 
