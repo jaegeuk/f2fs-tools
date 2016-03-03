@@ -1665,7 +1665,14 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 
 			if ((nid + i) == F2FS_NODE_INO(sbi) ||
 					(nid + i) == F2FS_META_INO(sbi)) {
-				ASSERT(nat_block->entries[i].block_addr != 0x0);
+				/* block_addr of node/meta inode should be 0x1 */
+				if (le32_to_cpu(nat_block->entries[i].block_addr) != 0x1) {
+					FIX_MSG("ino: 0x%x node/meta inode, block_addr= 0x%x -> 0x1",
+							nid + i, le32_to_cpu(nat_block->entries[i].block_addr));
+					nat_block->entries[i].block_addr = cpu_to_le32(0x1);
+					ret = dev_write_block(nat_block, block_addr);
+					ASSERT(ret >= 0);
+				}
 				continue;
 			}
 
