@@ -314,13 +314,13 @@ static inline block_t sum_blk_addr(struct f2fs_sb_info *sbi, int base, int type)
 }
 
 
-#define nats_in_cursum(sum)             (le16_to_cpu(sum->n_nats))
-#define sits_in_cursum(sum)             (le16_to_cpu(sum->n_sits))
+#define nats_in_cursum(jnl)             (le16_to_cpu(jnl->n_nats))
+#define sits_in_cursum(jnl)             (le16_to_cpu(jnl->n_sits))
 
-#define nat_in_journal(sum, i)          (sum->nat_j.entries[i].ne)
-#define nid_in_journal(sum, i)          (sum->nat_j.entries[i].nid)
-#define sit_in_journal(sum, i)          (sum->sit_j.entries[i].se)
-#define segno_in_journal(sum, i)        (sum->sit_j.entries[i].segno)
+#define nat_in_journal(jnl, i)          (jnl->nat_j.entries[i].ne)
+#define nid_in_journal(jnl, i)          (jnl->nat_j.entries[i].nid)
+#define sit_in_journal(jnl, i)          (jnl->sit_j.entries[i].se)
+#define segno_in_journal(jnl, i)        (jnl->sit_j.entries[i].segno)
 
 #define SIT_ENTRY_OFFSET(sit_i, segno)                                  \
 	(segno % sit_i->sents_per_block)

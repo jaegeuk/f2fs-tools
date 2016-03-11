@@ -410,6 +410,7 @@ static int f2fs_init_nat_area(void)
 static int f2fs_write_check_point_pack(void)
 {
 	struct f2fs_summary_block *sum = NULL;
+	struct f2fs_journal *journal;
 	u_int32_t blk_size_bytes;
 	u_int64_t cp_seg_blk_offset = 0;
 	u_int32_t crc = 0;
@@ -532,38 +533,39 @@ static int f2fs_write_check_point_pack(void)
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
 	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
 
-	sum->n_nats = cpu_to_le16(1);
-	sum->nat_j.entries[0].nid = sb->root_ino;
-	sum->nat_j.entries[0].ne.version = 0;
-	sum->nat_j.entries[0].ne.ino = sb->root_ino;
-	sum->nat_j.entries[0].ne.block_addr = cpu_to_le32(
+	journal = &sum->journal;
+	journal->n_nats = cpu_to_le16(1);
+	journal->nat_j.entries[0].nid = sb->root_ino;
+	journal->nat_j.entries[0].ne.version = 0;
+	journal->nat_j.entries[0].ne.ino = sb->root_ino;
+	journal->nat_j.entries[0].ne.block_addr = cpu_to_le32(
 			get_sb(main_blkaddr) +
 			get_cp(cur_node_segno[0]) * config.blks_per_seg);
 
-	memcpy(sum_compact_p, &sum->n_nats, SUM_JOURNAL_SIZE);
+	memcpy(sum_compact_p, &journal->n_nats, SUM_JOURNAL_SIZE);
 	sum_compact_p += SUM_JOURNAL_SIZE;
 
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
 	/* inode sit for root */
-	sum->n_sits = cpu_to_le16(6);
-	sum->sit_j.entries[0].segno = cp->cur_node_segno[0];
-	sum->sit_j.entries[0].se.vblocks = cpu_to_le16((CURSEG_HOT_NODE << 10) | 1);
-	f2fs_set_bit(0, (char *)sum->sit_j.entries[0].se.valid_map);
-	sum->sit_j.entries[1].segno = cp->cur_node_segno[1];
-	sum->sit_j.entries[1].se.vblocks = cpu_to_le16((CURSEG_WARM_NODE << 10));
-	sum->sit_j.entries[2].segno = cp->cur_node_segno[2];
-	sum->sit_j.entries[2].se.vblocks = cpu_to_le16((CURSEG_COLD_NODE << 10));
+	journal->n_sits = cpu_to_le16(6);
+	journal->sit_j.entries[0].segno = cp->cur_node_segno[0];
+	journal->sit_j.entries[0].se.vblocks = cpu_to_le16((CURSEG_HOT_NODE << 10) | 1);
+	f2fs_set_bit(0, (char *)journal->sit_j.entries[0].se.valid_map);
+	journal->sit_j.entries[1].segno = cp->cur_node_segno[1];
+	journal->sit_j.entries[1].se.vblocks = cpu_to_le16((CURSEG_WARM_NODE << 10));
+	journal->sit_j.entries[2].segno = cp->cur_node_segno[2];
+	journal->sit_j.entries[2].se.vblocks = cpu_to_le16((CURSEG_COLD_NODE << 10));
 
 	/* data sit for root */
-	sum->sit_j.entries[3].segno = cp->cur_data_segno[0];
-	sum->sit_j.entries[3].se.vblocks = cpu_to_le16((CURSEG_HOT_DATA << 10) | 1);
-	f2fs_set_bit(0, (char *)sum->sit_j.entries[3].se.valid_map);
-	sum->sit_j.entries[4].segno = cp->cur_data_segno[1];
-	sum->sit_j.entries[4].se.vblocks = cpu_to_le16((CURSEG_WARM_DATA << 10));
-	sum->sit_j.entries[5].segno = cp->cur_data_segno[2];
-	sum->sit_j.entries[5].se.vblocks = cpu_to_le16((CURSEG_COLD_DATA << 10));
+	journal->sit_j.entries[3].segno = cp->cur_data_segno[0];
+	journal->sit_j.entries[3].se.vblocks = cpu_to_le16((CURSEG_HOT_DATA << 10) | 1);
+	f2fs_set_bit(0, (char *)journal->sit_j.entries[3].se.valid_map);
+	journal->sit_j.entries[4].segno = cp->cur_data_segno[1];
+	journal->sit_j.entries[4].se.vblocks = cpu_to_le16((CURSEG_WARM_DATA << 10));
+	journal->sit_j.entries[5].segno = cp->cur_data_segno[2];
+	journal->sit_j.entries[5].se.vblocks = cpu_to_le16((CURSEG_COLD_DATA << 10));
 
-	memcpy(sum_compact_p, &sum->n_sits, SUM_JOURNAL_SIZE);
+	memcpy(sum_compact_p, &journal->n_sits, SUM_JOURNAL_SIZE);
 	sum_compact_p += SUM_JOURNAL_SIZE;
 
 	/* hot data summary */
