@@ -244,6 +244,18 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 				config.fix_on = 1;
 			break;
 		}
+	} else {
+		/*
+		 * we can hit this in 3 situations:
+		 *  1. fsck -f, fix_on has already been set to 1 when
+		 *     parsing options;
+		 *  2. fsck -a && CP_FSCK_FLAG is set, fix_on has already
+		 *     been set to 1 when checking CP_FSCK_FLAG;
+		 *  3. fsck -p 1 && error is detected, then bug_on is set,
+		 *     we set fix_on = 1 here, so that fsck can fix errors
+		 *     automatically
+		*/
+		config.fix_on = 1;
 	}
 
 	fsck_chk_orphan_node(sbi);
