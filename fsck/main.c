@@ -22,7 +22,7 @@ void fsck_usage()
 	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
-	MSG(0, "  -p preen mode [default is same as -a]\n");
+	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -t show directory tree [-d -1]\n");
 	exit(1);
 }
@@ -58,15 +58,29 @@ void f2fs_parse_options(int argc, char *argv[])
 	char *prog = basename(argv[0]);
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = "ad:fpt";
+		const char *option_string = "ad:fp:t";
 
 		config.func = FSCK;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
 			case 'a':
-			case 'p':
 				config.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption.\n");
+				break;
+			case 'p':
+				/* preen mode has different levels:
+				 *  0: default level, the same as -a
+				 *  1: check meta
+				 */
+				config.preen_mode = atoi(optarg);
+				if (config.preen_mode < 0)
+					config.preen_mode = PREEN_MODE_0;
+				else if (config.preen_mode >= PREEN_MODE_MAX)
+					config.preen_mode = PREEN_MODE_MAX - 1;
+				if (config.preen_mode == PREEN_MODE_0)
+					config.auto_fix = 1;
+				MSG(0, "Info: Fix the reported corruption in "
+					"preen mode %d\n", config.preen_mode);
 				break;
 			case 'd':
 				config.dbg_lv = atoi(optarg);
@@ -212,6 +226,25 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 	fsck_init(sbi);
 
 	print_cp_state(flag);
+
+	if (!config.fix_on && !config.bug_on) {
+		switch (config.preen_mode) {
+		case PREEN_MODE_1:
+			if (fsck_chk_meta(sbi)) {
+				MSG(0, "[FSCK] F2FS metadata   [Fail]");
+				MSG(0, "\tError: meta does not match, "
+					"force check all\n");
+			} else {
+				MSG(0, "[FSCK] F2FS metadata   [Ok..]");
+				fsck_free(sbi);
+				return;
+			}
+
+			if (!config.ro)
+				config.fix_on = 1;
+			break;
+		}
+	}
 
 	fsck_chk_orphan_node(sbi);
 

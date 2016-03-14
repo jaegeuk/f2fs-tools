@@ -15,6 +15,12 @@
 
 #define FSCK_UNMATCHED_EXTENT		0x00000001
 
+enum {
+	PREEN_MODE_0,
+	PREEN_MODE_1,
+	PREEN_MODE_MAX
+};
+
 /* fsck.c */
 struct orphan_info {
 	u32 nr_inodes;
@@ -119,6 +125,7 @@ extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, struct child_info *,
 		int, int);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		struct child_info *);
+int fsck_chk_meta(struct f2fs_sb_info *sbi);
 
 void print_cp_state(u32);
 extern void print_node_info(struct f2fs_node *);

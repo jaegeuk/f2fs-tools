@@ -251,6 +251,7 @@ struct f2fs_configuration {
 	int fix_on;
 	int bug_on;
 	int auto_fix;
+	int preen_mode;
 	int ro;
 	__le32 feature;			/* defined features */
 

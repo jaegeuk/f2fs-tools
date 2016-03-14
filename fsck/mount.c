@@ -1749,12 +1749,12 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	print_ckpt_info(sbi);
 
-	if (config.auto_fix) {
+	if (config.auto_fix || config.preen_mode) {
 		u32 flag = get_cp(ckpt_flags);
 
 		if (flag & CP_FSCK_FLAG)
 			config.fix_on = 1;
-		else
+		else if (!config.preen_mode)
 			return 1;
 	}
 

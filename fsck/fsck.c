@@ -1517,6 +1517,65 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	free(new_blk);
 }
 
+int fsck_chk_meta(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	struct seg_entry *se;
+	unsigned int sit_valid_segs = 0, sit_node_blks = 0;
+	unsigned int i;
+
+	/* 1. check sit usage with CP: curseg is lost? */
+	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+		se = get_seg_entry(sbi, i);
+		if (se->valid_blocks != 0)
+			sit_valid_segs++;
+		else if (IS_CUR_SEGNO(sbi, i, NO_CHECK_TYPE)) {
+			/* curseg has not been written back to device */
+			MSG(1, "\tInfo: curseg %u is counted in valid segs\n", i);
+			sit_valid_segs++;
+		}
+		if (IS_NODESEG(se->type))
+			sit_node_blks += se->valid_blocks;
+	}
+	if (fsck->chk.sit_free_segs + sit_valid_segs != TOTAL_SEGS(sbi)) {
+		ASSERT_MSG("SIT usage does not match: sit_free_segs %u, "
+				"sit_valid_segs %u, total_segs %u",
+			fsck->chk.sit_free_segs, sit_valid_segs,
+			TOTAL_SEGS(sbi));
+		return -EINVAL;
+	}
+
+	/* 2. check node count */
+	if (fsck->chk.valid_nat_entry_cnt != sit_node_blks) {
+		ASSERT_MSG("node count does not match: valid_nat_entry_cnt %u,"
+			" sit_node_blks %u",
+			fsck->chk.valid_nat_entry_cnt, sit_node_blks);
+		return -EINVAL;
+	}
+
+	/* 3. check SIT with CP */
+	if (fsck->chk.sit_free_segs != le32_to_cpu(cp->free_segment_count)) {
+		ASSERT_MSG("free segs does not match: sit_free_segs %u, "
+				"free_segment_count %u",
+				fsck->chk.sit_free_segs,
+				le32_to_cpu(cp->free_segment_count));
+		return -EINVAL;
+	}
+
+	/* 4. check NAT with CP */
+	if (fsck->chk.valid_nat_entry_cnt !=
+					le32_to_cpu(cp->valid_node_count)) {
+		ASSERT_MSG("valid node does not match: valid_nat_entry_cnt %u,"
+				" valid_node_count %u",
+				fsck->chk.valid_nat_entry_cnt,
+				le32_to_cpu(cp->valid_node_count));
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 void fsck_init(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
