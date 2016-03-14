@@ -76,6 +76,7 @@ struct f2fs_fsck {
 	u32 nr_nat_entries;
 
 	u32 dentry_depth;
+	u32 nat_valid_inode_cnt;
 };
 
 #define BLOCK_SZ		4096

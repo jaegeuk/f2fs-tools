@@ -1679,6 +1679,11 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 			if (lookup_nat_in_journal(sbi, nid + i,
 							&raw_nat) >= 0) {
 				node_info_from_raw_nat(&ni, &raw_nat);
+				if (ni.ino == (nid + i) && ni.blk_addr != 0) {
+					fsck->nat_valid_inode_cnt++;
+					DBG(3, "ino[0x%8x] maybe is inode\n",
+								ni.ino);
+				}
 				if (ni.blk_addr != 0x0) {
 					f2fs_set_bit(nid + i,
 							fsck->nat_area_bitmap);
@@ -1689,6 +1694,11 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 			} else {
 				node_info_from_raw_nat(&ni,
 						&nat_block->entries[i]);
+				if (ni.ino == (nid + i) && ni.blk_addr != 0) {
+					fsck->nat_valid_inode_cnt++;
+					DBG(3, "ino[0x%8x] maybe is inode\n",
+								ni.ino);
+				}
 				if (ni.blk_addr == 0)
 					continue;
 				if (nid + i == 0) {

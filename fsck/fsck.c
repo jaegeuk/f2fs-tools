@@ -1573,6 +1573,14 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 		return -EINVAL;
 	}
 
+	if (fsck->nat_valid_inode_cnt != le32_to_cpu(cp->valid_inode_count)) {
+		ASSERT_MSG("valid inode does not match: nat_valid_inode_cnt %u,"
+				" valid_inode_count %u",
+				fsck->nat_valid_inode_cnt,
+				le32_to_cpu(cp->valid_inode_count));
+		return -EINVAL;
+	}
+
 	return 0;
 }
 
