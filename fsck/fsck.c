@@ -1581,6 +1581,46 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 		return -EINVAL;
 	}
 
+	/*check nat entry with sit_area_bitmap*/
+	for (i = 0; i < fsck->nr_nat_entries; i++) {
+		u32 blk = le32_to_cpu(fsck->entries[i].block_addr);
+		nid_t ino = le32_to_cpu(fsck->entries[i].ino);
+
+		if (!blk)
+			/*
+			 * skip entry whose ino is 0, otherwise, we will
+			 * get a negative number by BLKOFF_FROM_MAIN(sbi, blk)
+			 */
+			continue;
+
+		if (!IS_VALID_BLK_ADDR(sbi, blk)) {
+			MSG(0, "\tError: nat entry[ino %u block_addr 0x%x]"
+				" is in valid\n",
+				ino, blk);
+			return -EINVAL;
+		}
+
+		if (!f2fs_test_sit_bitmap(sbi, blk)) {
+			MSG(0, "\tError: nat entry[ino %u block_addr 0x%x]"
+				" not find it in sit_area_bitmap\n",
+				ino, blk);
+			return -EINVAL;
+		}
+
+		if (!IS_VALID_NID(sbi, ino)) {
+			MSG(0, "\tError: nat_entry->ino %u exceeds the range"
+				" of nat entries %u\n",
+				ino, fsck->nr_nat_entries);
+			return -EINVAL;
+		}
+
+		if (!f2fs_test_bit(ino, fsck->nat_area_bitmap)) {
+			MSG(0, "\tError: nat_entry->ino %u is not set in"
+				" nat_area_bitmap\n", ino);
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 

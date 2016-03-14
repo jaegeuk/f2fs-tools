@@ -1644,6 +1644,10 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	fsck->nat_area_bitmap = calloc(fsck->nat_area_bitmap_sz, 1);
 	ASSERT(fsck->nat_area_bitmap != NULL);
 
+	fsck->entries = calloc(sizeof(struct f2fs_nat_entry),
+					fsck->nr_nat_entries);
+	ASSERT(fsck->entries);
+
 	for (block_off = 0; block_off < nr_nat_blks; block_off++) {
 
 		seg_off = block_off >> sbi->log_blocks_per_seg;
@@ -1691,6 +1695,8 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 					DBG(3, "nid[0x%x] in nat cache\n",
 								nid + i);
 				}
+
+				fsck->entries[nid + i] = raw_nat;
 			} else {
 				node_info_from_raw_nat(&ni,
 						&nat_block->entries[i]);
@@ -1708,7 +1714,8 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 					 * nat_area_bitmap, fsck_verify will
 					 * nullify it
 					 */
-					ASSERT_MSG("Invalid nat entry[0]: blk_addr[0x%x]\n",
+					ASSERT_MSG("Invalid nat entry[0]: "
+						"blk_addr[0x%x]\n",
 						ni.blk_addr);
 					config.fix_on = 1;
 					fsck->chk.valid_nat_entry_cnt--;
@@ -1718,6 +1725,8 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 					nid + i, ni.blk_addr, ni.ino);
 				f2fs_set_bit(nid + i, fsck->nat_area_bitmap);
 				fsck->chk.valid_nat_entry_cnt++;
+
+				fsck->entries[nid + i] = nat_block->entries[i];
 			}
 		}
 	}

@@ -76,6 +76,7 @@ struct f2fs_fsck {
 	u32 nr_nat_entries;
 
 	u32 dentry_depth;
+	struct f2fs_nat_entry *entries;
 	u32 nat_valid_inode_cnt;
 };
 
