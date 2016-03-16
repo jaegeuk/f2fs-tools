@@ -22,7 +22,9 @@ struct orphan_info {
 struct child_info {
 	u32 links;
 	u32 files;
+	u32 pgofs;
 	u8 dots;
+	u8 dir_level;
 	u32 p_ino;		/*parent ino*/
 	u32 pp_ino;		/*parent parent ino*/
 };
