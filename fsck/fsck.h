@@ -13,13 +13,22 @@
 
 #include "f2fs.h"
 
+#define FSCK_UNMATCHED_EXTENT		0x00000001
+
 /* fsck.c */
 struct orphan_info {
 	u32 nr_inodes;
 	u32 *ino_list;
 };
 
+struct extent_info {
+	u32 fofs;		/* start offset in a file */
+	u32 blk;		/* start block address of the extent */
+	u32 len;		/* length of the extent */
+};
+
 struct child_info {
+	u32 state;
 	u32 links;
 	u32 files;
 	u32 pgofs;
@@ -27,13 +36,8 @@ struct child_info {
 	u8 dir_level;
 	u32 p_ino;		/*parent ino*/
 	u32 pp_ino;		/*parent parent ino*/
-};
-
-struct extent_info {
-	struct f2fs_extent ext;
-	char *map;
-	int len;
-	int fail;
+	struct extent_info ei;
+	u32 last_blk;
 };
 
 struct f2fs_fsck {
@@ -99,18 +103,16 @@ enum seg_type {
 extern void fsck_chk_orphan_node(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		u8 *, enum FILE_TYPE, enum NODE_TYPE, u32 *,
-		struct child_info *, struct extent_info *);
+		struct child_info *);
 extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
 		struct f2fs_node *, u32 *, struct node_info *);
 extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		u32, enum FILE_TYPE, struct f2fs_node *, u32 *,
-		struct child_info *, struct node_info *, struct extent_info *);
+		struct child_info *, struct node_info *);
 extern int fsck_chk_idnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
-		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *,
-		struct extent_info *);
+		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
 extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
-		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *,
-		struct extent_info *);
+		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
 extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, struct child_info *,
 		int, enum FILE_TYPE, u32, u16, u8, int);
 extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, struct child_info *,
