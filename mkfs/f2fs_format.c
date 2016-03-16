@@ -175,7 +175,8 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	set_sb(segment_count, (config.total_sectors * config.sector_size -
-				zone_align_start_offset) / segment_size_bytes);
+				zone_align_start_offset) / segment_size_bytes /
+				config.segs_per_zone * config.segs_per_zone);
 
 	set_sb(segment0_blkaddr, zone_align_start_offset / blk_size_bytes);
 	sb->cp_blkaddr = sb->segment0_blkaddr;
