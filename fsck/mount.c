@@ -502,6 +502,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 
 fail_no_cp:
 	free(sbi->ckpt);
+	sbi->ckpt = NULL;
 	return -EINVAL;
 }
 
