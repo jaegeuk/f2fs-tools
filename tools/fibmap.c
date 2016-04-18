@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/sysmacros.h>
 #include <libgen.h>
 #include <linux/hdreg.h>
 #include <linux/types.h>
