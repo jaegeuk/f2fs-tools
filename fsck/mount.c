@@ -376,10 +376,6 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 	if (get_sb(log_blocks_per_seg) != 9)
 		return -1;
 
-	if (get_sb(log_sectorsize) > F2FS_MAX_LOG_SECTOR_SIZE ||
-			get_sb(log_sectorsize) < F2FS_MIN_LOG_SECTOR_SIZE)
-		return -1;
-
 	/* Currently, support 512/1024/2048/4096 bytes sector size */
 	if (get_sb(log_sectorsize) > F2FS_MAX_LOG_SECTOR_SIZE ||
 			get_sb(log_sectorsize) < F2FS_MIN_LOG_SECTOR_SIZE)
