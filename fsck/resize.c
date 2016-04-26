@@ -406,14 +406,19 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	ASSERT(buf);
 
 	/* ovp / free segments */
-	set_cp(overprov_segment_count, config.new_overprovision);
 	set_cp(rsvd_segment_count, config.new_reserved_segments);
+	set_cp(overprov_segment_count, (get_newsb(segment_count_main) -
+			get_cp(rsvd_segment_count)) *
+			config.new_overprovision / 100);
+	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
+						get_cp(rsvd_segment_count));
+
 	free_segment_count = get_cp(free_segment_count);
 	new_segment_count = get_newsb(segment_count_main) -
 					get_sb(segment_count_main);
 
 	set_cp(free_segment_count, free_segment_count + new_segment_count);
-	set_cp(user_block_count, ((get_sb(segment_count_main) -
+	set_cp(user_block_count, ((get_newsb(segment_count_main) -
 			get_cp(overprov_segment_count)) * config.blks_per_seg));
 
 	if (is_set_ckpt_flags(cp, CP_ORPHAN_PRESENT_FLAG))
