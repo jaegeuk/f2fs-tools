@@ -1925,13 +1925,19 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 
 	/* fix global metadata */
-	if (force || (config.bug_on && config.fix_on && !config.ro)) {
-		fix_hard_links(sbi);
-		fix_nat_entries(sbi);
-		move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
-		write_curseg_info(sbi);
-		rewrite_sit_area_bitmap(sbi);
-		fix_checkpoint(sbi);
+	if (force || (config.fix_on && !config.ro)) {
+		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+
+		if (force || config.bug_on) {
+			fix_hard_links(sbi);
+			fix_nat_entries(sbi);
+			move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
+			write_curseg_info(sbi);
+			rewrite_sit_area_bitmap(sbi);
+			fix_checkpoint(sbi);
+		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG)) {
+			write_checkpoint(sbi);
+		}
 	}
 	return ret;
 }
