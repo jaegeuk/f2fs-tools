@@ -1923,6 +1923,38 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 			fsck->chk.valid_nat_entry_cnt);
 }
 
+static int check_sector_size(struct f2fs_super_block *sb)
+{
+	int index;
+	u_int32_t log_sectorsize, log_sectors_per_block;
+	u_int8_t *zero_buff;
+
+	zero_buff = calloc(F2FS_BLKSIZE, 1);
+
+	log_sectorsize = log_base_2(config.sector_size);
+	log_sectors_per_block = log_base_2(config.sectors_per_blk);
+
+	if (log_sectorsize != get_sb(log_sectorsize))
+		set_sb(log_sectorsize, log_sectorsize);
+
+	if (log_sectors_per_block != get_sb(log_sectors_per_block))
+		set_sb(log_sectors_per_block, log_sectors_per_block);
+
+	memcpy(zero_buff + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
+	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
+	for (index = 0; index < 2; index++) {
+		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
+			MSG(1, "\tError: While while writing supe_blk \
+				on disk!!! index : %d\n", index);
+			free(zero_buff);
+			return -1;
+		}
+	}
+
+	free(zero_buff);
+	return 0;
+}
+
 int f2fs_do_mount(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = NULL;
@@ -1935,6 +1967,10 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		if (ret)
 			return -1;
 	}
+
+	ret = check_sector_size(sbi->raw_super);
+	if (ret)
+		return -1;
 
 	print_raw_sb_info(F2FS_RAW_SUPER(sbi));
 
