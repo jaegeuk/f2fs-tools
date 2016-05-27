@@ -38,6 +38,7 @@ static void mkfs_usage()
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
+	MSG(0, "  -m support SMR device [default:0]\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
 	exit(1);
 }
@@ -56,8 +57,6 @@ static void f2fs_show_info()
 
 	if (config.vol_label)
 		MSG(0, "Info: Label = %s\n", config.vol_label);
-	MSG(0, "Info: Segments per section = %d\n", config.segs_per_sec);
-	MSG(0, "Info: Sections per zone = %d\n", config.secs_per_zone);
 	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
 }
 
@@ -73,7 +72,7 @@ static void parse_feature(char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:d:e:l:o:O:s:z:t:";
+	static const char *option_string = "qa:d:e:l:mo:O:s:z:t:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -97,6 +96,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 				mkfs_usage();
 			}
 			config.vol_label = optarg;
+			break;
+		case 'm':
+			config.smr_mode = 1;
 			break;
 		case 'o':
 			config.overprovision = atof(optarg);
@@ -128,7 +130,6 @@ static void f2fs_parse_options(int argc, char *argv[])
 
 	if ((optind + 1) < argc)
 		config.total_sectors = atoll(argv[optind+1]);
-	config.segs_per_zone = config.segs_per_sec * config.secs_per_zone;
 }
 
 int main(int argc, char *argv[])

@@ -229,6 +229,32 @@ enum f2fs_config_func {
 	SLOAD,
 };
 
+enum zbc_sk {
+	ZBC_E_ILLEGAL_REQUEST         = 0x5,
+	ZBC_E_DATA_PROTECT            = 0x7,
+	ZBC_E_ABORTED_COMMAND         = 0xB,
+};
+
+/**
+ * Additional sense code/Additional sense code qualifier.
+ */
+enum zbc_asc_ascq {
+	ZBC_E_INVALID_FIELD_IN_CDB                  = 0x2400,
+	ZBC_E_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE    = 0x2100,
+	ZBC_E_UNALIGNED_WRITE_COMMAND               = 0x2104,
+	ZBC_E_WRITE_BOUNDARY_VIOLATION              = 0x2105,
+	ZBC_E_ATTEMPT_TO_READ_INVALID_DATA          = 0x2106,
+	ZBC_E_READ_BOUNDARY_VIOLATION               = 0x2107,
+	ZBC_E_ZONE_IS_READ_ONLY                     = 0x2708,
+	ZBC_E_INSUFFICIENT_ZONE_RESOURCES           = 0x550E,
+};
+
+struct zbc_errno {
+	enum zbc_sk		sk;
+	enum zbc_asc_ascq	asc_ascq;
+};
+typedef struct zbc_errno zbc_errno_t;
+
 struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
@@ -273,6 +299,13 @@ struct f2fs_configuration {
 	/* sload parameters */
 	char *from_dir;
 	char *mount_point;
+
+	/* to detect zbc error */
+	int smr_mode;
+	u_int32_t nr_zones;
+	u_int32_t nr_conventional;
+	size_t zone_sectors;
+	zbc_errno_t zbd_errno;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -938,6 +971,8 @@ extern int dev_reada_block(__u64);
 extern int dev_read_version(void *, __u64, size_t);
 extern void get_kernel_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
+
+extern int zbc_scsi_report_zones(struct f2fs_configuration *);
 
 extern struct f2fs_configuration config;
 

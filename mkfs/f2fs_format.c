@@ -703,6 +703,8 @@ static int f2fs_write_super_block(void)
 #ifndef WITH_ANDROID
 static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 {
+	if (config.smr_mode)
+		return 0;
 	do {
 		if (offset < get_sb(main_blkaddr) ||
 			offset >= get_sb(main_blkaddr) + get_sb(block_count))
@@ -781,7 +783,7 @@ static int f2fs_write_root_inode(void)
 					config.blks_per_seg;
         main_area_node_seg_blk_offset *= blk_size_bytes;
 
-	DBG(1, "\tWriting root inode (hot node), at offset 0x%08"PRIx64"\n", main_area_node_seg_blk_offset);
+	DBG(1, "\tWriting root inode (hot node), %x %x %x at offset 0x%08"PRIu64"\n", get_sb(main_blkaddr), config.cur_seg[CURSEG_HOT_NODE], config.blks_per_seg, main_area_node_seg_blk_offset/512);
 	if (dev_write(raw_node, main_area_node_seg_blk_offset, F2FS_BLKSIZE)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);

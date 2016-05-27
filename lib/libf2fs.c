@@ -645,6 +645,23 @@ int f2fs_get_device_info(struct f2fs_configuration *c)
 		MSG(0, "\tError: F2FS can support 16TB at most!!!\n");
 		return -1;
 	}
+
+	if (config.smr_mode) {
+		if (zbc_scsi_report_zones(c)) {
+			MSG(0, "\tError: Not proper SMR drive\n");
+			return -1;
+		}
+		MSG(0, "Info: SMR - ZONES = %u, CONV = %u, ZONE_SECTS = %lu\n",
+				c->nr_zones, c->nr_conventional,
+				c->zone_sectors);
+		if (c->segs_per_sec == 1)
+			c->segs_per_sec = c->zone_sectors /
+				c->sectors_per_blk / DEFAULT_BLOCKS_PER_SEGMENT;
+	}
+	c->segs_per_zone = c->segs_per_sec * c->secs_per_zone;
+
+	MSG(0, "Info: Segments per section = %d\n", config.segs_per_sec);
+	MSG(0, "Info: Sections per zone = %d\n", config.secs_per_zone);
 	MSG(0, "Info: sector size = %u\n", c->sector_size);
 	MSG(0, "Info: total sectors = %"PRIu64" (%"PRIu64" MB)\n",
 				c->total_sectors, (c->total_sectors *
