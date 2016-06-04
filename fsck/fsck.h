@@ -167,6 +167,8 @@ extern void print_raw_sb_info(struct f2fs_super_block *);
 /* dump.c */
 struct dump_option {
 	nid_t nid;
+	int start_nat;
+	int end_nat;
 	int start_sit;
 	int end_sit;
 	int start_ssa;
@@ -174,6 +176,7 @@ struct dump_option {
 	int32_t blk_addr;
 };
 
+extern void nat_dump(struct f2fs_sb_info *, int, int);
 extern void sit_dump(struct f2fs_sb_info *, int, int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
 extern void dump_node(struct f2fs_sb_info *, nid_t);

@@ -38,6 +38,7 @@ void dump_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -i inode no (hex)\n");
+	MSG(0, "  -n [NAT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -b blk_addr (in 4KB)\n");
@@ -125,9 +126,11 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
-		const char *option_string = "d:i:s:a:b:";
+		const char *option_string = "d:i:n:s:a:b:";
 		static struct dump_option dump_opt = {
-			.nid = 3,	/* default root ino */
+			.nid = 0,	/* default root ino */
+			.start_nat = -1,
+			.end_nat = -1,
 			.start_sit = -1,
 			.end_sit = -1,
 			.start_ssa = -1,
@@ -152,6 +155,11 @@ void f2fs_parse_options(int argc, char *argv[])
 				else
 					ret = sscanf(optarg, "%x",
 							&dump_opt.nid);
+				break;
+			case 'n':
+				ret = sscanf(optarg, "%d~%d",
+							&dump_opt.start_nat,
+							&dump_opt.end_nat);
 				break;
 			case 's':
 				ret = sscanf(optarg, "%d~%d",
@@ -353,26 +361,25 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 
-	fsck_init(sbi);
-
+	if (opt->end_nat == -1)
+		opt->end_nat = NM_I(sbi)->max_nid;
 	if (opt->end_sit == -1)
 		opt->end_sit = SM_I(sbi)->main_segments;
 	if (opt->end_ssa == -1)
 		opt->end_ssa = SM_I(sbi)->main_segments;
+	if (opt->start_nat != -1)
+		nat_dump(sbi, opt->start_nat, opt->end_nat);
 	if (opt->start_sit != -1)
 		sit_dump(sbi, opt->start_sit, opt->end_sit);
 	if (opt->start_ssa != -1)
 		ssa_dump(sbi, opt->start_ssa, opt->end_ssa);
-	if (opt->blk_addr != -1) {
+	if (opt->blk_addr != -1)
 		dump_info_from_blkaddr(sbi, opt->blk_addr);
-		goto cleanup;
-	}
+	if (opt->nid)
+		dump_node(sbi, opt->nid);
 
 	print_cp_state(flag);
 
-	dump_node(sbi, opt->nid);
-cleanup:
-	fsck_free(sbi);
 }
 
 static int do_defrag(struct f2fs_sb_info *sbi)
