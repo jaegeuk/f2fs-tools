@@ -831,7 +831,7 @@ skip_blkcnt_fix:
 	}
 
 	if (ftype == F2FS_FT_ORPHAN && i_links) {
-		ASSERT_MSG("ino: 0x%x is orphan inode, but has i_links: %u",
+		MSG(0, "ino: 0x%x is orphan inode, but has i_links: %u",
 				nid, i_links);
 		if (config.fix_on) {
 			node_blk->i.i_links = 0;
