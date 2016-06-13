@@ -130,6 +130,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 
 	if ((optind + 1) < argc)
 		config.total_sectors = atoll(argv[optind+1]);
+
+	if (config.smr_mode)
+		config.feature |= cpu_to_le32(F2FS_FEATURE_HMSMR);
 }
 
 int main(int argc, char *argv[])
