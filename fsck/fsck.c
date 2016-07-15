@@ -383,7 +383,7 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 				le32_to_cpu(node_blk->footer.ino));
 		return -EINVAL;
 	}
-	if (ni->ino != node_blk->footer.ino) {
+	if (ni->ino != le32_to_cpu(node_blk->footer.ino)) {
 		ASSERT_MSG("nid[0x%x] nat_entry->ino[0x%x] footer.ino[0x%x]",
 				nid, ni->ino, le32_to_cpu(node_blk->footer.ino));
 		return -EINVAL;
