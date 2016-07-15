@@ -736,7 +736,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	/* check node blocks in inode */
 	for (idx = 0; idx < 5; idx++) {
-		block_t blkaddr = le32_to_cpu(node_blk->i.i_nid[idx]);
+		nid_t i_nid = le32_to_cpu(node_blk->i.i_nid[idx]);
 
 		if (idx == 0 || idx == 1)
 			ntype = TYPE_DIRECT_NODE;
@@ -747,11 +747,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		else
 			ASSERT(0);
 
-		if (blkaddr == 0x0)
+		if (i_nid == 0x0)
 			goto skip;
 
-		ret = fsck_chk_node_blk(sbi, &node_blk->i,
-				blkaddr,
+		ret = fsck_chk_node_blk(sbi, &node_blk->i, i_nid,
 				NULL, ftype, ntype, blk_cnt, &child);
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
