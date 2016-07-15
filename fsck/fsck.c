@@ -605,6 +605,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	struct child_info child = {0, 2, 0, 0, 0, 0};
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
+	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	child.p_ino = nid;
 	child.pp_ino = le32_to_cpu(node_blk->i.i_pino);
@@ -826,6 +827,18 @@ skip_blkcnt_fix:
 				need_fix = 1;
 				FIX_MSG("Dir: 0x%x set inline_dots", nid);
 			}
+		}
+	}
+	if (ftype == F2FS_FT_SYMLINK && i_blocks && i_size == 0) {
+		DBG(1, "ino: 0x%x i_blocks: %lu with zero i_size",
+							nid, i_blocks);
+		if (config.fix_on) {
+			u64 i_size = i_blocks * F2FS_BLKSIZE;
+
+			node_blk->i.i_size = cpu_to_le64(i_size);
+			need_fix = 1;
+			FIX_MSG("Symlink: recover 0x%x with i_size=%lu",
+							nid, i_size);
 		}
 	}
 
