@@ -369,7 +369,7 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	if (!IS_VALID_BLK_ADDR(sbi, ni->blk_addr)) {
-		ASSERT_MSG("blkaddres is not valid. [0x%x]", ni->blk_addr);
+		ASSERT_MSG("blkaddress is not valid. [0x%x]", ni->blk_addr);
 		return -EINVAL;
 	}
 
@@ -1431,7 +1431,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	}
 
 	if (!IS_VALID_BLK_ADDR(sbi, blk_addr)) {
-		ASSERT_MSG("blkaddres is not valid. [0x%x]", blk_addr);
+		ASSERT_MSG("blkaddress is not valid. [0x%x]", blk_addr);
 		return -EINVAL;
 	}
 
