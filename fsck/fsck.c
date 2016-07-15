@@ -1953,6 +1953,9 @@ void fsck_free(struct f2fs_sb_info *sbi)
 	if (fsck->sit_area_bitmap)
 		free(fsck->sit_area_bitmap);
 
+	if (fsck->entries)
+		free(fsck->entries);
+
 	if (tree_mark)
 		free(tree_mark);
 }
