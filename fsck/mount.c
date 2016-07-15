@@ -1168,11 +1168,9 @@ int get_sum_entry(struct f2fs_sb_info *sbi, u32 blk_addr,
 static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
 				struct f2fs_nat_entry *raw_nat)
 {
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
-	pgoff_t block_off;
 	pgoff_t block_addr;
-	int seg_off, entry_off;
+	int entry_off;
 	int ret;
 
 	if (lookup_nat_in_journal(sbi, nid, raw_nat) >= 0)
@@ -1180,16 +1178,8 @@ static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 
-	block_off = nid / NAT_ENTRY_PER_BLOCK;
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-
-	seg_off = block_off >> sbi->log_blocks_per_seg;
-	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
-			(seg_off << sbi->log_blocks_per_seg << 1) +
-			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
-
-	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
-		block_addr += sbi->blocks_per_seg;
+	block_addr = current_nat_addr(sbi, nid);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -1252,25 +1242,15 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 					nid_t nid, block_t newaddr)
 {
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
-	pgoff_t block_off;
 	pgoff_t block_addr;
-	int seg_off, entry_off;
+	int entry_off;
 	int ret;
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 
-	block_off = nid / NAT_ENTRY_PER_BLOCK;
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-
-	seg_off = block_off >> sbi->log_blocks_per_seg;
-	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
-			(seg_off << sbi->log_blocks_per_seg << 1) +
-			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
-
-	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
-		block_addr += sbi->blocks_per_seg;
+	block_addr = current_nat_addr(sbi, nid);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -1486,11 +1466,9 @@ static void flush_nat_journal_entries(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
-	pgoff_t block_off;
 	pgoff_t block_addr;
-	int seg_off, entry_off;
+	int entry_off;
 	nid_t nid;
 	int ret;
 	int i = 0;
@@ -1504,16 +1482,8 @@ next:
 	nid = le32_to_cpu(nid_in_journal(journal, i));
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 
-	block_off = nid / NAT_ENTRY_PER_BLOCK;
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-
-	seg_off = block_off >> sbi->log_blocks_per_seg;
-	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
-			(seg_off << sbi->log_blocks_per_seg << 1) +
-			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
-
-	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
-		block_addr += sbi->blocks_per_seg;
+	block_addr = current_nat_addr(sbi, nid);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -1704,11 +1674,9 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
-	pgoff_t block_off;
 	pgoff_t block_addr;
-	int seg_off, entry_off;
+	int entry_off;
 	int ret;
 	int i = 0;
 
@@ -1723,16 +1691,8 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	}
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
 
-	block_off = nid / NAT_ENTRY_PER_BLOCK;
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-
-	seg_off = block_off >> sbi->log_blocks_per_seg;
-	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
-			(seg_off << sbi->log_blocks_per_seg << 1) +
-			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
-
-	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
-		block_addr += sbi->blocks_per_seg;
+	block_addr = current_nat_addr(sbi, nid);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
