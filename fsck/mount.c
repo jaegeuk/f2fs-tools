@@ -70,6 +70,7 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	DISP_u32(inode, i_flags);
 	DISP_u32(inode, i_inline);
 	DISP_u32(inode, i_pino);
+	DISP_u32(inode, i_dir_level);
 
 	if (namelen) {
 		DISP_u32(inode, i_namelen);
