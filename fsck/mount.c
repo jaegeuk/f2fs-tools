@@ -1948,8 +1948,8 @@ static int check_sector_size(struct f2fs_super_block *sb)
 	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
 	for (index = 0; index < 2; index++) {
 		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
-			MSG(1, "\tError: While while writing supe_blk \
-				on disk!!! index : %d\n", index);
+			MSG(1, "\tError: While while writing supe_blk "
+				"on disk!!! index : %d\n", index);
 			free(zero_buff);
 			return -1;
 		}

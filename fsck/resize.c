@@ -123,8 +123,8 @@ static int get_new_sb(struct f2fs_sb_info *sbi, struct f2fs_super_block *sb)
 	if ((get_sb(segment_count_main) - 2) < config.new_reserved_segments ||
 		get_sb(segment_count_main) * blks_per_seg >
 						get_sb(block_count)) {
-		MSG(0, "\tError: Device size is not sufficient for F2FS volume,\
-			more segment needed =%u",
+		MSG(0, "\tError: Device size is not sufficient for F2FS volume, "
+			"more segment needed =%u",
 			config.new_reserved_segments -
 			(get_sb(segment_count_main) - 2));
 		return -1;

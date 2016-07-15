@@ -284,8 +284,8 @@ static int f2fs_prepare_super_block(void)
 
 	if ((get_sb(segment_count_main) - 2) <
 					config.reserved_segments) {
-		MSG(1, "\tError: Device size is not sufficient for F2FS volume,\
-			more segment needed =%u",
+		MSG(1, "\tError: Device size is not sufficient for F2FS volume, "
+			"more segment needed =%u",
 			config.reserved_segments -
 			(get_sb(segment_count_main) - 2));
 		return -1;
@@ -300,8 +300,8 @@ static int f2fs_prepare_super_block(void)
 	set_sb(root_ino, 3);
 
 	if (total_zones <= 6) {
-		MSG(1, "\tError: %d zones: Need more zones \
-			by shrinking zone size\n", total_zones);
+		MSG(1, "\tError: %d zones: Need more zones "
+			"by shrinking zone size\n", total_zones);
 		return -1;
 	}
 
@@ -362,8 +362,8 @@ static int f2fs_init_sit_area(void)
 	DBG(1, "\tFilling sit area at offset 0x%08"PRIx64"\n", sit_seg_addr);
 	for (index = 0; index < (get_sb(segment_count_sit) / 2); index++) {
 		if (dev_fill(zero_buf, sit_seg_addr, seg_size)) {
-			MSG(1, "\tError: While zeroing out the sit area \
-					on disk!!!\n");
+			MSG(1, "\tError: While zeroing out the sit area "
+					"on disk!!!\n");
 			free(zero_buf);
 			return -1;
 		}
@@ -396,8 +396,8 @@ static int f2fs_init_nat_area(void)
 	DBG(1, "\tFilling nat area at offset 0x%08"PRIx64"\n", nat_seg_addr);
 	for (index = 0; index < get_sb(segment_count_nat) / 2; index++) {
 		if (dev_fill(nat_buf, nat_seg_addr, seg_size)) {
-			MSG(1, "\tError: While zeroing out the nat area \
-					on disk!!!\n");
+			MSG(1, "\tError: While zeroing out the nat area "
+					"on disk!!!\n");
 			free(nat_buf);
 			return -1;
 		}
@@ -510,8 +510,8 @@ static int f2fs_write_check_point_pack(void)
 	for (i = 0; i < get_sb(cp_payload); i++) {
 		cp_seg_blk_offset += blk_size_bytes;
 		if (dev_fill(cp_payload, cp_seg_blk_offset, blk_size_bytes)) {
-			MSG(1, "\tError: While zeroing out the sit bitmap area \
-					on disk!!!\n");
+			MSG(1, "\tError: While zeroing out the sit bitmap area "
+					"on disk!!!\n");
 			goto free_cp_payload;
 		}
 	}
@@ -650,8 +650,8 @@ static int f2fs_write_check_point_pack(void)
 	for (i = 0; i < get_sb(cp_payload); i++) {
 		cp_seg_blk_offset += blk_size_bytes;
 		if (dev_fill(cp_payload, cp_seg_blk_offset, blk_size_bytes)) {
-			MSG(1, "\tError: While zeroing out the sit bitmap area \
-					on disk!!!\n");
+			MSG(1, "\tError: While zeroing out the sit bitmap area "
+					"on disk!!!\n");
 			goto free_cp_payload;
 		}
 	}
@@ -689,8 +689,8 @@ static int f2fs_write_super_block(void)
 	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
 	for (index = 0; index < 2; index++) {
 		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
-			MSG(1, "\tError: While while writing supe_blk \
-					on disk!!! index : %d\n", index);
+			MSG(1, "\tError: While while writing supe_blk "
+					"on disk!!! index : %d\n", index);
 			free(zero_buff);
 			return -1;
 		}
