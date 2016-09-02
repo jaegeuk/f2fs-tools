@@ -12,5 +12,5 @@
 
 extern struct f2fs_configuration config;
 
-int f2fs_trim_device(void);
+int f2fs_trim_device(int);
 int f2fs_format_device(void);

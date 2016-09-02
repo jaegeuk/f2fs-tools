@@ -927,10 +927,12 @@ int f2fs_format_device(void)
 		goto exit;
 	}
 
-	err = f2fs_trim_device();
-	if (err < 0) {
-		MSG(0, "\tError: Failed to trim whole device!!!\n");
-		goto exit;
+	if (config.trim) {
+		err = f2fs_trim_device(config.fd);
+		if (err < 0) {
+			MSG(0, "\tError: Failed to trim whole device!!!\n");
+			goto exit;
+		}
 	}
 
 	err = f2fs_init_sit_area();
