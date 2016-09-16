@@ -66,7 +66,7 @@ int dev_write(void *buf, __u64 offset, size_t len)
 
 int dev_write_block(void *buf, __u64 blk_addr)
 {
-	return dev_write(buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+	return dev_write(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
 int dev_write_dump(void *buf, __u64 offset, size_t len)
@@ -90,19 +90,19 @@ int dev_fill(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
-int dev_read_block(void *buf, __u64 blk_addr)
+int dev_fill_block(void *buf, __u64 blk_addr)
 {
-	return dev_read(buf, blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+	return dev_fill(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
-int dev_read_blocks(void *buf, __u64 addr, __u32 nr_blks)
+int dev_read_block(void *buf, __u64 blk_addr)
 {
-	return dev_read(buf, addr * F2FS_BLKSIZE, nr_blks * F2FS_BLKSIZE);
+	return dev_read(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
 int dev_reada_block(__u64 blk_addr)
 {
-	return dev_readahead(blk_addr * F2FS_BLKSIZE, F2FS_BLKSIZE);
+	return dev_readahead(blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
 void f2fs_finalize_device(struct f2fs_configuration *c)

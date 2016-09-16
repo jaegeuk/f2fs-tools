@@ -964,9 +964,9 @@ extern int dev_write_block(void *, __u64);
 extern int dev_write_dump(void *, __u64, size_t);
 /* All bytes in the buffer must be 0 use dev_fill(). */
 extern int dev_fill(void *, __u64, size_t);
+extern int dev_fill_block(void *, __u64);
 
 extern int dev_read_block(void *, __u64);
-extern int dev_read_blocks(void *, __u64, __u32 );
 extern int dev_reada_block(__u64);
 
 extern int dev_read_version(void *, __u64, size_t);
