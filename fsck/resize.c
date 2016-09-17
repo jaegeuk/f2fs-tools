@@ -22,19 +22,19 @@ static int get_new_sb(struct f2fs_sb_info *sbi, struct f2fs_super_block *sb)
 	u_int32_t blks_per_seg = 1 << get_sb(log_blocks_per_seg);
 	u_int32_t segs_per_zone = get_sb(segs_per_sec) * get_sb(secs_per_zone);
 
-	set_sb(block_count, config.target_sectors >>
+	set_sb(block_count, c.target_sectors >>
 				get_sb(log_sectors_per_block));
 
 	zone_size_bytes = segment_size_bytes * segs_per_zone;
 	zone_align_start_offset =
-		(config.start_sector * config.sector_size +
+		(c.start_sector * c.sector_size +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		config.start_sector * config.sector_size;
+		c.start_sector * c.sector_size;
 
-	set_sb(segment_count, (config.target_sectors * config.sector_size -
+	set_sb(segment_count, (c.target_sectors * c.sector_size -
 				zone_align_start_offset) / segment_size_bytes /
-				config.segs_per_sec * config.segs_per_sec);
+				c.segs_per_sec * c.segs_per_sec);
 
 	blocks_for_sit = ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
 	sit_segments = SEG_ALIGN(blocks_for_sit);
@@ -115,17 +115,17 @@ static int get_new_sb(struct f2fs_sb_info *sbi, struct f2fs_super_block *sb)
 						get_sb(segs_per_sec));
 
 	/* Let's determine the best reserved and overprovisioned space */
-	config.new_overprovision = get_best_overprovision(sb);
-	config.new_reserved_segments =
-		(2 * (100 / config.new_overprovision + 1) + 6) *
+	c.new_overprovision = get_best_overprovision(sb);
+	c.new_reserved_segments =
+		(2 * (100 / c.new_overprovision + 1) + 6) *
 						get_sb(segs_per_sec);
 
-	if ((get_sb(segment_count_main) - 2) < config.new_reserved_segments ||
+	if ((get_sb(segment_count_main) - 2) < c.new_reserved_segments ||
 		get_sb(segment_count_main) * blks_per_seg >
 						get_sb(block_count)) {
 		MSG(0, "\tError: Device size is not sufficient for F2FS volume, "
 			"more segment needed =%u",
-			config.new_reserved_segments -
+			c.new_reserved_segments -
 			(get_sb(segment_count_main) - 2));
 		return -1;
 	}
@@ -406,10 +406,10 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	ASSERT(buf);
 
 	/* ovp / free segments */
-	set_cp(rsvd_segment_count, config.new_reserved_segments);
+	set_cp(rsvd_segment_count, c.new_reserved_segments);
 	set_cp(overprov_segment_count, (get_newsb(segment_count_main) -
 			get_cp(rsvd_segment_count)) *
-			config.new_overprovision / 100);
+			c.new_overprovision / 100);
 	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
 						get_cp(rsvd_segment_count));
 
@@ -419,7 +419,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 
 	set_cp(free_segment_count, free_segment_count + new_segment_count);
 	set_cp(user_block_count, ((get_newsb(segment_count_main) -
-			get_cp(overprov_segment_count)) * config.blks_per_seg));
+			get_cp(overprov_segment_count)) * c.blks_per_seg));
 
 	if (is_set_ckpt_flags(cp, CP_ORPHAN_PRESENT_FLAG))
 		orphan_blks = __start_sum_addr(sbi) - 1;
@@ -545,10 +545,10 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 		}
 	}
 
-	config.dbg_lv = 1;
+	c.dbg_lv = 1;
 	print_raw_sb_info(sb);
 	print_raw_sb_info(new_sb);
-	config.dbg_lv = 0;
+	c.dbg_lv = 0;
 
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);

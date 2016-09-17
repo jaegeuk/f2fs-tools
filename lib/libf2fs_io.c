@@ -23,25 +23,25 @@
 
 #include <f2fs_fs.h>
 
-struct f2fs_configuration config;
+struct f2fs_configuration c;
 
 /*
  * IO interfaces
  */
 int dev_read_version(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(config.kd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(c.kd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (read(config.kd, buf, len) < 0)
+	if (read(c.kd, buf, len) < 0)
 		return -1;
 	return 0;
 }
 
 int dev_read(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (read(config.fd, buf, len) < 0)
+	if (read(c.fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -49,7 +49,7 @@ int dev_read(void *buf, __u64 offset, size_t len)
 int dev_readahead(__u64 offset, size_t len)
 {
 #ifdef POSIX_FADV_WILLNEED
-	return posix_fadvise(config.fd, offset, len, POSIX_FADV_WILLNEED);
+	return posix_fadvise(c.fd, offset, len, POSIX_FADV_WILLNEED);
 #else
 	return 0;
 #endif
@@ -57,9 +57,9 @@ int dev_readahead(__u64 offset, size_t len)
 
 int dev_write(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (write(config.fd, buf, len) < 0)
+	if (write(c.fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -71,9 +71,9 @@ int dev_write_block(void *buf, __u64 blk_addr)
 
 int dev_write_dump(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(config.dump_fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(c.dump_fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (write(config.dump_fd, buf, len) < 0)
+	if (write(c.dump_fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -83,9 +83,9 @@ int dev_fill(void *buf, __u64 offset, size_t len)
 	/* Only allow fill to zero */
 	if (*((__u8*)buf))
 		return -1;
-	if (lseek64(config.fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (write(config.fd, buf, len) < 0)
+	if (write(c.fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -105,17 +105,17 @@ int dev_reada_block(__u64 blk_addr)
 	return dev_readahead(blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
-void f2fs_finalize_device(struct f2fs_configuration *c)
+void f2fs_finalize_device(void)
 {
 	/*
 	 * We should call fsync() to flush out all the dirty pages
 	 * in the block device page cache.
 	 */
-	if (fsync(c->fd) < 0)
+	if (fsync(c.fd) < 0)
 		MSG(0, "\tError: Could not conduct fsync!!!\n");
 
-	if (close(c->fd) < 0)
+	if (close(c.fd) < 0)
 		MSG(0, "\tError: Failed to close device file!!!\n");
 
-	close(c->kd);
+	close(c.kd);
 }

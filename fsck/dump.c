@@ -363,17 +363,17 @@ void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 		name[le32_to_cpu(inode->i_namelen)] = 0;
 		sprintf(path, "./lost_found/%s", name);
 
-		config.dump_fd = open(path, O_TRUNC|O_CREAT|O_RDWR, 0666);
-		ASSERT(config.dump_fd >= 0);
+		c.dump_fd = open(path, O_TRUNC|O_CREAT|O_RDWR, 0666);
+		ASSERT(c.dump_fd >= 0);
 
 		/* dump file's data */
 		dump_inode_blk(sbi, ni->ino, node_blk);
 
 		/* adjust file size */
-		ret = ftruncate(config.dump_fd, le32_to_cpu(inode->i_size));
+		ret = ftruncate(c.dump_fd, le32_to_cpu(inode->i_size));
 		ASSERT(ret >= 0);
 
-		close(config.dump_fd);
+		close(c.dump_fd);
 	}
 }
 
@@ -420,7 +420,7 @@ static void dump_node_from_blkaddr(u32 blk_addr)
 	ret = dev_read_block(node_blk, blk_addr);
 	ASSERT(ret >= 0);
 
-	if (config.dbg_lv > 0)
+	if (c.dbg_lv > 0)
 		print_node_info(node_blk);
 	else
 		print_inode_info(&node_blk->i, 1);
@@ -546,7 +546,7 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	}
 
 	/* print inode */
-	if (config.dbg_lv > 0)
+	if (c.dbg_lv > 0)
 		dump_node_from_blkaddr(ino_ni.blk_addr);
 
 	if (type == SEG_TYPE_CUR_DATA || type == SEG_TYPE_DATA) {

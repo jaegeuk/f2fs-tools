@@ -85,11 +85,11 @@ void f2fs_parse_options(int argc, char *argv[])
 	if (!strcmp("fsck.f2fs", prog)) {
 		const char *option_string = "ad:fp:t";
 
-		config.func = FSCK;
+		c.func = FSCK;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
 			case 'a':
-				config.auto_fix = 1;
+				c.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption.\n");
 				break;
 			case 'p':
@@ -97,27 +97,27 @@ void f2fs_parse_options(int argc, char *argv[])
 				 *  0: default level, the same as -a
 				 *  1: check meta
 				 */
-				config.preen_mode = atoi(optarg);
-				if (config.preen_mode < 0)
-					config.preen_mode = PREEN_MODE_0;
-				else if (config.preen_mode >= PREEN_MODE_MAX)
-					config.preen_mode = PREEN_MODE_MAX - 1;
-				if (config.preen_mode == PREEN_MODE_0)
-					config.auto_fix = 1;
+				c.preen_mode = atoi(optarg);
+				if (c.preen_mode < 0)
+					c.preen_mode = PREEN_MODE_0;
+				else if (c.preen_mode >= PREEN_MODE_MAX)
+					c.preen_mode = PREEN_MODE_MAX - 1;
+				if (c.preen_mode == PREEN_MODE_0)
+					c.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption in "
-					"preen mode %d\n", config.preen_mode);
+					"preen mode %d\n", c.preen_mode);
 				break;
 			case 'd':
-				config.dbg_lv = atoi(optarg);
+				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
-							config.dbg_lv);
+							c.dbg_lv);
 				break;
 			case 'f':
-				config.fix_on = 1;
+				c.fix_on = 1;
 				MSG(0, "Info: Force to fix corruption\n");
 				break;
 			case 't':
-				config.dbg_lv = -1;
+				c.dbg_lv = -1;
 				break;
 			default:
 				MSG(0, "\tError: Unknown option %c\n", option);
@@ -138,15 +138,15 @@ void f2fs_parse_options(int argc, char *argv[])
 			.blk_addr = -1,
 		};
 
-		config.func = DUMP;
+		c.func = DUMP;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			int ret = 0;
 
 			switch (option) {
 			case 'd':
-				config.dbg_lv = atoi(optarg);
+				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
-							config.dbg_lv);
+							c.dbg_lv);
 				break;
 			case 'i':
 				if (strncmp(optarg, "0x", 2))
@@ -187,46 +187,46 @@ void f2fs_parse_options(int argc, char *argv[])
 			ASSERT(ret >= 0);
 		}
 
-		config.private = &dump_opt;
+		c.private = &dump_opt;
 	} else if (!strcmp("defrag.f2fs", prog)) {
 		const char *option_string = "d:s:l:t:i";
 
-		config.func = DEFRAG;
+		c.func = DEFRAG;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			int ret = 0;
 
 			switch (option) {
 			case 'd':
-				config.dbg_lv = atoi(optarg);
+				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
-							config.dbg_lv);
+							c.dbg_lv);
 				break;
 			case 's':
 				if (strncmp(optarg, "0x", 2))
 					ret = sscanf(optarg, "%"PRIu64"",
-							&config.defrag_start);
+							&c.defrag_start);
 				else
 					ret = sscanf(optarg, "%"PRIx64"",
-							&config.defrag_start);
+							&c.defrag_start);
 				break;
 			case 'l':
 				if (strncmp(optarg, "0x", 2))
 					ret = sscanf(optarg, "%"PRIu64"",
-							&config.defrag_len);
+							&c.defrag_len);
 				else
 					ret = sscanf(optarg, "%"PRIx64"",
-							&config.defrag_len);
+							&c.defrag_len);
 				break;
 			case 't':
 				if (strncmp(optarg, "0x", 2))
 					ret = sscanf(optarg, "%"PRIu64"",
-							&config.defrag_target);
+							&c.defrag_target);
 				else
 					ret = sscanf(optarg, "%"PRIx64"",
-							&config.defrag_target);
+							&c.defrag_target);
 				break;
 			case 'i':
-				config.defrag_shrink = 1;
+				c.defrag_shrink = 1;
 				break;
 			default:
 				MSG(0, "\tError: Unknown option %c\n", option);
@@ -238,23 +238,23 @@ void f2fs_parse_options(int argc, char *argv[])
 	} else if (!strcmp("resize.f2fs", prog)) {
 		const char *option_string = "d:t:";
 
-		config.func = RESIZE;
+		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			int ret = 0;
 
 			switch (option) {
 			case 'd':
-				config.dbg_lv = atoi(optarg);
+				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
-							config.dbg_lv);
+							c.dbg_lv);
 				break;
 			case 't':
 				if (strncmp(optarg, "0x", 2))
 					ret = sscanf(optarg, "%"PRIu64"",
-							&config.target_sectors);
+							&c.target_sectors);
 				else
 					ret = sscanf(optarg, "%"PRIx64"",
-							&config.target_sectors);
+							&c.target_sectors);
 				break;
 			default:
 				MSG(0, "\tError: Unknown option %c\n", option);
@@ -266,19 +266,19 @@ void f2fs_parse_options(int argc, char *argv[])
 	} else if (!strcmp("sload.f2fs", prog)) {
 		const char *option_string = "d:f:t:";
 
-		config.func = SLOAD;
+		c.func = SLOAD;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
 			case 'd':
-				config.dbg_lv = atoi(optarg);
+				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
-						config.dbg_lv);
+						c.dbg_lv);
 				break;
 			case 'f':
-				config.from_dir = (char *)optarg;
+				c.from_dir = (char *)optarg;
 				break;
 			case 't':
-				config.mount_point = (char *)optarg;
+				c.mount_point = (char *)optarg;
 				break;
 			default:
 				MSG(0, "\tError: Unknown option %c\n", option);
@@ -290,18 +290,18 @@ void f2fs_parse_options(int argc, char *argv[])
 
 	if ((optind + 1) != argc) {
 		MSG(0, "\tError: Device not specified\n");
-		if (config.func == FSCK)
+		if (c.func == FSCK)
 			fsck_usage();
-		else if (config.func == DUMP)
+		else if (c.func == DUMP)
 			dump_usage();
-		else if (config.func == DEFRAG)
+		else if (c.func == DEFRAG)
 			defrag_usage();
-		else if (config.func == RESIZE)
+		else if (c.func == RESIZE)
 			resize_usage();
-		else if (config.func == SLOAD)
+		else if (c.func == SLOAD)
 			sload_usage();
 	}
-	config.device_name = argv[optind];
+	c.device_name = argv[optind];
 }
 
 static void do_fsck(struct f2fs_sb_info *sbi)
@@ -314,8 +314,8 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 
 	print_cp_state(flag);
 
-	if (!config.fix_on && !config.bug_on) {
-		switch (config.preen_mode) {
+	if (!c.fix_on && !c.bug_on) {
+		switch (c.preen_mode) {
 		case PREEN_MODE_1:
 			if (fsck_chk_meta(sbi)) {
 				MSG(0, "[FSCK] F2FS metadata   [Fail]");
@@ -327,8 +327,8 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 				return;
 			}
 
-			if (!config.ro)
-				config.fix_on = 1;
+			if (!c.ro)
+				c.fix_on = 1;
 			break;
 		}
 	} else {
@@ -342,7 +342,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 		 *     we set fix_on = 1 here, so that fsck can fix errors
 		 *     automatically
 		*/
-		config.fix_on = 1;
+		c.fix_on = 1;
 	}
 
 	fsck_chk_orphan_node(sbi);
@@ -357,7 +357,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 
 static void do_dump(struct f2fs_sb_info *sbi)
 {
-	struct dump_option *opt = (struct dump_option *)config.private;
+	struct dump_option *opt = (struct dump_option *)c.private;
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 
@@ -386,48 +386,48 @@ static int do_defrag(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
-	if (config.defrag_start > get_sb(block_count))
+	if (c.defrag_start > get_sb(block_count))
 		goto out_range;
-	if (config.defrag_start < SM_I(sbi)->main_blkaddr)
-		config.defrag_start = SM_I(sbi)->main_blkaddr;
+	if (c.defrag_start < SM_I(sbi)->main_blkaddr)
+		c.defrag_start = SM_I(sbi)->main_blkaddr;
 
-	if (config.defrag_len == 0)
-		config.defrag_len = sbi->blocks_per_seg;
+	if (c.defrag_len == 0)
+		c.defrag_len = sbi->blocks_per_seg;
 
-	if (config.defrag_start + config.defrag_len > get_sb(block_count))
-		config.defrag_len = get_sb(block_count) - config.defrag_start;
+	if (c.defrag_start + c.defrag_len > get_sb(block_count))
+		c.defrag_len = get_sb(block_count) - c.defrag_start;
 
-	if (config.defrag_target == 0) {
-		config.defrag_target = config.defrag_start - 1;
-		if (!config.defrag_shrink)
-			config.defrag_target += config.defrag_len + 1;
+	if (c.defrag_target == 0) {
+		c.defrag_target = c.defrag_start - 1;
+		if (!c.defrag_shrink)
+			c.defrag_target += c.defrag_len + 1;
 	}
 
-	if (config.defrag_target < SM_I(sbi)->main_blkaddr ||
-			config.defrag_target > get_sb(block_count))
+	if (c.defrag_target < SM_I(sbi)->main_blkaddr ||
+			c.defrag_target > get_sb(block_count))
 		goto out_range;
-	if (config.defrag_target >= config.defrag_start &&
-		config.defrag_target < config.defrag_start + config.defrag_len)
+	if (c.defrag_target >= c.defrag_start &&
+		c.defrag_target < c.defrag_start + c.defrag_len)
 		goto out_range;
 
-	if (config.defrag_start > config.defrag_target)
+	if (c.defrag_start > c.defrag_target)
 		MSG(0, "Info: Move 0x%"PRIx64" <- [0x%"PRIx64"-0x%"PRIx64"]\n",
-				config.defrag_target,
-				config.defrag_start,
-				config.defrag_start + config.defrag_len - 1);
+				c.defrag_target,
+				c.defrag_start,
+				c.defrag_start + c.defrag_len - 1);
 	else
 		MSG(0, "Info: Move [0x%"PRIx64"-0x%"PRIx64"] -> 0x%"PRIx64"\n",
-				config.defrag_start,
-				config.defrag_start + config.defrag_len - 1,
-				config.defrag_target);
+				c.defrag_start,
+				c.defrag_start + c.defrag_len - 1,
+				c.defrag_target);
 
-	return f2fs_defragment(sbi, config.defrag_start, config.defrag_len,
-			config.defrag_target, config.defrag_shrink);
+	return f2fs_defragment(sbi, c.defrag_start, c.defrag_len,
+			c.defrag_target, c.defrag_shrink);
 out_range:
 	ASSERT_MSG("Out-of-range [0x%"PRIx64" ~ 0x%"PRIx64"] to 0x%"PRIx64"",
-				config.defrag_start,
-				config.defrag_start + config.defrag_len - 1,
-				config.defrag_target);
+				c.defrag_start,
+				c.defrag_start + c.defrag_len - 1,
+				c.defrag_target);
 	return -1;
 }
 
@@ -435,16 +435,16 @@ static int do_resize(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
-	if (!config.target_sectors)
-		config.target_sectors = config.total_sectors;
+	if (!c.target_sectors)
+		c.target_sectors = c.total_sectors;
 
-	if (config.target_sectors > config.total_sectors) {
+	if (c.target_sectors > c.total_sectors) {
 		ASSERT_MSG("Out-of-range Target=0x%"PRIx64" / 0x%"PRIx64"",
-				config.target_sectors, config.total_sectors);
+				c.target_sectors, c.total_sectors);
 		return -1;
 	}
 
-	if (config.target_sectors ==
+	if (c.target_sectors ==
 			(get_sb(block_count) << get_sb(log_sectors_per_block))) {
 		ASSERT_MSG("Nothing to resize; it's same");
 		return -1;
@@ -454,15 +454,15 @@ static int do_resize(struct f2fs_sb_info *sbi)
 
 static int do_sload(struct f2fs_sb_info *sbi)
 {
-	if (!config.from_dir) {
+	if (!c.from_dir) {
 		MSG(0, "\tError: Need source directory\n");
 		sload_usage();
 		return -1;
 	}
-	if (!config.mount_point)
-		config.mount_point = "/";
+	if (!c.mount_point)
+		c.mount_point = "/";
 
-	return f2fs_sload(sbi, config.from_dir, config.mount_point, NULL, NULL);
+	return f2fs_sload(sbi, c.from_dir, c.mount_point, NULL, NULL);
 }
 
 int main(int argc, char **argv)
@@ -470,24 +470,24 @@ int main(int argc, char **argv)
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
 
-	f2fs_init_configuration(&config);
+	f2fs_init_configuration();
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_dev_is_umounted(&config) < 0) {
-		if (!config.ro || config.func == DEFRAG) {
+	if (f2fs_dev_is_umounted() < 0) {
+		if (!c.ro || c.func == DEFRAG) {
 			MSG(0, "\tError: Not available on mounted device!\n");
 			return -1;
 		}
 
 		/* allow ro-mounted partition */
 		MSG(0, "Info: Check FS only due to RO\n");
-		config.fix_on = 0;
-		config.auto_fix = 0;
+		c.fix_on = 0;
+		c.auto_fix = 0;
 	}
 
 	/* Get device */
-	if (f2fs_get_device_info(&config) < 0)
+	if (f2fs_get_device_info() < 0)
 		return -1;
 fsck_again:
 	memset(&gfsck, 0, sizeof(gfsck));
@@ -503,7 +503,7 @@ fsck_again:
 		goto out_err;
 	}
 
-	switch (config.func) {
+	switch (c.func) {
 	case FSCK:
 		do_fsck(sbi);
 		break;
@@ -526,25 +526,25 @@ fsck_again:
 
 	f2fs_do_umount(sbi);
 
-	if (config.func == FSCK && config.bug_on) {
-		if (!config.ro && config.fix_on == 0 && config.auto_fix == 0) {
+	if (c.func == FSCK && c.bug_on) {
+		if (!c.ro && c.fix_on == 0 && c.auto_fix == 0) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");
 			ret = scanf("%s", ans);
 			ASSERT(ret >= 0);
 			if (!strcasecmp(ans, "y"))
-				config.fix_on = 1;
+				c.fix_on = 1;
 			else if (!strcasecmp(ans, "n"))
-				config.fix_on = 0;
+				c.fix_on = 0;
 			else
 				goto retry;
 
-			if (config.fix_on)
+			if (c.fix_on)
 				goto fsck_again;
 		}
 	}
-	f2fs_finalize_device(&config);
+	f2fs_finalize_device();
 
 	printf("\nDone.\n");
 	return 0;

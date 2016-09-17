@@ -134,7 +134,7 @@ static void DISP_label(u_int16_t *name)
 
 void print_raw_sb_info(struct f2fs_super_block *sb)
 {
-	if (!config.dbg_lv)
+	if (!c.dbg_lv)
 		return;
 
 	printf("\n");
@@ -186,7 +186,7 @@ void print_ckpt_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 
-	if (!config.dbg_lv)
+	if (!c.dbg_lv)
 		return;
 
 	printf("\n");
@@ -415,33 +415,33 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 
 	if (!sanity_check_raw_super(sbi->raw_super, offset)) {
 		/* get kernel version */
-		if (config.kd >= 0) {
-			dev_read_version(config.version, 0, VERSION_LEN);
-			get_kernel_version(config.version);
+		if (c.kd >= 0) {
+			dev_read_version(c.version, 0, VERSION_LEN);
+			get_kernel_version(c.version);
 		} else {
-			memset(config.version, 0, VERSION_LEN);
+			memset(c.version, 0, VERSION_LEN);
 		}
 
 		/* build sb version */
-		memcpy(config.sb_version, sbi->raw_super->version, VERSION_LEN);
-		get_kernel_version(config.sb_version);
-		memcpy(config.init_version, sbi->raw_super->init_version, VERSION_LEN);
-		get_kernel_version(config.init_version);
+		memcpy(c.sb_version, sbi->raw_super->version, VERSION_LEN);
+		get_kernel_version(c.sb_version);
+		memcpy(c.init_version, sbi->raw_super->init_version, VERSION_LEN);
+		get_kernel_version(c.init_version);
 
-		MSG(0, "Info: MKFS version\n  \"%s\"\n", config.init_version);
+		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
-					config.sb_version, config.version);
-		if (memcmp(config.sb_version, config.version, VERSION_LEN)) {
+					c.sb_version, c.version);
+		if (memcmp(c.sb_version, c.version, VERSION_LEN)) {
 			int ret;
 
 			memcpy(sbi->raw_super->version,
-						config.version, VERSION_LEN);
+						c.version, VERSION_LEN);
 			ret = dev_write(sbi->raw_super, offset,
 					sizeof(struct f2fs_super_block));
 			ASSERT(ret >= 0);
 
-			config.auto_fix = 0;
-			config.fix_on = 1;
+			c.auto_fix = 0;
+			c.fix_on = 1;
 		}
 		print_sb_state(sbi->raw_super);
 		return 0;
@@ -666,7 +666,7 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 	nid_t nid;
 	int i;
 
-	if (!(config.func == SLOAD))
+	if (!(c.func == SLOAD))
 		return 0;
 
 	nm_i->nid_bitmap = (char *)calloc(nid_bitmap_size, 1);
@@ -1867,7 +1867,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 					ASSERT_MSG("Invalid nat entry[0]: "
 						"blk_addr[0x%x]\n",
 						ni.blk_addr);
-					config.fix_on = 1;
+					c.fix_on = 1;
 					fsck->chk.valid_nat_entry_cnt--;
 				}
 
@@ -1895,8 +1895,8 @@ static int check_sector_size(struct f2fs_super_block *sb)
 
 	zero_buff = calloc(F2FS_BLKSIZE, 1);
 
-	log_sectorsize = log_base_2(config.sector_size);
-	log_sectors_per_block = log_base_2(config.sectors_per_blk);
+	log_sectorsize = log_base_2(c.sector_size);
+	log_sectors_per_block = log_base_2(c.sectors_per_blk);
 
 	if (log_sectorsize != get_sb(log_sectorsize))
 		set_sb(log_sectorsize, log_sectorsize);
@@ -1954,16 +1954,16 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	print_ckpt_info(sbi);
 
-	if (config.auto_fix || config.preen_mode) {
+	if (c.auto_fix || c.preen_mode) {
 		u32 flag = get_cp(ckpt_flags);
 
 		if (flag & CP_FSCK_FLAG)
-			config.fix_on = 1;
-		else if (!config.preen_mode)
+			c.fix_on = 1;
+		else if (!c.preen_mode)
 			return 1;
 	}
 
-	config.bug_on = 0;
+	c.bug_on = 0;
 
 	sbi->total_valid_node_count = get_cp(valid_node_count);
 	sbi->total_valid_inode_count = get_cp(valid_inode_count);
@@ -1993,7 +1993,7 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	unsigned int i;
 
 	/* free nm_info */
-	if (config.func == SLOAD)
+	if (c.func == SLOAD)
 		free(nm_i->nid_bitmap);
 	free(nm_i->nat_bitmap);
 	free(sbi->nm_info);

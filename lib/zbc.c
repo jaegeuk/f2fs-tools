@@ -324,42 +324,42 @@ static char *zbc_sg_cmd_name(zbc_sg_cmd_t *cmd)
 	return name;
 }
 
-static void zbc_sg_set_sense(struct f2fs_configuration *c, uint8_t *sense_buf)
+static void zbc_sg_set_sense(uint8_t *sense_buf)
 {
 	if (sense_buf == NULL) {
-		c->zbd_errno.sk       = 0x00;
-		c->zbd_errno.asc_ascq = 0x0000;
+		c.zbd_errno.sk       = 0x00;
+		c.zbd_errno.asc_ascq = 0x0000;
 	} else {
 		if ((sense_buf[0] & 0x7F) == 0x72
 				|| (sense_buf[0] & 0x7F) == 0x73) {
 			/* store sense key, ASC/ASCQ */
-			c->zbd_errno.sk       = sense_buf[1] & 0x0F;
-			c->zbd_errno.asc_ascq = ((int)sense_buf[2] << 8) |
+			c.zbd_errno.sk       = sense_buf[1] & 0x0F;
+			c.zbd_errno.asc_ascq = ((int)sense_buf[2] << 8) |
 							(int)sense_buf[3];
 		} else if ((sense_buf[0] & 0x7F) == 0x70
 				|| (sense_buf[0] & 0x7F) == 0x71) {
 			/* store sense key, ASC/ASCQ */
-			c->zbd_errno.sk       = sense_buf[2] & 0x0F;
-			c->zbd_errno.asc_ascq = ((int)sense_buf[12] << 8) |
+			c.zbd_errno.sk       = sense_buf[2] & 0x0F;
+			c.zbd_errno.asc_ascq = ((int)sense_buf[12] << 8) |
 							(int)sense_buf[13];
 		}
 	}
 	return;
 }
 
-static int zbc_sg_cmd_exec(struct f2fs_configuration *c, zbc_sg_cmd_t *cmd)
+static int zbc_sg_cmd_exec(zbc_sg_cmd_t *cmd)
 {
 	int ret;
 
 	/* Send the SG_IO command */
-	ret = ioctl(c->fd, SG_IO, &cmd->io_hdr);
+	ret = ioctl(c.fd, SG_IO, &cmd->io_hdr);
 	if (ret) {
 		ERR_MSG("SG_IO ioctl failed (%s)\n", strerror(errno));
 		goto out;
 	}
 
 	/* Reset errno */
-	zbc_sg_set_sense(c, NULL);
+	zbc_sg_set_sense(NULL);
 
 	DBG(1, "Command %s done: status 0x%02x (0x%02x), host status 0x%04x, driver status 0x%04x (flags 0x%04x)\n",
 			zbc_sg_cmd_name(cmd),
@@ -375,7 +375,7 @@ static int zbc_sg_cmd_exec(struct f2fs_configuration *c, zbc_sg_cmd_t *cmd)
 
 		/* ATA command status */
 		if (cmd->io_hdr.status != ZBC_SG_CHECK_CONDITION) {
-			zbc_sg_set_sense(c, cmd->sense_buf);
+			zbc_sg_set_sense(cmd->sense_buf);
 			ret = -EIO;
 			goto out;
 		}
@@ -383,7 +383,7 @@ static int zbc_sg_cmd_exec(struct f2fs_configuration *c, zbc_sg_cmd_t *cmd)
 		if ((zbc_sg_cmd_driver_status(cmd) == ZBC_SG_DRIVER_SENSE)
 				&& (cmd->io_hdr.sb_len_wr > 21)
 				&& (cmd->sense_buf[21] != 0x50) ) {
-			zbc_sg_set_sense(c, cmd->sense_buf);
+			zbc_sg_set_sense(cmd->sense_buf);
 			ret = -EIO;
 			goto out;
 		}
@@ -402,7 +402,7 @@ static int zbc_sg_cmd_exec(struct f2fs_configuration *c, zbc_sg_cmd_t *cmd)
 				(unsigned int)cmd->io_hdr.host_status,
 				(unsigned int)zbc_sg_cmd_driver_status(cmd),
 				(unsigned int)zbc_sg_cmd_driver_flags(cmd));
-		zbc_sg_set_sense(c, cmd->sense_buf);
+		zbc_sg_set_sense(cmd->sense_buf);
 		ret = -EIO;
 		goto out;
 	}
@@ -418,7 +418,7 @@ out:
 
 #define ZBC_SCSI_REPORT_ZONES_BUFSZ     524288
 
-int zbc_scsi_report_zones(struct f2fs_configuration *c)
+int zbc_scsi_report_zones(void)
 {
 	zbc_sg_cmd_t cmd;
 	uint8_t *buf;
@@ -431,10 +431,10 @@ int zbc_scsi_report_zones(struct f2fs_configuration *c)
 next:
 	bufsz = ZBC_ZONE_DESCRIPTOR_OFFSET;
 	if (phase) {
-		if (c->nr_zones - idx == 0)
+		if (c.nr_zones - idx == 0)
 			return 0;
 
-		bufsz += (size_t)(c->nr_zones - idx) *
+		bufsz += (size_t)(c.nr_zones - idx) *
 					ZBC_ZONE_DESCRIPTOR_LENGTH;
 		if (bufsz > ZBC_SCSI_REPORT_ZONES_BUFSZ)
 			bufsz = ZBC_SCSI_REPORT_ZONES_BUFSZ;
@@ -479,7 +479,7 @@ next:
 	cmd.cdb[14] = 0;
 
 	/* Send the SG_IO command */
-	ret = zbc_sg_cmd_exec(c, &cmd);
+	ret = zbc_sg_cmd_exec(&cmd);
 	if (ret != 0)
 		goto out;
 
@@ -536,15 +536,15 @@ next:
 
 	/* read # of zones and then get all the zone info */
 	if (phase == 0) {
-		c->nr_zones = nr_zones;
-		c->nr_conventional = 0;
+		c.nr_zones = nr_zones;
+		c.nr_conventional = 0;
 		zbc_sg_cmd_destroy(&cmd);
 		phase++;
 		goto next;
 	}
 
-	if (nr_zones > c->nr_zones - idx)
-		nr_zones = c->nr_zones - idx;
+	if (nr_zones > c.nr_zones - idx)
+		nr_zones = c.nr_zones - idx;
 
 	buf_nz = (cmd.out_bufsz - ZBC_ZONE_DESCRIPTOR_OFFSET) /
 						ZBC_ZONE_DESCRIPTOR_LENGTH;
@@ -610,7 +610,7 @@ next:
 	for (i = 0; i < nr_zones; i++) {
 		z = &zones[i];
 		if ( zbc_zone_conventional(z) ) {
-			c->nr_conventional++;
+			c.nr_conventional++;
 			DBG(1, "Zone %05d: type 0x%x (%s), cond 0x%x (%s), LBA %llu, %llu sectors, wp N/A\n",
 				i + idx,
 				zbc_zone_type(z),
@@ -636,7 +636,7 @@ next:
 
 	idx += nr_zones;
 	next_lba = zones[nr_zones - 1].zbz_start + zones[nr_zones - 1].zbz_length;
-	c->zone_sectors = zones[nr_zones - 1].zbz_length;
+	c.zone_sectors = zones[nr_zones - 1].zbz_length;
 	phase++;
 	zbc_sg_cmd_destroy(&cmd);
 	free(zones);

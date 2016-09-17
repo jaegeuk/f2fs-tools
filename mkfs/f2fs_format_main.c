@@ -16,13 +16,12 @@
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <time.h>
-//#include <linux/fs.h>
 #include <uuid/uuid.h>
 
 #include "f2fs_fs.h"
 #include "f2fs_format_utils.h"
 
-extern struct f2fs_configuration config;
+extern struct f2fs_configuration c;
 
 static void mkfs_usage()
 {
@@ -48,22 +47,22 @@ static void f2fs_show_info()
 	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
 				F2FS_TOOLS_VERSION,
 				F2FS_TOOLS_DATE);
-	if (config.heap == 0)
+	if (c.heap == 0)
 		MSG(0, "Info: Disable heap-based policy\n");
 
-	MSG(0, "Info: Debug level = %d\n", config.dbg_lv);
-	if (config.extension_list)
+	MSG(0, "Info: Debug level = %d\n", c.dbg_lv);
+	if (c.extension_list)
 		MSG(0, "Info: Add new extension list\n");
 
-	if (config.vol_label)
-		MSG(0, "Info: Label = %s\n", config.vol_label);
-	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
+	if (c.vol_label)
+		MSG(0, "Info: Label = %s\n", c.vol_label);
+	MSG(0, "Info: Trim is %s\n", c.trim ? "enabled": "disabled");
 }
 
 static void parse_feature(const char *features)
 {
 	if (!strcmp(features, "encrypt")) {
-		config.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
@@ -78,16 +77,16 @@ static void f2fs_parse_options(int argc, char *argv[])
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
 		switch (option) {
 		case 'q':
-			config.dbg_lv = -1;
+			c.dbg_lv = -1;
 			break;
 		case 'a':
-			config.heap = atoi(optarg);
+			c.heap = atoi(optarg);
 			break;
 		case 'd':
-			config.dbg_lv = atoi(optarg);
+			c.dbg_lv = atoi(optarg);
 			break;
 		case 'e':
-			config.extension_list = strdup(optarg);
+			c.extension_list = strdup(optarg);
 			break;
 		case 'l':		/*v: volume label */
 			if (strlen(optarg) > 512) {
@@ -95,25 +94,25 @@ static void f2fs_parse_options(int argc, char *argv[])
 						"512 characters\n");
 				mkfs_usage();
 			}
-			config.vol_label = optarg;
+			c.vol_label = optarg;
 			break;
 		case 'm':
-			config.smr_mode = 1;
+			c.smr_mode = 1;
 			break;
 		case 'o':
-			config.overprovision = atof(optarg);
+			c.overprovision = atof(optarg);
 			break;
 		case 'O':
 			parse_feature(optarg);
 			break;
 		case 's':
-			config.segs_per_sec = atoi(optarg);
+			c.segs_per_sec = atoi(optarg);
 			break;
 		case 'z':
-			config.secs_per_zone = atoi(optarg);
+			c.secs_per_zone = atoi(optarg);
 			break;
 		case 't':
-			config.trim = atoi(optarg);
+			c.trim = atoi(optarg);
 			break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
@@ -126,35 +125,35 @@ static void f2fs_parse_options(int argc, char *argv[])
 		MSG(0, "\tError: Device not specified\n");
 		mkfs_usage();
 	}
-	config.device_name = argv[optind];
+	c.device_name = argv[optind];
 
 	if ((optind + 1) < argc)
-		config.total_sectors = atoll(argv[optind+1]);
+		c.total_sectors = atoll(argv[optind+1]);
 
-	if (config.smr_mode)
-		config.feature |= cpu_to_le32(F2FS_FEATURE_HMSMR);
+	if (c.smr_mode)
+		c.feature |= cpu_to_le32(F2FS_FEATURE_HMSMR);
 }
 
 int main(int argc, char *argv[])
 {
-	f2fs_init_configuration(&config);
+	f2fs_init_configuration();
 
 	f2fs_parse_options(argc, argv);
 
 	f2fs_show_info();
 
-	if (f2fs_dev_is_umounted(&config) < 0) {
+	if (f2fs_dev_is_umounted() < 0) {
 		MSG(0, "\tError: Not available on mounted device!\n");
 		return -1;
 	}
 
-	if (f2fs_get_device_info(&config) < 0)
+	if (f2fs_get_device_info() < 0)
 		return -1;
 
 	if (f2fs_format_device() < 0)
 		return -1;
 
-	f2fs_finalize_device(&config);
+	f2fs_finalize_device();
 
 	MSG(0, "Info: format successful\n");
 

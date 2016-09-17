@@ -10,7 +10,7 @@
 
 #include "f2fs_fs.h"
 
-extern struct f2fs_configuration config;
+extern struct f2fs_configuration c;
 
 int f2fs_trim_device(int);
 int f2fs_format_device(void);

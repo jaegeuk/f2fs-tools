@@ -125,7 +125,7 @@ static inline uint64_t bswap_64(uint64_t val)
 	do {								\
 		printf("[ASSERT] (%s:%4d) ", __func__, __LINE__);	\
 		printf(" --> "fmt"\n", ##__VA_ARGS__);			\
-		config.bug_on = 1;					\
+		c.bug_on = 1;						\
 	} while (0)
 
 #define ASSERT(exp)							\
@@ -144,14 +144,14 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #define MSG(n, fmt, ...)						\
 	do {								\
-		if (config.dbg_lv >= n) {				\
+		if (c.dbg_lv >= n) {					\
 			printf(fmt, ##__VA_ARGS__);			\
 		}							\
 	} while (0)
 
 #define DBG(n, fmt, ...)						\
 	do {								\
-		if (config.dbg_lv >= n) {				\
+		if (c.dbg_lv >= n) {					\
 			printf("[%s:%4d] " fmt,				\
 				__func__, __LINE__, ##__VA_ARGS__);	\
 		}							\
@@ -708,7 +708,7 @@ struct f2fs_nat_block {
 #define F2FS_MAX_SEGMENT       ((16 * 1024 * 1024) / 2)
 #define MAX_SIT_BITMAP_SIZE    (SEG_ALIGN(ALIGN(F2FS_MAX_SEGMENT, \
 						SIT_ENTRY_PER_BLOCK)) * \
-						config.blks_per_seg / 8)
+						c.blks_per_seg / 8)
 
 /*
  * Note that f2fs_sit_entry->vblocks has the following bit-field information.
@@ -953,10 +953,10 @@ extern u64 find_next_zero_bit_le(const u8 *, u64, u64);
 extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 
-extern void f2fs_init_configuration(struct f2fs_configuration *);
-extern int f2fs_dev_is_umounted(struct f2fs_configuration *);
-extern int f2fs_get_device_info(struct f2fs_configuration *);
-extern void f2fs_finalize_device(struct f2fs_configuration *);
+extern void f2fs_init_configuration(void);
+extern int f2fs_dev_is_umounted(void);
+extern int f2fs_get_device_info(void);
+extern void f2fs_finalize_device(void);
 
 extern int dev_read(void *, __u64, size_t);
 extern int dev_write(void *, __u64, size_t);
@@ -973,14 +973,14 @@ extern int dev_read_version(void *, __u64, size_t);
 extern void get_kernel_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
-extern int zbc_scsi_report_zones(struct f2fs_configuration *);
+extern int zbc_scsi_report_zones(void);
 
-extern struct f2fs_configuration config;
+extern struct f2fs_configuration c;
 
 #define ALIGN(val, size)	((val) + (size) - 1) / (size)
-#define SEG_ALIGN(blks)		ALIGN(blks, config.blks_per_seg)
-#define ZONE_ALIGN(blks)	ALIGN(blks, config.blks_per_seg * \
-					config.segs_per_zone)
+#define SEG_ALIGN(blks)		ALIGN(blks, c.blks_per_seg)
+#define ZONE_ALIGN(blks)	ALIGN(blks, c.blks_per_seg * \
+					c.segs_per_zone)
 
 static inline double get_best_overprovision(struct f2fs_super_block *sb)
 {
