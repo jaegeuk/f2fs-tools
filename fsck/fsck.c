@@ -1240,7 +1240,6 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 				name_len = le16_to_cpu(dentry[i].name_len);
 				if (name_len > 0)
 					i += (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN - 1;
-				continue;
 			}
 		}
 	}
