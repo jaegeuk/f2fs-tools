@@ -60,7 +60,7 @@ static void f2fs_show_info()
 	MSG(0, "Info: Trim is %s\n", config.trim ? "enabled": "disabled");
 }
 
-static void parse_feature(char *features)
+static void parse_feature(const char *features)
 {
 	if (!strcmp(features, "encrypt")) {
 		config.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
@@ -104,7 +104,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 			config.overprovision = atof(optarg);
 			break;
 		case 'O':
-			parse_feature(strdup(optarg));
+			parse_feature(optarg);
 			break;
 		case 's':
 			config.segs_per_sec = atoi(optarg);
