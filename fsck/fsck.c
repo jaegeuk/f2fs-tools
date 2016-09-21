@@ -1695,6 +1695,7 @@ static void fix_hard_links(struct f2fs_sb_info *sbi)
 		node = node->next;
 		free(tmp);
 	}
+	free(node_blk);
 }
 
 static void fix_nat_entries(struct f2fs_sb_info *sbi)
