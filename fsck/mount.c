@@ -1277,24 +1277,27 @@ void build_sit_entries(struct f2fs_sb_info *sbi)
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
-	unsigned int segno;
+	struct seg_entry *se;
+	struct f2fs_sit_entry sit;
+	unsigned int i, segno;
 
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
-		struct seg_entry *se = &sit_i->sentries[segno];
+		se = &sit_i->sentries[segno];
 		struct f2fs_sit_block *sit_blk;
-		struct f2fs_sit_entry sit;
-		int i;
 
-		for (i = 0; i < sits_in_cursum(journal); i++) {
-			if (le32_to_cpu(segno_in_journal(journal, i)) == segno) {
-				sit = sit_in_journal(journal, i);
-				goto got_it;
-			}
-		}
 		sit_blk = get_current_sit_page(sbi, segno);
 		sit = sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
 		free(sit_blk);
-got_it:
+
+		check_block_count(sbi, segno, &sit);
+		seg_info_from_raw_sit(se, &sit);
+	}
+
+	for (i = 0; i < sits_in_cursum(journal); i++) {
+		segno = le32_to_cpu(segno_in_journal(journal, i));
+		se = &sit_i->sentries[segno];
+		sit = sit_in_journal(journal, i);
+
 		check_block_count(sbi, segno, &sit);
 		seg_info_from_raw_sit(se, &sit);
 	}
