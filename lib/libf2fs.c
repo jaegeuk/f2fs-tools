@@ -21,6 +21,7 @@
 #include <sys/ioctl.h>
 #include <scsi/sg.h>
 #include <linux/hdreg.h>
+#include <linux/limits.h>
 
 #include <f2fs_fs.h>
 
@@ -485,6 +486,53 @@ int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len)
 }
 
 /*
+ * try to identify the root device
+ */
+const char *get_rootdev()
+{
+	struct stat sb;
+	int fd, ret;
+	char buf[32];
+	char *uevent, *ptr;
+
+	static char rootdev[PATH_MAX + 1];
+
+	if (stat("/", &sb) == -1)
+		return NULL;
+
+	snprintf(buf, 32, "/sys/dev/block/%u:%u/uevent",
+		major(sb.st_dev), minor(sb.st_dev));
+
+	fd = open(buf, O_RDONLY);
+
+	if (fd < 0)
+		return NULL;
+
+	ret = lseek(fd, (off_t)0, SEEK_END);
+	(void)lseek(fd, (off_t)0, SEEK_SET);
+
+	if (ret == -1) {
+		close(fd);
+		return NULL;
+	}
+
+	uevent = malloc(ret + 1);
+	uevent[ret] = '\0';
+
+	ret = read(fd, uevent, ret);
+	close(fd);
+
+	ptr = strstr(uevent, "DEVNAME");
+	if (!ptr)
+		return NULL;
+
+	ret = sscanf(ptr, "DEVNAME=%s\n", buf);
+	snprintf(rootdev, PATH_MAX + 1, "/dev/%s", buf);
+
+	return rootdev;
+}
+
+/*
  * device information
  */
 void f2fs_init_configuration(void)
@@ -493,6 +541,7 @@ void f2fs_init_configuration(void)
 	c.sector_size = DEFAULT_SECTOR_SIZE;
 	c.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
+	c.rootdev_name = get_rootdev();
 
 	/* calculated by overprovision ratio */
 	c.reserved_segments = 0;
@@ -532,7 +581,11 @@ static int is_mounted(const char *mpt, const char *device)
 int f2fs_dev_is_umounted(void)
 {
 	struct stat st_buf;
+	int is_rootdev = 0;
 	int ret = 0;
+
+	if (c.rootdev_name && !strcmp(c.device_name, c.rootdev_name))
+		is_rootdev = 1;
 
 	/*
 	 * try with /proc/mounts fist to detect RDONLY.
@@ -548,6 +601,19 @@ int f2fs_dev_is_umounted(void)
 	if (ret) {
 		MSG(0, "Info: Mounted device!\n");
 		return -1;
+	}
+
+	/*
+	 * If we are supposed to operate on the root device, then
+	 * also check the mounts for '/dev/root', which sometimes
+	 * functions as an alias for the root device.
+	 */
+	if (is_rootdev) {
+		ret = is_mounted("/proc/mounts", "/dev/root");
+		if (ret) {
+			MSG(0, "Info: Mounted device!\n");
+			return -1;
+		}
 	}
 
 	/*

@@ -279,6 +279,7 @@ struct f2fs_configuration {
 	int32_t dump_fd;
 	char *device_name;
 	char *extension_list;
+	const char *rootdev_name;
 	int dbg_lv;
 	int trim;
 	int func;
