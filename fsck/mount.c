@@ -494,7 +494,7 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 	/* Read the 1st cp block in this CP pack */
 	cp_page_1 = malloc(PAGE_SIZE);
 	if (dev_read_block(cp_page_1, cp_addr) < 0)
-		return NULL;
+		goto invalid_cp1;
 
 	cp = (struct f2fs_checkpoint *)cp_page_1;
 	crc_offset = get_cp(checksum_offset);
