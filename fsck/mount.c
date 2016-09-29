@@ -1981,7 +1981,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 
 	if (build_node_manager(sbi)) {
-		ERR_MSG("build_segment_manager failed\n");
+		ERR_MSG("build_node_manager failed\n");
 		return -1;
 	}
 
