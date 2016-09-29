@@ -1896,16 +1896,18 @@ static int check_sector_size(struct f2fs_super_block *sb)
 	u_int32_t log_sectorsize, log_sectors_per_block;
 	u_int8_t *zero_buff;
 
-	zero_buff = calloc(F2FS_BLKSIZE, 1);
-
 	log_sectorsize = log_base_2(c.sector_size);
 	log_sectors_per_block = log_base_2(c.sectors_per_blk);
 
-	if (log_sectorsize != get_sb(log_sectorsize))
-		set_sb(log_sectorsize, log_sectorsize);
+	if (log_sectorsize == get_sb(log_sectorsize) &&
+			log_sectors_per_block == get_sb(log_sectors_per_block))
+		return 0;
 
-	if (log_sectors_per_block != get_sb(log_sectors_per_block))
-		set_sb(log_sectors_per_block, log_sectors_per_block);
+	zero_buff = calloc(F2FS_BLKSIZE, 1);
+	ASSERT(zero_buff);
+
+	set_sb(log_sectorsize, log_sectorsize);
+	set_sb(log_sectors_per_block, log_sectors_per_block);
 
 	memcpy(zero_buff + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
 	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
