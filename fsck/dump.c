@@ -23,7 +23,7 @@ const char *seg_type_name[SEG_TYPE_MAX + 1] = {
 	"SEG_TYPE_NONE",
 };
 
-void nat_dump(struct f2fs_sb_info *sbi, int start_nat, int end_nat)
+void nat_dump(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
@@ -77,14 +77,16 @@ void nat_dump(struct f2fs_sb_info *sbi, int start_nat, int end_nat)
 				ASSERT(ret >= 0);
 				if (ni.blk_addr != 0x0) {
 					memset(buf, 0, BUF_SZ);
-					snprintf(buf, BUF_SZ, "nid:%5u\tino:%5u\toffset:%5u"
-							"\tblkaddr:%10u\tpack:%d\n",ni.nid, ni.ino,
-							node_block->footer.flag >> OFFSET_BIT_SHIFT,
-									ni.blk_addr, pack);
+					snprintf(buf, BUF_SZ,
+						"nid:%5u\tino:%5u\toffset:%5u"
+						"\tblkaddr:%10u\tpack:%d\n",
+						ni.nid, ni.ino,
+						node_block->footer.flag >>
+							OFFSET_BIT_SHIFT,
+						ni.blk_addr, pack);
 					ret = write(fd, buf, strlen(buf));
 					ASSERT(ret >= 0);
 				}
-
 			} else {
 				node_info_from_raw_nat(&ni,
 						&nat_block->entries[i]);
@@ -94,10 +96,13 @@ void nat_dump(struct f2fs_sb_info *sbi, int start_nat, int end_nat)
 				ret = dev_read_block(node_block, ni.blk_addr);
 				ASSERT(ret >= 0);
 				memset(buf, 0, BUF_SZ);
-				snprintf(buf, BUF_SZ, "nid:%5u\tino:%5u\toffset:%5u"
-						"\tblkaddr:%10u\tpack:%d\n",ni.nid,
-						ni.ino,node_block->footer.flag >>
-						OFFSET_BIT_SHIFT,ni.blk_addr, pack);
+				snprintf(buf, BUF_SZ,
+					"nid:%5u\tino:%5u\toffset:%5u"
+					"\tblkaddr:%10u\tpack:%d\n",
+					ni.nid, ni.ino,
+					node_block->footer.flag >>
+						OFFSET_BIT_SHIFT,
+					ni.blk_addr, pack);
 				ret = write(fd, buf, strlen(buf));
 				ASSERT(ret >= 0);
 			}
@@ -110,7 +115,8 @@ void nat_dump(struct f2fs_sb_info *sbi, int start_nat, int end_nat)
 	close(fd);
 }
 
-void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
+void sit_dump(struct f2fs_sb_info *sbi, unsigned int start_sit,
+					unsigned int end_sit)
 {
 	struct seg_entry *se;
 	struct sit_info *sit_i = SIT_I(sbi);
@@ -133,37 +139,44 @@ void sit_dump(struct f2fs_sb_info *sbi, int start_sit, int end_sit)
 	for (segno = start_sit; segno < end_sit; segno++) {
 		se = get_seg_entry(sbi, segno);
 		offset = SIT_BLOCK_OFFSET(sit_i, segno);
-		i = f2fs_test_bit(offset, sit_i->sit_bitmap)?2:1;
 		memset(buf, 0, BUF_SZ);
-		snprintf(buf, BUF_SZ, "\nsegno:%8u\tvblocks:%3u\tseg_type:%d\tsit_pack:%d\n\n",
-							segno, se->valid_blocks, se->type, i);
+		snprintf(buf, BUF_SZ,
+		"\nsegno:%8u\tvblocks:%3u\tseg_type:%d\tsit_pack:%d\n\n",
+			segno, se->valid_blocks, se->type,
+			f2fs_test_bit(offset, sit_i->sit_bitmap) ? 2 : 1);
 
 		ret = write(fd, buf, strlen(buf));
 		ASSERT(ret >= 0);
 
 		if (se->valid_blocks == 0x0) {
 			free_segs++;
-		} else {
-			ASSERT(se->valid_blocks <= 512);
-			valid_blocks += se->valid_blocks;
+			continue;
+		}
 
-			for (i = 0; i < 64; i++) {
-				memset(buf, 0, BUF_SZ);
-				snprintf(buf, BUF_SZ, "  %02x", *(se->cur_valid_map + i));
+		ASSERT(se->valid_blocks <= 512);
+		valid_blocks += se->valid_blocks;
+
+		for (i = 0; i < 64; i++) {
+			memset(buf, 0, BUF_SZ);
+			snprintf(buf, BUF_SZ, "  %02x",
+					*(se->cur_valid_map + i));
+			ret = write(fd, buf, strlen(buf));
+			ASSERT(ret >= 0);
+
+			if ((i + 1) % 16 == 0) {
+				snprintf(buf, BUF_SZ, "\n");
 				ret = write(fd, buf, strlen(buf));
 				ASSERT(ret >= 0);
-				if((i+1) % 16 == 0) {
-					snprintf(buf, BUF_SZ, "\n");
-					ret = write(fd, buf, strlen(buf));
-					ASSERT(ret >= 0);
-				}
 			}
 		}
 	}
 
 	memset(buf, 0, BUF_SZ);
-	snprintf(buf, BUF_SZ, "valid_blocks:[0x%" PRIx64 "]\tvalid_segs:%d\t free_segs:%d\n",
-			valid_blocks, SM_I(sbi)->main_segments - free_segs, free_segs);
+	snprintf(buf, BUF_SZ,
+		"valid_blocks:[0x%" PRIx64 "]\tvalid_segs:%d\t free_segs:%d\n",
+			valid_blocks,
+			SM_I(sbi)->main_segments - free_segs,
+			free_segs);
 	ret = write(fd, buf, strlen(buf));
 	ASSERT(ret >= 0);
 

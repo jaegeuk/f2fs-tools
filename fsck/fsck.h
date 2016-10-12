@@ -176,8 +176,8 @@ struct dump_option {
 	int32_t blk_addr;
 };
 
-extern void nat_dump(struct f2fs_sb_info *, int, int);
-extern void sit_dump(struct f2fs_sb_info *, int, int);
+extern void nat_dump(struct f2fs_sb_info *);
+extern void sit_dump(struct f2fs_sb_info *, unsigned int, unsigned int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
 extern void dump_node(struct f2fs_sb_info *, nid_t);
 extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);

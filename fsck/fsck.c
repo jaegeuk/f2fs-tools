@@ -602,17 +602,20 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		u32 *blk_cnt, struct node_info *ni)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	struct child_info child = {0, 2, 0, 0, 0, 0};
+	struct child_info child;
 	enum NODE_TYPE ntype;
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
-	child.p_ino = nid;
-	child.pp_ino = le32_to_cpu(node_blk->i.i_pino);
-	child.dir_level = node_blk->i.i_dir_level;
 	unsigned int idx = 0;
 	int need_fix = 0;
 	int ret;
+
+	memset(&child, 0, sizeof(child));
+	child.links = 2;
+	child.p_ino = nid;
+	child.pp_ino = le32_to_cpu(node_blk->i.i_pino);
+	child.dir_level = node_blk->i.i_dir_level;
 
 	if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0)
 		fsck->chk.valid_inode_cnt++;

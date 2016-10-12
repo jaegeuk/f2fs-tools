@@ -30,12 +30,12 @@ static void handle_selabel(struct dentry *de, int dir, char *target_out)
 	unsigned int uid = 0;
 	unsigned int gid = 0;
 
-	fs_config(de[i].path, dir, target_out, &uid,
+	fs_config(de->path, dir, target_out, &uid,
 			&gid, &mode, &capabilities);
-	de.mode = mode;
-	de.uid = uid;
-	de.gid = gid;
-	de.capabilities = capabilities;
+	de->mode = mode;
+	de->uid = uid;
+	de->gid = gid;
+	de->capabilities = capabilities;
 }
 #else
 #define handle_selabel(...)
