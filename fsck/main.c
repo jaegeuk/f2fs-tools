@@ -510,6 +510,7 @@ fsck_again:
 	case DUMP:
 		do_dump(sbi);
 		break;
+#ifndef WITH_ANDROID
 	case DEFRAG:
 		ret = do_defrag(sbi);
 		if (ret)
@@ -522,6 +523,7 @@ fsck_again:
 	case SLOAD:
 		do_sload(sbi);
 		break;
+#endif
 	}
 
 	f2fs_do_umount(sbi);
