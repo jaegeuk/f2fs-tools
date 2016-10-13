@@ -1281,8 +1281,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 		name_len = le16_to_cpu(dentry[i].name_len);
 
-		if (name_len == 0) {
-			ASSERT_MSG("Bad dentry 0x%x with zero name_len", i);
+		if (name_len == 0 || name_len > F2FS_NAME_LEN) {
+			ASSERT_MSG("Bad dentry 0x%x with invalid name_len", i);
 			if (c.fix_on) {
 				FIX_MSG("Clear bad dentry 0x%x", i);
 				test_and_clear_bit_le(i, bitmap);
