@@ -376,7 +376,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	if (opt->blk_addr != -1)
 		dump_info_from_blkaddr(sbi, opt->blk_addr);
 	if (opt->nid)
-		dump_node(sbi, opt->nid);
+		dump_node(sbi, opt->nid, 0);
 
 	print_cp_state(flag);
 

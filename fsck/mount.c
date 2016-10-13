@@ -105,21 +105,22 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	printf("\n");
 }
 
-void print_node_info(struct f2fs_node *node_block)
+void print_node_info(struct f2fs_node *node_block, int verbose)
 {
 	nid_t ino = le32_to_cpu(node_block->footer.ino);
 	nid_t nid = le32_to_cpu(node_block->footer.nid);
 	/* Is this inode? */
 	if (ino == nid) {
-		DBG(0, "Node ID [0x%x:%u] is inode\n", nid, nid);
-		print_inode_info(&node_block->i, 0);
+		DBG(verbose, "Node ID [0x%x:%u] is inode\n", nid, nid);
+		print_inode_info(&node_block->i, verbose);
 	} else {
 		int i;
 		u32 *dump_blk = (u32 *)node_block;
-		DBG(0, "Node ID [0x%x:%u] is direct node or indirect node.\n",
+		DBG(verbose,
+			"Node ID [0x%x:%u] is direct node or indirect node.\n",
 								nid, nid);
 		for (i = 0; i <= 10; i++)
-			MSG(0, "[%d]\t\t\t[0x%8x : %d]\n",
+			MSG(verbose, "[%d]\t\t\t[0x%8x : %d]\n",
 						i, dump_blk[i], dump_blk[i]);
 	}
 }

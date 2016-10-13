@@ -239,7 +239,7 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 	close(fd);
 }
 
-static void dump_data_blk(__u64 offset, u32 blkaddr)
+static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr)
 {
 	char buf[F2FS_BLKSIZE];
 
@@ -247,7 +247,7 @@ static void dump_data_blk(__u64 offset, u32 blkaddr)
 		return;
 
 	/* get data */
-	if (blkaddr == NEW_ADDR) {
+	if (blkaddr == NEW_ADDR || !IS_VALID_BLK_ADDR(sbi, blkaddr)) {
 		memset(buf, 0, F2FS_BLKSIZE);
 	} else {
 		int ret;
@@ -294,7 +294,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 	for (i = 0; i < idx; i++, (*ofs)++) {
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
-			dump_data_blk(*ofs * F2FS_BLKSIZE,
+			dump_data_blk(sbi, *ofs * F2FS_BLKSIZE,
 					le32_to_cpu(node_blk->dn.addr[i]));
 			break;
 		case TYPE_INDIRECT_NODE:
@@ -328,7 +328,7 @@ static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	/* check data blocks in inode */
 	for (i = 0; i < ADDRS_PER_INODE(&node_blk->i); i++, ofs++)
-		dump_data_blk(ofs * F2FS_BLKSIZE,
+		dump_data_blk(sbi, ofs * F2FS_BLKSIZE,
 				le32_to_cpu(node_blk->i.i_addr[i]));
 
 	/* check node blocks in inode */
@@ -347,33 +347,36 @@ static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 }
 
-void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
-					struct f2fs_node *node_blk)
+static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
+				struct f2fs_node *node_blk, int force)
 {
 	struct f2fs_inode *inode = &node_blk->i;
 	u32 imode = le32_to_cpu(inode->i_mode);
+	u32 namelen = le32_to_cpu(inode->i_namelen);
 	char name[255] = {0};
 	char path[1024] = {0};
 	char ans[255] = {0};
 	int ret;
 
-	if (!S_ISREG(imode)) {
-		MSG(0, "Not a regular file\n\n");
+	if (!S_ISREG(imode) || namelen == 0 || namelen > F2FS_NAME_LEN) {
+		MSG(force, "Not a regular file or wrong name info\n\n");
 		return;
 	}
+	if (force)
+		goto dump;
 
 	printf("Do you want to dump this file into ./lost_found/? [Y/N] ");
 	ret = scanf("%s", ans);
 	ASSERT(ret >= 0);
 
 	if (!strcasecmp(ans, "y")) {
+dump:
 		ret = system("mkdir -p ./lost_found");
 		ASSERT(ret >= 0);
 
 		/* make a file */
-		strncpy(name, (const char *)inode->i_name,
-					le32_to_cpu(inode->i_namelen));
-		name[le32_to_cpu(inode->i_namelen)] = 0;
+		strncpy(name, (const char *)inode->i_name, namelen);
+		name[namelen] = 0;
 		sprintf(path, "./lost_found/%s", name);
 
 		c.dump_fd = open(path, O_TRUNC|O_CREAT|O_RDWR, 0666);
@@ -390,7 +393,7 @@ void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 	}
 }
 
-void dump_node(struct f2fs_sb_info *sbi, nid_t nid)
+void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
@@ -406,17 +409,19 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid)
 	DBG(1, "nat_entry.ino         [0x%x]\n", ni.ino);
 
 	if (ni.blk_addr == 0x0)
-		MSG(0, "Invalid nat entry\n\n");
+		MSG(force, "Invalid nat entry\n\n");
 
 	DBG(1, "node_blk.footer.ino [0x%x]\n", le32_to_cpu(node_blk->footer.ino));
 	DBG(1, "node_blk.footer.nid [0x%x]\n", le32_to_cpu(node_blk->footer.nid));
 
 	if (le32_to_cpu(node_blk->footer.ino) == ni.ino &&
-			le32_to_cpu(node_blk->footer.nid) == ni.nid) {
-		print_node_info(node_blk);
-		dump_file(sbi, &ni, node_blk);
+			le32_to_cpu(node_blk->footer.nid) == ni.nid &&
+			ni.ino == ni.nid) {
+		print_node_info(node_blk, force);
+		dump_file(sbi, &ni, node_blk, force);
 	} else {
-		MSG(0, "Invalid node block\n\n");
+		print_node_info(node_blk, force);
+		MSG(force, "Invalid (i)node block\n\n");
 	}
 
 	free(node_blk);
@@ -434,7 +439,7 @@ static void dump_node_from_blkaddr(u32 blk_addr)
 	ASSERT(ret >= 0);
 
 	if (c.dbg_lv > 0)
-		print_node_info(node_blk);
+		print_node_info(node_blk, 0);
 	else
 		print_inode_info(&node_blk->i, 1);
 

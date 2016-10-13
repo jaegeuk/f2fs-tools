@@ -1939,6 +1939,21 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		ret = EXIT_ERR_CODE;
 	}
 
+#ifndef WITH_ANDROID
+	if (nr_unref_nid && !c.ro) {
+		char ans[255] = {0};
+
+		printf("\nDo you want to restore lost files into ./lost_found/? [Y/N] ");
+		ret = scanf("%s", ans);
+		ASSERT(ret >= 0);
+		if (!strcasecmp(ans, "y")) {
+			for (i = 0; i < fsck->nr_nat_entries; i++) {
+				if (f2fs_test_bit(i, fsck->nat_area_bitmap))
+					dump_node(sbi, i, 1);
+			}
+		}
+	}
+#endif
 	/* fix global metadata */
 	if (force || (c.fix_on && !c.ro)) {
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
