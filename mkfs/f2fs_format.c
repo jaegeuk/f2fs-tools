@@ -948,7 +948,7 @@ int f2fs_format_device(void)
 	}
 
 	if (c.trim) {
-		err = f2fs_trim_device(c.fd);
+		err = f2fs_trim_device(c.fd, c.total_sectors * c.sector_size);
 		if (err < 0) {
 			MSG(0, "\tError: Failed to trim whole device!!!\n");
 			goto exit;
