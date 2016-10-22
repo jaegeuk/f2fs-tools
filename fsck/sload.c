@@ -16,8 +16,11 @@
 #include <libgen.h>
 #include <dirent.h>
 #include <mntent.h>
+
+#ifdef HAVE_LIBSELINUX
 #include <selinux/selinux.h>
 #include <selinux/label.h>
+#endif
 
 #ifdef WITH_ANDROID
 #include <selinux/label.h>
@@ -110,10 +113,12 @@ static int build_directory(struct f2fs_sb_info *sbi, const char *full_path,
 		handle_selabel(dentries + i, S_ISDIR(stat.st_mode),
 							target_out_dir);
 
+#ifdef HAVE_LIBSELINUX
 		if (sehnd && selabel_lookup(sehnd, &dentries[i].secon,
 					dentries[i].path, stat.st_mode) < 0)
 			ERR_MSG("Cannot lookup security context for %s\n",
 						dentries[i].path);
+#endif
 
 		dentries[i].pino = dir_ino;
 
@@ -174,6 +179,7 @@ static int build_directory(struct f2fs_sb_info *sbi, const char *full_path,
 			MSG(1, "Error unknown file type\n");
 		}
 
+#ifdef HAVE_LIBSELINUX
 		if (dentries[i].secon) {
 			inode_set_selinux(sbi, dentries[i].ino, dentries[i].secon);
 			MSG(1, "File = %s \n----->SELinux context = %s\n",
@@ -184,10 +190,12 @@ static int build_directory(struct f2fs_sb_info *sbi, const char *full_path,
 					dentries[i].gid, dentries[i].capabilities);
 		}
 
+		free(dentries[i].secon);
+#endif
+
 		free(dentries[i].path);
 		free(dentries[i].full_path);
 		free((void *)dentries[i].name);
-		free(dentries[i].secon);
 	}
 
 	free(dentries);
@@ -218,6 +226,7 @@ int f2fs_sload(struct f2fs_sb_info *sbi, const char *from_dir,
 		return ret;
 	}
 
+#ifdef HAVE_LIBSELINUX
 	if (sehnd) {
 		char *secontext = NULL;
 
@@ -233,6 +242,7 @@ int f2fs_sload(struct f2fs_sb_info *sbi, const char *from_dir,
 		}
 		free(secontext);
 	}
+#endif
 
 	/* update curseg info; can update sit->types */
 	move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);

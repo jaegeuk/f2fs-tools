@@ -54,7 +54,9 @@ AC_PATH_PROG([LDCONFIG], [ldconfig],
 
 # Checks for libraries.
 PKG_CHECK_MODULES([libuuid], [uuid])
-PKG_CHECK_MODULES([libselinux], [libselinux])
+PKG_CHECK_MODULES([libselinux], [libselinux],
+	[AC_DEFINE([HAVE_LIBSELINUX], [1], [Use libselinux])],
+	[AC_MSG_NOTICE([libselinux not found])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/fs.h fcntl.h mntent.h stdlib.h string.h \
