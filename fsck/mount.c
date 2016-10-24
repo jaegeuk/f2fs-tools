@@ -37,12 +37,17 @@ void update_free_segments(struct f2fs_sb_info *sbi)
 
 void print_inode_info(struct f2fs_inode *inode, int name)
 {
+	unsigned char en[F2FS_NAME_LEN + 1];
 	unsigned int i = 0;
 	int namelen = le32_to_cpu(inode->i_namelen);
+	int is_encrypt = file_is_encrypt(inode);
 
+	namelen = convert_encrypted_name(inode->i_name, namelen, en, is_encrypt);
+	en[namelen] = '\0';
 	if (name && namelen) {
 		inode->i_name[namelen] = '\0';
-		MSG(0, " - File name         : %s\n", inode->i_name);
+		MSG(0, " - File name         : %s%s\n", en,
+				is_encrypt ? " <encrypted>" : "");
 		setlocale(LC_ALL, "");
 		MSG(0, " - File size         : %'llu (bytes)\n",
 				le64_to_cpu(inode->i_size));
@@ -74,8 +79,7 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 
 	if (namelen) {
 		DISP_u32(inode, i_namelen);
-		inode->i_name[namelen] = '\0';
-		DISP_utf(inode, i_name);
+		printf("%-30s\t\t[%s]\n", "i_name", en);
 	}
 
 	printf("i_ext: fofs:%x blkaddr:%x len:%x\n",

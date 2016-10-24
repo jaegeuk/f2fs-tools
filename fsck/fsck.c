@@ -426,8 +426,19 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	if (ntype == TYPE_INODE && ftype == F2FS_FT_DIR) {
 		u32 len = le32_to_cpu(node_blk->i.i_namelen);
 		if (name && memcmp(name, node_blk->i.i_name, len)) {
-			ASSERT_MSG("mismatch name [0x%x] [%s vs. %s]",
-					nid, name, node_blk->i.i_name);
+			int is_encrypt = file_is_encrypt(&node_blk->i);
+			unsigned char en1[F2FS_NAME_LEN + 1];
+			unsigned char en2[F2FS_NAME_LEN + 1];
+			/* if file is encrypted, its parent must be encrypted */
+			int len1 = convert_encrypted_name(name, len, en1,
+							is_encrypt);
+			int len2 = convert_encrypted_name(node_blk->i.i_name,
+							len, en2, is_encrypt);
+			en1[len1] = '\0';
+			en2[len2] = '\0';
+			ASSERT_MSG("mismatch name [0x%x] [%s vs. %s]%s",
+					nid, en1, en2,
+					is_encrypt ? " <encrypted>" : "");
 			return -EINVAL;
 		}
 	}
@@ -607,6 +618,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
+	unsigned char en[F2FS_NAME_LEN + 1];
+	int namelen;
 	unsigned int idx = 0;
 	int need_fix = 0;
 	int ret;
@@ -727,7 +740,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					blkaddr,
 					&child, (i_blocks == *blk_cnt),
 					ftype, nid, idx, ni->version,
-					file_is_encrypt(node_blk->i.i_advise));
+					file_is_encrypt(&node_blk->i));
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (c.fix_on) {
@@ -798,16 +811,18 @@ check:
 		}
 	}
 skip_blkcnt_fix:
+	namelen = convert_encrypted_name(node_blk->i.i_name,
+					le32_to_cpu(node_blk->i.i_namelen),
+					en, file_is_encrypt(&node_blk->i));
+	en[namelen] = '\0';
 	if (ftype == F2FS_FT_ORPHAN)
 		DBG(1, "Orphan Inode: 0x%x [%s] i_blocks: %u\n\n",
 				le32_to_cpu(node_blk->footer.ino),
-				node_blk->i.i_name,
-				(u32)i_blocks);
+				en, (u32)i_blocks);
 
 	if (ftype == F2FS_FT_DIR) {
 		DBG(1, "Directory Inode: 0x%x [%s] depth: %d has %d files\n\n",
-				le32_to_cpu(node_blk->footer.ino),
-				node_blk->i.i_name,
+				le32_to_cpu(node_blk->footer.ino), en,
 				le32_to_cpu(node_blk->i.i_current_depth),
 				child.files);
 
@@ -883,7 +898,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			blkaddr, child,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version,
-			file_is_encrypt(inode->i_advise));
+			file_is_encrypt(inode));
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
 		} else if (c.fix_on) {
@@ -1009,17 +1024,17 @@ static int digest_encode(const char *src, int len, char *dst)
 	return cp - dst;
 }
 
-static void convert_encrypted_name(unsigned char *name, int len,
+int convert_encrypted_name(unsigned char *name, int len,
 				unsigned char *new, int encrypted)
 {
 	if (!encrypted) {
 		memcpy(new, name, len);
 		new[len] = 0;
-		return;
+		return len;
 	}
 
 	*new = '_';
-	digest_encode((const char *)name, 24, (char *)new + 1);
+	return digest_encode((const char *)name, 24, (char *)new + 1);
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
@@ -1220,7 +1235,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 	int dentries = 0;
 	u32 blk_cnt;
 	u8 *name;
-	u16 name_len;;
+	unsigned char en[F2FS_NAME_LEN + 1];
+	u16 name_len, en_len;
 	int ret = 0;
 	int fixed = 0;
 	int i, slots;
@@ -1332,8 +1348,10 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			f2fs_check_dirent_position(name, name_len, child->pgofs,
 						child->dir_level, child->p_ino);
 
+		en_len = convert_encrypted_name(name, name_len, en, encrypted);
+		en[en_len] = '\0';
 		DBG(1, "[%3u]-[0x%x] name[%s] len[0x%x] ino[0x%x] type[0x%x]\n",
-				fsck->dentry_depth, i, name, name_len,
+				fsck->dentry_depth, i, en, name_len,
 				le32_to_cpu(dentry[i].ino),
 				dentry[i].file_type);
 
@@ -1383,7 +1401,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 			de_blk->dentry_bitmap,
 			de_blk->dentry, de_blk->filename,
 			NR_INLINE_DENTRY, 1,
-			file_is_encrypt(node_blk->i.i_advise));
+			file_is_encrypt(&node_blk->i));
 	if (dentries < 0) {
 		DBG(1, "[%3d] Inline Dentry Block Fixed hash_codes\n\n",
 			fsck->dentry_depth);
