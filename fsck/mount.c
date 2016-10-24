@@ -1573,7 +1573,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 			struct seg_entry *se2;
 			unsigned int i;
 
-			for (i = 0; i < sbi->segs_per_sec; i++) {
+			for (i = 1; i < sbi->segs_per_sec; i++) {
 				se2 = get_seg_entry(sbi, segno + i);
 				if (se2->valid_blocks)
 					break;
