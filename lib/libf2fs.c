@@ -746,12 +746,12 @@ int f2fs_get_device_info(void)
 	}
 
 #ifndef WITH_ANDROID
-	if (c.smr_mode) {
+	if (c.zoned_mode) {
 		if (zbc_scsi_report_zones()) {
-			MSG(0, "\tError: Not proper SMR drive\n");
+			MSG(0, "\tError: Not proper zoned block device\n");
 			return -1;
 		}
-		MSG(0, "Info: SMR - ZONES = %u, CONV = %u, ZONE_SECTS = %lu\n",
+		MSG(0, "Info: Zoned block device - ZONES = %u, CONV = %u, ZONE_SECTS = %lu\n",
 				c.nr_zones, c.nr_conventional,
 				c.zone_sectors);
 		if (c.segs_per_sec == 1)

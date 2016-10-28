@@ -302,7 +302,7 @@ struct f2fs_configuration {
 	char *mount_point;
 
 	/* to detect zbc error */
-	int smr_mode;
+	int zoned_mode;
 	u_int32_t nr_zones;
 	u_int32_t nr_conventional;
 	size_t zone_sectors;
@@ -458,7 +458,7 @@ enum {
 #define MAX_ACTIVE_DATA_LOGS	8
 
 #define F2FS_FEATURE_ENCRYPT	0x0001
-#define F2FS_FEATURE_HMSMR	0x0002
+#define F2FS_FEATURE_BLKZONED	0x0002
 
 #define MAX_VOLUME_NAME		512
 
