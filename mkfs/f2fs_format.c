@@ -184,6 +184,12 @@ static int f2fs_prepare_super_block(void)
 	MSG(0, "Info: zone aligned segment0 blkaddr: %u\n",
 					get_sb(segment0_blkaddr));
 
+	if (c.zoned_mode && get_sb(segment0_blkaddr) % c.zone_blocks) {
+		MSG(1, "\tError: Unaligned segment0 block address %u\n",
+				get_sb(segment0_blkaddr));
+		return -1;
+	}
+
 	set_sb(segment_count_ckpt, F2FS_NUMBER_OF_CHECKPOINT_PACK);
 
 	set_sb(sit_blkaddr, get_sb(segment0_blkaddr) +
@@ -272,6 +278,21 @@ static int f2fs_prepare_super_block(void)
 
 	set_sb(main_blkaddr, get_sb(segment0_blkaddr) + total_meta_zones *
 				c.segs_per_zone * c.blks_per_seg);
+
+	if (c.zoned_mode) {
+		/*
+		 * Make sure there is enough randomly writeable
+		 * space at the beginning of the disk.
+		 */
+		unsigned long main_blkzone = get_sb(main_blkaddr) / c.zone_blocks;
+
+		if (c.nr_rnd_zones < main_blkzone) {
+			MSG(1, "\tError: Device does not have enough random "
+					"write zones for F2FS volume (%lu needed)",
+					main_blkzone);
+			return -1;
+		}
+	}
 
 	total_zones = get_sb(segment_count) / (c.segs_per_zone) -
 							total_meta_zones;
