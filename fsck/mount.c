@@ -399,6 +399,13 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 					get_sb(root_ino) != 3)
 		return -1;
 
+	/* Check zoned block device feature */
+	if (c.zoned_model == F2FS_ZONED_HM &&
+			!(sb->feature & cpu_to_le32(F2FS_FEATURE_BLKZONED))) {
+		MSG(0, "\tMissing zoned block device feature\n");
+		return -1;
+	}
+
 	if (sanity_check_area_boundary(sb, offset))
 		return -1;
 	return 0;
