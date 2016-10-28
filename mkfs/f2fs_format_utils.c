@@ -58,6 +58,8 @@ int f2fs_trim_device(int fd, u_int64_t bytes)
 #endif
 		return 0;
 	} else if (S_ISBLK(stat_buf.st_mode)) {
+		if (c.zoned_mode)
+			return f2fs_reset_zones();
 #ifdef BLKSECDISCARD
 		if (ioctl(fd, BLKSECDISCARD, &range) < 0) {
 			MSG(0, "Info: This device doesn't support BLKSECDISCARD\n");
