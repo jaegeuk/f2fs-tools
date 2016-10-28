@@ -150,6 +150,20 @@ int main(int argc, char *argv[])
 	if (f2fs_get_device_info() < 0)
 		return -1;
 
+	/*
+	 * Some options are mandatory for host-managed
+	 * zoned block devices.
+	 */
+	if (c.zoned_model == F2FS_ZONED_HM && !c.zoned_mode) {
+		MSG(0, "\tError: zoned block device feature is required\n");
+		return -1;
+	}
+
+	if (c.zoned_mode && !c.trim) {
+		MSG(0, "\tError: Trim is required for zoned block devices\n");
+		return -1;
+	}
+
 	if (f2fs_format_device() < 0)
 		return -1;
 
