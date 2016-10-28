@@ -546,6 +546,8 @@ void f2fs_init_configuration(void)
 	c.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
 	c.rootdev_name = get_rootdev();
+	c.zoned_mode = 0;
+	c.zoned_model = F2FS_ZONED_NONE;
 
 	/* calculated by overprovision ratio */
 	c.reserved_segments = 0;
@@ -746,17 +748,33 @@ int f2fs_get_device_info(void)
 	}
 
 #ifndef WITH_ANDROID
-	if (c.zoned_mode) {
-		if (zbc_scsi_report_zones()) {
-			MSG(0, "\tError: Not proper zoned block device\n");
+	if (S_ISBLK(stat_buf.st_mode))
+		f2fs_get_zoned_model();
+	if (c.zoned_model == F2FS_ZONED_NONE) {
+		c.zoned_mode = 0;
+	} else {
+		if (f2fs_get_zone_blocks()) {
+			MSG(0, "\tError: Failed to get number of blocks per zone\n");
 			return -1;
 		}
-		MSG(0, "Info: Zoned block device - ZONES = %u, CONV = %u, ZONE_SECTS = %lu\n",
-				c.nr_zones, c.nr_conventional,
-				c.zone_sectors);
-		if (c.segs_per_sec == 1)
-			c.segs_per_sec = c.zone_sectors /
-				c.sectors_per_blk / DEFAULT_BLOCKS_PER_SEGMENT;
+
+		if (f2fs_check_zones()) {
+			MSG(0, "\tError: Failed to check zone configuration\n");
+			return -1;
+		}
+		MSG(0, "Info: Host-%s zoned block device:\n",
+				(c.zoned_model == F2FS_ZONED_HA) ?
+					"aware" : "managed");
+		MSG(0, "      %u zones, %u randomly writeable zones\n",
+				c.nr_zones, c.nr_rnd_zones);
+		MSG(0, "      %lu blocks per zone\n",
+				c.zone_blocks);
+		/*
+		 * Align sections to the device zone size
+		 * and align F2FS zones to the device zones.
+		 */
+		c.segs_per_sec = c.zone_blocks / DEFAULT_BLOCKS_PER_SEGMENT;
+		c.secs_per_zone = 1;
 	}
 #endif
 	c.segs_per_zone = c.segs_per_sec * c.secs_per_zone;

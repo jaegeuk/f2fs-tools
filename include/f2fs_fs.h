@@ -20,6 +20,10 @@
 #include <config.h>
 #endif
 
+#ifdef HAVE_LINUX_BLKZONED_H
+#include <linux/blkzoned.h>
+#endif
+
 typedef u_int64_t	u64;
 typedef u_int32_t	u32;
 typedef u_int16_t	u16;
@@ -229,32 +233,6 @@ enum f2fs_config_func {
 	SLOAD,
 };
 
-enum zbc_sk {
-	ZBC_E_ILLEGAL_REQUEST         = 0x5,
-	ZBC_E_DATA_PROTECT            = 0x7,
-	ZBC_E_ABORTED_COMMAND         = 0xB,
-};
-
-/**
- * Additional sense code/Additional sense code qualifier.
- */
-enum zbc_asc_ascq {
-	ZBC_E_INVALID_FIELD_IN_CDB                  = 0x2400,
-	ZBC_E_LOGICAL_BLOCK_ADDRESS_OUT_OF_RANGE    = 0x2100,
-	ZBC_E_UNALIGNED_WRITE_COMMAND               = 0x2104,
-	ZBC_E_WRITE_BOUNDARY_VIOLATION              = 0x2105,
-	ZBC_E_ATTEMPT_TO_READ_INVALID_DATA          = 0x2106,
-	ZBC_E_READ_BOUNDARY_VIOLATION               = 0x2107,
-	ZBC_E_ZONE_IS_READ_ONLY                     = 0x2708,
-	ZBC_E_INSUFFICIENT_ZONE_RESOURCES           = 0x550E,
-};
-
-struct zbc_errno {
-	enum zbc_sk		sk;
-	enum zbc_asc_ascq	asc_ascq;
-};
-typedef struct zbc_errno zbc_errno_t;
-
 struct f2fs_configuration {
 	u_int32_t sector_size;
 	u_int32_t reserved_segments;
@@ -301,12 +279,12 @@ struct f2fs_configuration {
 	char *from_dir;
 	char *mount_point;
 
-	/* to detect zbc error */
+	/* to handle zone block devices */
 	int zoned_mode;
+	int zoned_model;
 	u_int32_t nr_zones;
-	u_int32_t nr_conventional;
-	size_t zone_sectors;
-	zbc_errno_t zbd_errno;
+	u_int32_t nr_rnd_zones;
+	size_t zone_blocks;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -911,7 +889,7 @@ struct f2fs_inline_dentry {
 	__u8 reserved[INLINE_RESERVED_SIZE];
 	struct f2fs_dir_entry dentry[NR_INLINE_DENTRY];
 	__u8 filename[NR_INLINE_DENTRY][F2FS_SLOT_LEN];
-} __packed;
+} __attribute__((packed));
 
 /* file types used in inode_info->flags */
 enum FILE_TYPE {
@@ -974,7 +952,72 @@ extern int dev_read_version(void *, __u64, size_t);
 extern void get_kernel_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
-extern int zbc_scsi_report_zones(void);
+#define F2FS_ZONED_NONE		0
+#define F2FS_ZONED_HA		1
+#define F2FS_ZONED_HM		2
+
+#ifdef HAVE_LINUX_BLKZONED_H
+
+#define blk_zone_type(z)        (z)->type
+#define blk_zone_conv(z)	((z)->type == BLK_ZONE_TYPE_CONVENTIONAL)
+#define blk_zone_seq_req(z)	((z)->type == BLK_ZONE_TYPE_SEQWRITE_REQ)
+#define blk_zone_seq_pref(z)	((z)->type == BLK_ZONE_TYPE_SEQWRITE_PREF)
+#define blk_zone_seq(z)		(blk_zone_seq_req(z) || blk_zone_seq_pref(z))
+
+static inline const char *
+blk_zone_type_str(struct blk_zone *blkz)
+{
+	switch (blk_zone_type(blkz)) {
+	case BLK_ZONE_TYPE_CONVENTIONAL:
+		return( "Conventional" );
+	case BLK_ZONE_TYPE_SEQWRITE_REQ:
+		return( "Sequential-write-required" );
+	case BLK_ZONE_TYPE_SEQWRITE_PREF:
+		return( "Sequential-write-preferred" );
+	}
+	return( "Unknown-type" );
+}
+
+#define blk_zone_cond(z)	(z)->cond
+
+static inline const char *
+blk_zone_cond_str(struct blk_zone *blkz)
+{
+	switch (blk_zone_cond(blkz)) {
+	case BLK_ZONE_COND_NOT_WP:
+		return "Not-write-pointer";
+	case BLK_ZONE_COND_EMPTY:
+		return "Empty";
+	case BLK_ZONE_COND_IMP_OPEN:
+		return "Implicit-open";
+	case BLK_ZONE_COND_EXP_OPEN:
+		return "Explicit-open";
+	case BLK_ZONE_COND_CLOSED:
+		return "Closed";
+	case BLK_ZONE_COND_READONLY:
+		return "Read-only";
+	case BLK_ZONE_COND_FULL:
+		return "Full";
+	case BLK_ZONE_COND_OFFLINE:
+		return "Offline";
+	}
+	return "Unknown-cond";
+}
+
+#define blk_zone_empty(z)	(blk_zone_cond(z) == BLK_ZONE_COND_EMPTY)
+
+#define blk_zone_sector(z)	(z)->start
+#define blk_zone_length(z)	(z)->len
+#define blk_zone_wp_sector(z)	(z)->wp
+#define blk_zone_need_reset(z)	(int)(z)->reset
+#define blk_zone_non_seq(z)	(int)(z)->non_seq
+
+#endif
+
+extern void f2fs_get_zoned_model();
+extern int f2fs_get_zone_blocks();
+extern int f2fs_check_zones();
+extern int f2fs_reset_zones();
 
 extern struct f2fs_configuration c;
 
