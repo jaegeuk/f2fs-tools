@@ -26,6 +26,7 @@ void f2fs_get_zoned_model()
 {
 	char str[128];
 	FILE *file;
+	int res;
 
 	/* Check that this is a zoned block device */
 	snprintf(str, sizeof(str),
@@ -36,8 +37,11 @@ void f2fs_get_zoned_model()
 		goto not_zoned;
 
 	memset(str, 0, sizeof(str));
-	fscanf(file, "%s", str);
+	res = fscanf(file, "%s", str);
 	fclose(file);
+
+	if (res != 1)
+		goto not_zoned;
 
 	if (strcmp(str, "host-aware") == 0) {
 		c.zoned_model = F2FS_ZONED_HA;
@@ -57,6 +61,7 @@ int f2fs_get_zone_blocks()
 	uint64_t sectors;
 	char str[128];
 	FILE *file;
+	int res;
 
 	/* Get zone size */
 	c.zone_blocks = 0;
@@ -69,8 +74,11 @@ int f2fs_get_zone_blocks()
 		return -1;
 
 	memset(str, 0, sizeof(str));
-	fscanf(file, "%s", str);
+	res = fscanf(file, "%s", str);
 	fclose(file);
+
+	if (res != 1)
+		return -1;
 
 	sectors = atol(str);
 	if (!sectors)
