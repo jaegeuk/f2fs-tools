@@ -131,6 +131,7 @@ static int f2fs_prepare_super_block(void)
 	u_int32_t sit_bitmap_size, max_sit_bitmap_size;
 	u_int32_t max_nat_bitmap_size, max_nat_segments;
 	u_int32_t total_zones;
+	int i;
 
 	set_sb(magic, F2FS_SUPER_MAGIC);
 	set_sb(major_ver, F2FS_MAJOR_VERSION);
@@ -167,16 +168,15 @@ static int f2fs_prepare_super_block(void)
 		c.start_sector * c.sector_size;
 
 	if (c.start_sector % c.sectors_per_blk) {
-		MSG(1, "\tWARN: Align start sector number to the page unit\n");
+		MSG(1, "\t%s: Align start sector number to the page unit\n",
+				c.zoned_mode ? "FAIL" : "WARN");
 		MSG(1, "\ti.e., start sector: %d, ofs:%d (sects/page: %d)\n",
 				c.start_sector,
 				c.start_sector % c.sectors_per_blk,
 				c.sectors_per_blk);
+		if (c.zoned_mode)
+			return -1;
 	}
-
-	set_sb(segment_count, (c.total_sectors * c.sector_size -
-				zone_align_start_offset) / segment_size_bytes /
-				c.segs_per_zone * c.segs_per_zone);
 
 	set_sb(segment0_blkaddr, zone_align_start_offset / blk_size_bytes);
 	sb->cp_blkaddr = sb->segment0_blkaddr;
@@ -184,12 +184,43 @@ static int f2fs_prepare_super_block(void)
 	MSG(0, "Info: zone aligned segment0 blkaddr: %u\n",
 					get_sb(segment0_blkaddr));
 
-	if (c.zoned_mode && get_sb(segment0_blkaddr) % c.zone_blocks) {
+	if (c.zoned_mode && (get_sb(segment0_blkaddr) + c.start_sector /
+					c.sectors_per_blk) % c.zone_blocks) {
 		MSG(1, "\tError: Unaligned segment0 block address %u\n",
 				get_sb(segment0_blkaddr));
 		return -1;
 	}
 
+	for (i = 0; i < c.ndevs; i++) {
+		if (i == 0) {
+			c.devices[i].total_segments =
+				(c.devices[i].total_sectors *
+				c.sector_size - zone_align_start_offset) /
+				segment_size_bytes;
+			c.devices[i].start_blkaddr = 0;
+			c.devices[i].end_blkaddr = c.devices[i].total_segments *
+						c.blks_per_seg - 1 +
+						sb->segment0_blkaddr;
+		} else {
+			c.devices[i].total_segments =
+				c.devices[i].total_sectors /
+				(c.sectors_per_blk * c.blks_per_seg);
+			c.devices[i].start_blkaddr =
+					c.devices[i - 1].end_blkaddr + 1;
+			c.devices[i].end_blkaddr = c.devices[i].start_blkaddr +
+					c.devices[i].total_segments *
+					c.blks_per_seg - 1;
+		}
+		if (c.ndevs > 1) {
+			memcpy(sb->devs[i].path, c.devices[i].path, MAX_PATH_LEN);
+			sb->devs[i].total_segments =
+					cpu_to_le32(c.devices[i].total_segments);
+		}
+
+		c.total_segments += c.devices[i].total_segments;
+	}
+	set_sb(segment_count, (c.total_segments / c.segs_per_zone *
+						c.segs_per_zone));
 	set_sb(segment_count_ckpt, F2FS_NUMBER_OF_CHECKPOINT_PACK);
 
 	set_sb(sit_blkaddr, get_sb(segment0_blkaddr) +
@@ -286,9 +317,10 @@ static int f2fs_prepare_super_block(void)
 		 */
 		unsigned long main_blkzone = get_sb(main_blkaddr) / c.zone_blocks;
 
-		if (c.nr_rnd_zones < main_blkzone) {
-			MSG(1, "\tError: Device does not have enough random "
-					"write zones for F2FS volume (%lu needed)",
+		if (c.devices[0].zoned_model == F2FS_ZONED_HM &&
+				c.devices[0].nr_rnd_zones < main_blkzone) {
+			MSG(0, "\tError: Device does not have enough random "
+					"write zones for F2FS volume (%lu needed)\n",
 					main_blkzone);
 			return -1;
 		}
@@ -969,7 +1001,7 @@ int f2fs_format_device(void)
 	}
 
 	if (c.trim) {
-		err = f2fs_trim_device(c.fd, c.total_sectors * c.sector_size);
+		err = f2fs_trim_devices();
 		if (err < 0) {
 			MSG(0, "\tError: Failed to trim whole device!!!\n");
 			goto exit;

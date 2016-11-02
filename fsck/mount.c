@@ -400,7 +400,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 		return -1;
 
 	/* Check zoned block device feature */
-	if (c.zoned_model == F2FS_ZONED_HM &&
+	if (c.devices[0].zoned_model == F2FS_ZONED_HM &&
 			!(sb->feature & cpu_to_le32(F2FS_FEATURE_BLKZONED))) {
 		MSG(0, "\tMissing zoned block device feature\n");
 		return -1;
@@ -470,6 +470,7 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	u64 total_sectors;
+	int i;
 
 	sbi->log_sectors_per_block = get_sb(log_sectors_per_block);
 	sbi->log_blocksize = get_sb(log_blocksize);
@@ -485,6 +486,37 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->node_ino_num = get_sb(node_ino);
 	sbi->meta_ino_num = get_sb(meta_ino);
 	sbi->cur_victim_sec = NULL_SEGNO;
+
+	for (i = 0; i < MAX_DEVICES; i++) {
+		if (!sb->devs[i].path[0])
+			break;
+
+		if (i) {
+			c.devices[i].path = strdup((char *)sb->devs[i].path);
+			if (get_device_info(i))
+				ASSERT(0);
+		} else {
+			ASSERT(!strcmp((char *)sb->devs[i].path,
+						(char *)c.devices[i].path));
+		}
+
+		c.devices[i].total_segments =
+			le32_to_cpu(sb->devs[i].total_segments);
+		if (i)
+			c.devices[i].start_blkaddr =
+				c.devices[i - 1].end_blkaddr + 1;
+		c.devices[i].end_blkaddr = c.devices[i].start_blkaddr +
+			c.devices[i].total_segments *
+			c.blks_per_seg - 1;
+		if (i == 0)
+			c.devices[i].end_blkaddr += get_sb(segment0_blkaddr);
+
+		c.ndevs = i + 1;
+		MSG(0, "Info: Device[%d] : %s blkaddr = %"PRIx64"--%"PRIx64"\n",
+				i, c.devices[i].path,
+				c.devices[i].start_blkaddr,
+				c.devices[i].end_blkaddr);
+	}
 
 	total_sectors = get_sb(block_count) << sbi->log_sectors_per_block;
 	MSG(0, "Info: total FS sectors = %"PRIu64" (%"PRIu64" MB)\n",

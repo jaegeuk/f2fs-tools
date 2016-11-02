@@ -25,6 +25,22 @@
 
 struct f2fs_configuration c;
 
+static int __get_device_fd(__u64 *offset)
+{
+	__u64 blk_addr = *offset >> F2FS_BLKSIZE_BITS;
+	int i;
+
+	for (i = 0; i < c.ndevs; i++) {
+		if (c.devices[i].start_blkaddr <= blk_addr &&
+				c.devices[i].end_blkaddr >= blk_addr) {
+			*offset -=
+				c.devices[i].start_blkaddr << F2FS_BLKSIZE_BITS;
+			return c.devices[i].fd;
+		}
+	}
+	return -1;
+}
+
 /*
  * IO interfaces
  */
@@ -39,17 +55,26 @@ int dev_read_version(void *buf, __u64 offset, size_t len)
 
 int dev_read(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
+
+	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (read(c.fd, buf, len) < 0)
+	if (read(fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
 
 int dev_readahead(__u64 offset, size_t len)
 {
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
 #ifdef POSIX_FADV_WILLNEED
-	return posix_fadvise(c.fd, offset, len, POSIX_FADV_WILLNEED);
+	return posix_fadvise(fd, offset, len, POSIX_FADV_WILLNEED);
 #else
 	return 0;
 #endif
@@ -57,9 +82,14 @@ int dev_readahead(__u64 offset, size_t len)
 
 int dev_write(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
+
+	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (write(c.fd, buf, len) < 0)
+	if (write(fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -80,12 +110,17 @@ int dev_write_dump(void *buf, __u64 offset, size_t len)
 
 int dev_fill(void *buf, __u64 offset, size_t len)
 {
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
+
 	/* Only allow fill to zero */
 	if (*((__u8*)buf))
 		return -1;
-	if (lseek64(c.fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
-	if (write(c.fd, buf, len) < 0)
+	if (write(fd, buf, len) < 0)
 		return -1;
 	return 0;
 }
@@ -107,15 +142,18 @@ int dev_reada_block(__u64 blk_addr)
 
 void f2fs_finalize_device(void)
 {
+	int i;
+
 	/*
 	 * We should call fsync() to flush out all the dirty pages
 	 * in the block device page cache.
 	 */
-	if (fsync(c.fd) < 0)
-		MSG(0, "\tError: Could not conduct fsync!!!\n");
+	for (i = 0; i < c.ndevs; i++) {
+		if (fsync(c.devices[i].fd) < 0)
+			MSG(0, "\tError: Could not conduct fsync!!!\n");
 
-	if (close(c.fd) < 0)
-		MSG(0, "\tError: Failed to close device file!!!\n");
-
+		if (close(c.devices[i].fd) < 0)
+			MSG(0, "\tError: Failed to close device file!!!\n");
+	}
 	close(c.kd);
 }

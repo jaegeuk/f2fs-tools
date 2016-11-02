@@ -212,6 +212,8 @@ static inline uint64_t bswap_64(uint64_t val)
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 #define CHECKSUM_OFFSET		4092
+#define MAX_PATH_LEN		64
+#define MAX_DEVICES		8
 
 #define F2FS_BYTES_TO_BLK(bytes)    ((bytes) >> F2FS_BLKSIZE_BITS)
 #define F2FS_BLKSIZE_BITS 12
@@ -233,10 +235,28 @@ enum f2fs_config_func {
 	SLOAD,
 };
 
-struct f2fs_configuration {
+struct device_info {
+	char *path;
+	int32_t fd;
 	u_int32_t sector_size;
+	u_int64_t total_sectors;	/* got by get_device_info */
+	u_int64_t start_blkaddr;
+	u_int64_t end_blkaddr;
+	u_int32_t total_segments;
+
+	/* to handle zone block devices */
+	int zoned_model;
+	u_int32_t nr_zones;
+	u_int32_t nr_rnd_zones;
+	size_t zone_blocks;
+};
+
+struct f2fs_configuration {
 	u_int32_t reserved_segments;
 	u_int32_t new_reserved_segments;
+	int zoned_mode;
+	int zoned_model;
+	size_t zone_blocks;
 	double overprovision;
 	double new_overprovision;
 	u_int32_t cur_seg[6];
@@ -244,7 +264,10 @@ struct f2fs_configuration {
 	u_int32_t secs_per_zone;
 	u_int32_t segs_per_zone;
 	u_int32_t start_sector;
+	u_int32_t total_segments;
+	u_int32_t sector_size;
 	u_int64_t total_sectors;
+	u_int64_t wanted_total_sectors;
 	u_int64_t target_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
@@ -253,9 +276,10 @@ struct f2fs_configuration {
 	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
 	int heap;
-	int32_t fd, kd;
+	int32_t kd;
 	int32_t dump_fd;
-	char *device_name;
+	struct device_info devices[MAX_DEVICES];
+	int ndevs;
 	char *extension_list;
 	const char *rootdev_name;
 	int dbg_lv;
@@ -278,13 +302,6 @@ struct f2fs_configuration {
 	/* sload parameters */
 	char *from_dir;
 	char *mount_point;
-
-	/* to handle zone block devices */
-	int zoned_mode;
-	int zoned_model;
-	u_int32_t nr_zones;
-	u_int32_t nr_rnd_zones;
-	size_t zone_blocks;
 } __attribute__((packed));
 
 #ifdef CONFIG_64BIT
@@ -443,6 +460,11 @@ enum {
 /*
  * For superblock
  */
+struct f2fs_device {
+	__u8 path[MAX_PATH_LEN];
+	__le32 total_segments;
+} __attribute__((packed));
+
 struct f2fs_super_block {
 	__le32 magic;			/* Magic Number */
 	__le16 major_ver;		/* Major Version */
@@ -481,7 +503,8 @@ struct f2fs_super_block {
 	__le32 feature;			/* defined features */
 	__u8 encryption_level;		/* versioning level for encryption */
 	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
-	__u8 reserved[871];		/* valid reserved region */
+	struct f2fs_device devs[MAX_DEVICES];	/* device list */
+	__u8 reserved[327];		/* valid reserved region */
 } __attribute__((packed));
 
 /*
@@ -933,8 +956,10 @@ extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
 extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
 
 extern void f2fs_init_configuration(void);
-extern int f2fs_dev_is_umounted(void);
+extern int f2fs_devs_are_umounted(void);
+extern int f2fs_dev_is_umounted(char *);
 extern int f2fs_get_device_info(void);
+extern int get_device_info(int);
 extern void f2fs_finalize_device(void);
 
 extern int dev_read(void *, __u64, size_t);
@@ -1014,10 +1039,10 @@ blk_zone_cond_str(struct blk_zone *blkz)
 
 #endif
 
-extern void f2fs_get_zoned_model();
-extern int f2fs_get_zone_blocks();
-extern int f2fs_check_zones();
-extern int f2fs_reset_zones();
+extern void f2fs_get_zoned_model(int);
+extern int f2fs_get_zone_blocks(int);
+extern int f2fs_check_zones(int);
+extern int f2fs_reset_zones(int);
 
 extern struct f2fs_configuration c;
 

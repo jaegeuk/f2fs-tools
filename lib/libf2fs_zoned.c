@@ -22,8 +22,9 @@
 
 #ifdef HAVE_LINUX_BLKZONED_H
 
-void f2fs_get_zoned_model()
+void f2fs_get_zoned_model(int i)
 {
+	struct device_info *dev = c.devices + i;
 	char str[128];
 	FILE *file;
 	int res;
@@ -31,7 +32,7 @@ void f2fs_get_zoned_model()
 	/* Check that this is a zoned block device */
 	snprintf(str, sizeof(str),
 		 "/sys/block/%s/queue/zoned",
-		 basename(c.device_name));
+		 basename(dev->path));
 	file = fopen(str, "r");
 	if (!file)
 		goto not_zoned;
@@ -44,31 +45,32 @@ void f2fs_get_zoned_model()
 		goto not_zoned;
 
 	if (strcmp(str, "host-aware") == 0) {
-		c.zoned_model = F2FS_ZONED_HA;
+		dev->zoned_model = F2FS_ZONED_HA;
 		return;
 	}
 	if (strcmp(str, "host-managed") == 0) {
-		c.zoned_model = F2FS_ZONED_HM;
+		dev->zoned_model = F2FS_ZONED_HM;
 		return;
 	}
 
 not_zoned:
-	c.zoned_model = F2FS_ZONED_NONE;
+	dev->zoned_model = F2FS_ZONED_NONE;
 }
 
-int f2fs_get_zone_blocks()
+int f2fs_get_zone_blocks(int i)
 {
+	struct device_info *dev = c.devices + i;
 	uint64_t sectors;
 	char str[128];
 	FILE *file;
 	int res;
 
 	/* Get zone size */
-	c.zone_blocks = 0;
+	dev->zone_blocks = 0;
 
 	snprintf(str, sizeof(str),
 		 "/sys/block/%s/queue/chunk_sectors",
-		 basename(c.device_name));
+		 basename(dev->path));
 	file = fopen(str, "r");
 	if (!file)
 		return -1;
@@ -84,24 +86,25 @@ int f2fs_get_zone_blocks()
 	if (!sectors)
 		return -1;
 
-	c.zone_blocks = sectors >> (F2FS_BLKSIZE_BITS - 9);
+	dev->zone_blocks = sectors >> (F2FS_BLKSIZE_BITS - 9);
 	sectors = (sectors << 9) / c.sector_size;
 
 	/*
 	 * Total number of zones: there may
 	 * be a last smaller runt zone.
 	 */
-	c.nr_zones = c.total_sectors / sectors;
-	if (c.total_sectors % sectors)
-		c.nr_zones++;
+	dev->nr_zones = dev->total_sectors / sectors;
+	if (dev->total_sectors % sectors)
+		dev->nr_zones++;
 
 	return 0;
 }
 
 #define F2FS_REPORT_ZONES_BUFSZ	524288
 
-int f2fs_check_zones()
+int f2fs_check_zones(int j)
 {
+	struct device_info *dev = c.devices + j;
 	struct blk_zone_report *rep;
 	struct blk_zone *blkz;
 	unsigned int i, n = 0;
@@ -116,9 +119,9 @@ int f2fs_check_zones()
 		return -ENOMEM;
 	}
 
-	c.nr_rnd_zones = 0;
+	dev->nr_rnd_zones = 0;
 	sector = 0;
-	total_sectors = (c.total_sectors * c.sector_size) >> 9;
+	total_sectors = (dev->total_sectors * c.sector_size) >> 9;
 
 	while (sector < total_sectors) {
 
@@ -128,7 +131,7 @@ int f2fs_check_zones()
 		rep->nr_zones = (F2FS_REPORT_ZONES_BUFSZ - sizeof(struct blk_zone_report))
 			/ sizeof(struct blk_zone);
 
-		ret = ioctl(c.fd, BLKREPORTZONE, rep);
+		ret = ioctl(dev->fd, BLKREPORTZONE, rep);
 		if (ret != 0) {
 			ret = -errno;
 			ERR_MSG("ioctl BLKREPORTZONE failed\n");
@@ -147,7 +150,7 @@ int f2fs_check_zones()
 			if (blk_zone_conv(blkz) ||
 			    blk_zone_seq_pref(blkz)) {
 				if (last_is_conv)
-					c.nr_rnd_zones++;
+					dev->nr_rnd_zones++;
 			} else {
 				last_is_conv = 0;
 			}
@@ -180,26 +183,25 @@ int f2fs_check_zones()
 			n++;
 			blkz++;
 		}
-
 	}
 
 	if (sector != total_sectors) {
 		ERR_MSG("Invalid zones: last sector reported is %llu, expected %llu\n",
 			(unsigned long long)(sector << 9) / c.sector_size,
-			(unsigned long long)c.total_sectors);
+			(unsigned long long)dev->total_sectors);
 		ret = -1;
 		goto out;
 	}
 
-	if (n != c.nr_zones) {
+	if (n != dev->nr_zones) {
 		ERR_MSG("Inconsistent number of zones: expected %u zones, got %u\n",
-			c.nr_zones, n);
+			dev->nr_zones, n);
 		ret = -1;
 		goto out;
 	}
 
-	if (c.zoned_model == F2FS_ZONED_HM &&
-			!c.nr_rnd_zones) {
+	if (dev->zoned_model == F2FS_ZONED_HM &&
+			!dev->nr_rnd_zones) {
 		ERR_MSG("No conventional zone for super block\n");
 		ret = -1;
 	}
@@ -208,8 +210,9 @@ out:
 	return ret;
 }
 
-int f2fs_reset_zones()
+int f2fs_reset_zones(int j)
 {
+	struct device_info *dev = c.devices + j;
 	struct blk_zone_report *rep;
 	struct blk_zone *blkz;
 	struct blk_zone_range range;
@@ -225,7 +228,7 @@ int f2fs_reset_zones()
 	}
 
 	sector = 0;
-	total_sectors = (c.total_sectors * c.sector_size) >> 9;
+	total_sectors = (dev->total_sectors * c.sector_size) >> 9;
 	while (sector < total_sectors) {
 
 		/* Get zone info */
@@ -234,7 +237,7 @@ int f2fs_reset_zones()
 		rep->nr_zones = (F2FS_REPORT_ZONES_BUFSZ - sizeof(struct blk_zone_report))
 			/ sizeof(struct blk_zone);
 
-		ret = ioctl(c.fd, BLKREPORTZONE, rep);
+		ret = ioctl(dev->fd, BLKREPORTZONE, rep);
 		if (ret != 0) {
 			ret = -errno;
 			ERR_MSG("ioctl BLKREPORTZONES failed\n");
@@ -251,8 +254,9 @@ int f2fs_reset_zones()
 				/* Non empty sequential zone: reset */
 				range.sector = blk_zone_sector(blkz);
 				range.nr_sectors = blk_zone_length(blkz);
-				ret = ioctl(c.fd, BLKRESETZONE, &range);
+				ret = ioctl(dev->fd, BLKRESETZONE, &range);
 				if (ret != 0) {
+					ret = -errno;
 					ERR_MSG("ioctl BLKRESETZONE failed\n");
 					goto out;
 				}
@@ -260,39 +264,43 @@ int f2fs_reset_zones()
 			sector = blk_zone_sector(blkz) + blk_zone_length(blkz);
 			blkz++;
 		}
-
 	}
-
 out:
 	free(rep);
-	return 0;
+	if (!ret)
+		MSG(0, "Info: Discarded %"PRIu64" MB\n", (sector << 9) >> 20);
+	return ret;
 }
 
 #else
 
-void f2fs_get_zoned_model()
+void f2fs_get_zoned_model(int i)
 {
+	struct device_info *dev = c.devices + i;
+
 	c.zoned_mode = 0;
-	c.zoned_model = F2FS_ZONED_NONE;
+	dev->zoned_model = F2FS_ZONED_NONE;
 }
 
-int f2fs_get_zone_blocks()
+int f2fs_get_zone_blocks(int i)
 {
+	struct device_info *dev = c.devices + i;
+
 	c.zoned_mode = 0;
-	c.nr_zones = 0;
-	c.zone_blocks = 0;
-	c.zoned_model = F2FS_ZONED_NONE;
+	dev->nr_zones = 0;
+	dev->zone_blocks = 0;
+	dev->zoned_model = F2FS_ZONED_NONE;
 
 	return 0;
 }
 
-int f2fs_check_zones()
+int f2fs_check_zones(int i)
 {
 	ERR_MSG("Zoned block devices are not supported\n");
 	return -1;
 }
 
-int f2fs_reset_zones()
+int f2fs_reset_zones(int i)
 {
 	ERR_MSG("Zoned block devices are not supported\n");
 	return -1;

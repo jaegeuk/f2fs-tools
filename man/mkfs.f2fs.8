@@ -12,6 +12,10 @@ mkfs.f2fs \- create an F2FS file system
 .I heap-based-allocation
 ]
 [
+.B \-c
+.I device
+]
+[
 .B \-l
 .I volume-label
 ]
@@ -54,6 +58,10 @@ Specify 1 or 0 to enable/disable heap based block allocation policy.
 If the value is equal to 1, each of active log areas are initially
 assigned separately according to the whole volume size.
 The default value is 1.
+.TP
+.BI \-c " device"
+Build f2fs with this device additionally, so that user can see all
+the devices as one big volume.
 .TP
 .BI \-l " volume-label"
 Specify the volume label to the partition mounted as F2FS.

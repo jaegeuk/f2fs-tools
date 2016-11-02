@@ -28,6 +28,7 @@ static void mkfs_usage()
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a heap-based allocation [default:1]\n");
+	MSG(0, "  -c [device path]\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -l label\n");
@@ -71,7 +72,7 @@ static void parse_feature(const char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:d:e:l:mo:O:s:z:t:";
+	static const char *option_string = "qa:c:d:e:l:mo:O:s:z:t:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -81,6 +82,14 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'a':
 			c.heap = atoi(optarg);
+			break;
+		case 'c':
+			if (strlen(optarg) > MAX_PATH_LEN) {
+				MSG(0, "Error: device path should be less than "
+					"%d characters\n", MAX_PATH_LEN);
+				mkfs_usage();
+			}
+			c.devices[c.ndevs++].path = strdup(optarg);
 			break;
 		case 'd':
 			c.dbg_lv = atoi(optarg);
@@ -125,7 +134,21 @@ static void f2fs_parse_options(int argc, char *argv[])
 		MSG(0, "\tError: Device not specified\n");
 		mkfs_usage();
 	}
-	c.device_name = argv[optind];
+
+	/* [0] : META, [1 to MAX_DEVICES + 1] : NODE/DATA */
+	c.devices[0].path = strdup(argv[optind]);
+	if (c.ndevs > MAX_DEVICES) {
+		MSG(0, "\tError: Too many devices\n");
+		mkfs_usage();
+	}
+
+	if ((optind + 1) < argc) {
+		if (c.ndevs > 1) {
+			MSG(0, "\tError: Not support custom size on multi-devs.\n");
+			mkfs_usage();
+		}
+		c.wanted_total_sectors = atoll(argv[optind+1]);
+	}
 
 	if ((optind + 1) < argc)
 		c.total_sectors = atoll(argv[optind+1]);
@@ -142,7 +165,7 @@ int main(int argc, char *argv[])
 
 	f2fs_show_info();
 
-	if (f2fs_dev_is_umounted() < 0) {
+	if (f2fs_devs_are_umounted() < 0) {
 		MSG(0, "\tError: Not available on mounted device!\n");
 		return -1;
 	}

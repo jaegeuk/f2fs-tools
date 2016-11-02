@@ -301,7 +301,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		else if (c.func == SLOAD)
 			sload_usage();
 	}
-	c.device_name = argv[optind];
+	c.devices[0].path = strdup(argv[optind]);
 }
 
 static void do_fsck(struct f2fs_sb_info *sbi)
@@ -474,7 +474,7 @@ int main(int argc, char **argv)
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_dev_is_umounted() < 0) {
+	if (f2fs_devs_are_umounted() < 0) {
 		if (!c.ro || c.func == DEFRAG) {
 			MSG(0, "\tError: Not available on mounted device!\n");
 			return -1;
