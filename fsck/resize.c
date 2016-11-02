@@ -171,7 +171,9 @@ static void migrate_main(struct f2fs_sb_info *sbi,
 		}
 	}
 	free(raw);
-	DBG(0, "Info: Done to migrate data and node blocks\n");
+	DBG(0, "Info: Done to migrate Main area: main_blkaddr = 0x%x -> 0x%x\n",
+				START_BLOCK(sbi, 0),
+				START_BLOCK(sbi, 0) + offset);
 }
 
 static void move_ssa(struct f2fs_sb_info *sbi, unsigned int segno,
@@ -214,7 +216,8 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
 	}
 
-	DBG(0, "Info: Done to migrate SSA blocks\n");
+	DBG(0, "Info: Done to migrate SSA blocks: sum_blkaddr = 0x%x -> 0x%x\n",
+				old_sum_blkaddr, new_sum_blkaddr);
 }
 
 static int shrink_nats(struct f2fs_sb_info *sbi,
@@ -323,9 +326,10 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
 		ret = dev_write_block(nat_block, block_addr);
 		ASSERT(ret >= 0);
-		DBG(1, "Write NAT: %lx\n", block_addr);
+		DBG(3, "Write NAT: %lx\n", block_addr);
 	}
-	DBG(0, "Info: Done to migrate NAT blocks\n");
+	DBG(0, "Info: Done to migrate NAT blocks: nat_blkaddr = 0x%x -> 0x%x\n",
+			old_nat_blkaddr, new_nat_blkaddr);
 }
 
 static void migrate_sit(struct f2fs_sb_info *sbi,
@@ -347,7 +351,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	for (index = 0; index < sit_blks; index++) {
 		ret = dev_write_block(sit_blk, get_newsb(sit_blkaddr) + index);
 		ASSERT(ret >= 0);
-		DBG(1, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
+		DBG(3, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
 	}
 
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
@@ -382,7 +386,8 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	ASSERT(ret >= 0);
 
 	free(sit_blk);
-	DBG(0, "Info: Done to migrate SIT blocks\n");
+	DBG(0, "Info: Done to restore new SIT blocks: 0x%x\n",
+					get_newsb(sit_blkaddr));
 }
 
 static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
@@ -545,10 +550,8 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 		}
 	}
 
-	c.dbg_lv = 1;
 	print_raw_sb_info(sb);
 	print_raw_sb_info(new_sb);
-	c.dbg_lv = 0;
 
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);
