@@ -206,14 +206,20 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t old_sum_blkaddr = get_sb(ssa_blkaddr);
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
-	int segno;
+	unsigned int segno;
 
-	if (new_sum_blkaddr < old_sum_blkaddr + offset) {
-		for (segno = offset; segno < TOTAL_SEGS(sbi); segno++)
+	if (offset && new_sum_blkaddr < old_sum_blkaddr + offset) {
+		segno = offset;
+		while (segno != TOTAL_SEGS(sbi)) {
 			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
+			segno++;
+		}
 	} else {
-		for (segno = TOTAL_SEGS(sbi) - 1; segno >= offset; segno--)
+		segno = TOTAL_SEGS(sbi) - 1;
+		while (segno != offset - 1) {
 			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
+			segno--;
+		}
 	}
 
 	DBG(0, "Info: Done to migrate SSA blocks: sum_blkaddr = 0x%x -> 0x%x\n",
@@ -531,7 +537,8 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block new_sb_raw;
 	struct f2fs_super_block *new_sb = &new_sb_raw;
 	block_t end_blkaddr, old_main_blkaddr, new_main_blkaddr;
-	unsigned int offset, offset_seg;
+	unsigned int offset;
+	unsigned int offset_seg = 0;
 	int err = -1;
 
 	/* flush NAT/SIT journal entries */
@@ -565,13 +572,12 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	}
 
 	err = -EAGAIN;
-	offset_seg = offset >> get_sb(log_blocks_per_seg);
-
 	if (new_main_blkaddr < end_blkaddr) {
 		err = f2fs_defragment(sbi, old_main_blkaddr, offset,
 						new_main_blkaddr, 0);
-		if (err)
-			MSG(0, "Skip defragement\n");
+		if (!err)
+			offset_seg = offset >> get_sb(log_blocks_per_seg);
+		MSG(0, "Try to do defragement: %s\n", err ? "Skip": "Done");
 	}
 	/* move whole data region */
 	if (err)
