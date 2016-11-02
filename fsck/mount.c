@@ -1550,9 +1550,10 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 	struct seg_entry *se;
 	u32 segno;
 	u64 offset;
+	int not_enough = 0;
 
 	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
-		return -1;
+		not_enough = 1;
 
 	while (*to >= SM_I(sbi)->main_blkaddr &&
 			*to < F2FS_RAW_SUPER(sbi)->block_count) {
@@ -1567,6 +1568,13 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 						START_BLOCK(sbi, segno + 1);
 			continue;
 		}
+
+		if (se->valid_blocks == 0 && not_enough) {
+			*to = left ? START_BLOCK(sbi, segno) - 1:
+						START_BLOCK(sbi, segno + 1);
+			continue;
+		}
+
 		if (se->valid_blocks == 0 && !(segno % sbi->segs_per_sec)) {
 			struct seg_entry *se2;
 			unsigned int i;
