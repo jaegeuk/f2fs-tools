@@ -58,7 +58,6 @@ struct f2fs_fsck {
 		u32 multi_hard_link_files;
 		u64 sit_valid_blocks;
 		u32 sit_free_segs;
-		u32 free_segs;
 	} chk;
 
 	struct hard_link_node *hard_link_list_head;
@@ -164,6 +163,8 @@ extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t);
 extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, nid_t, block_t);
 
 extern void print_raw_sb_info(struct f2fs_super_block *);
+
+extern u32 get_free_segments(struct f2fs_sb_info *);
 
 /* dump.c */
 struct dump_option {

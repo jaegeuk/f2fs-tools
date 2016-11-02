@@ -1749,7 +1749,7 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	set_cp(ckpt_flags, flags);
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
-	set_cp(free_segment_count, fsck->chk.free_segs);
+	set_cp(free_segment_count, get_free_segments(sbi));
 	set_cp(valid_block_count, fsck->chk.valid_blk_cnt);
 	set_cp(valid_node_count, fsck->chk.valid_node_cnt);
 	set_cp(valid_inode_count, fsck->chk.valid_inode_cnt);
@@ -1979,9 +1979,9 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		if (force || c.bug_on) {
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
+			rewrite_sit_area_bitmap(sbi);
 			move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
 			write_curseg_info(sbi);
-			rewrite_sit_area_bitmap(sbi);
 			fix_checkpoint(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG)) {
 			write_checkpoint(sbi);
