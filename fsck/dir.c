@@ -185,6 +185,12 @@ static int f2fs_find_entry(struct f2fs_sb_info *sbi,
 	unsigned int max_depth;
 	unsigned int level;
 
+	if (dir->i.i_inline & F2FS_INLINE_DENTRY) {
+		ERR_MSG("Not support to find \"%s\" in inline_dir pino=%x\n",
+				de->name, de->pino);
+		return 0;
+	}
+
 	max_depth = dir->i.i_current_depth;
 	for (level = 0; level < max_depth; level ++) {
 		if (find_in_level(sbi, dir, level, de))
@@ -490,6 +496,13 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	if (ret) {
 		MSG(0, "Skip the existing \"%s\" pino=%x ERR=%d\n",
 					de->name, de->pino, ret);
+		if (de->file_type == F2FS_FT_REG_FILE)
+			de->ino = 0;
+		goto free_parent_dir;
+	}
+	if (parent->i.i_inline & F2FS_INLINE_DENTRY) {
+		ERR_MSG("Not support adding \"%s\" in inline_dir pino=%x\n",
+					de->name, de->pino);
 		if (de->file_type == F2FS_FT_REG_FILE)
 			de->ino = 0;
 		goto free_parent_dir;
