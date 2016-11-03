@@ -206,24 +206,37 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t old_sum_blkaddr = get_sb(ssa_blkaddr);
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
-	unsigned int segno;
+	block_t end_sum_blkaddr = get_newsb(main_blkaddr);
+	block_t blkaddr;
+	void *zero_block = calloc(BLOCK_SZ, 1);
+
+	ASSERT(zero_block);
 
 	if (offset && new_sum_blkaddr < old_sum_blkaddr + offset) {
-		segno = offset;
-		while (segno != TOTAL_SEGS(sbi)) {
-			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
-			segno++;
+		blkaddr = new_sum_blkaddr;
+		while (blkaddr < end_sum_blkaddr) {
+			if (blkaddr - new_sum_blkaddr < TOTAL_SEGS(sbi))
+				move_ssa(sbi, offset, blkaddr);
+			else
+				dev_write_block(zero_block, blkaddr);
+			offset++;
+			blkaddr++;
 		}
 	} else {
-		segno = TOTAL_SEGS(sbi) - 1;
-		while (segno != offset - 1) {
-			move_ssa(sbi, segno, new_sum_blkaddr + segno - offset);
-			segno--;
+		blkaddr = end_sum_blkaddr - 1;
+		offset = TOTAL_SEGS(sbi) - 1;
+		while (blkaddr >= new_sum_blkaddr) {
+			if (blkaddr >= TOTAL_SEGS(sbi) + new_sum_blkaddr)
+				dev_write_block(zero_block, blkaddr);
+			else
+				move_ssa(sbi, offset--, blkaddr);
+			blkaddr--;
 		}
 	}
 
 	DBG(0, "Info: Done to migrate SSA blocks: sum_blkaddr = 0x%x -> 0x%x\n",
 				old_sum_blkaddr, new_sum_blkaddr);
+	free(zero_block);
 }
 
 static int shrink_nats(struct f2fs_sb_info *sbi,
