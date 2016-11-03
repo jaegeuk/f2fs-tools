@@ -1547,16 +1547,18 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 
 int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct seg_entry *se;
 	u32 segno;
 	u64 offset;
 	int not_enough = 0;
+	u64 end_blkaddr = (get_sb(segment_count_main) <<
+			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
 
 	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
 		not_enough = 1;
 
-	while (*to >= SM_I(sbi)->main_blkaddr &&
-			*to < F2FS_RAW_SUPER(sbi)->block_count) {
+	while (*to >= SM_I(sbi)->main_blkaddr && *to < end_blkaddr) {
 		segno = GET_SEGNO(sbi, *to);
 		offset = OFFSET_IN_SEG(sbi, *to);
 
