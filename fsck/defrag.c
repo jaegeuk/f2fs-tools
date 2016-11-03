@@ -78,8 +78,8 @@ int f2fs_defragment(struct f2fs_sb_info *sbi, u64 from, u64 len, u64 to, int lef
 			continue;
 
 		if (find_next_free_block(sbi, &target, left, se->type)) {
-			ASSERT_MSG("Not enough space to migrate blocks");
-			break;
+			MSG(0, "Not enough space to migrate blocks");
+			return -1;
 		}
 
 		if (migrate_block(sbi, idx, target)) {
