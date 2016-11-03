@@ -563,8 +563,8 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);
 	offset = new_main_blkaddr - old_main_blkaddr;
-	end_blkaddr = (get_sb(segment_count) << get_sb(log_blocks_per_seg)) +
-						get_sb(main_blkaddr);
+	end_blkaddr = (get_sb(segment_count_main) <<
+			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
 
 	if (old_main_blkaddr > new_main_blkaddr) {
 		MSG(0, "\tError: Support resize to expand only\n");
