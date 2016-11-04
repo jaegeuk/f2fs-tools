@@ -1438,7 +1438,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	}
 }
 
-static void flush_sit_journal_entries(struct f2fs_sb_info *sbi)
+static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
@@ -1465,10 +1465,12 @@ static void flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 		rewrite_current_sit_page(sbi, segno, sit_blk);
 		free(sit_blk);
 	}
+
 	journal->n_sits = 0;
+	return i;
 }
 
-static void flush_nat_journal_entries(struct f2fs_sb_info *sbi)
+static int flush_nat_journal_entries(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
@@ -1482,7 +1484,7 @@ static void flush_nat_journal_entries(struct f2fs_sb_info *sbi)
 next:
 	if (i >= nats_in_cursum(journal)) {
 		journal->n_nats = 0;
-		return;
+		return i;
 	}
 
 	nid = le32_to_cpu(nid_in_journal(journal, i));
@@ -1506,9 +1508,11 @@ next:
 
 void flush_journal_entries(struct f2fs_sb_info *sbi)
 {
-	flush_nat_journal_entries(sbi);
-	flush_sit_journal_entries(sbi);
-	write_checkpoint(sbi);
+	int n_nats = flush_nat_journal_entries(sbi);
+	int n_sits = flush_sit_journal_entries(sbi);
+
+	if (n_nats || n_sits)
+		write_checkpoint(sbi);
 }
 
 void flush_sit_entries(struct f2fs_sb_info *sbi)
