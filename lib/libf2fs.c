@@ -556,6 +556,7 @@ void f2fs_init_configuration(void)
 
 	for (i = 0; i < MAX_DEVICES; i++) {
 		memset(&c.devices[i], 0, sizeof(struct device_info));
+		c.devices[i].fd = -1;
 		c.devices[i].sector_size = DEFAULT_SECTOR_SIZE;
 		c.devices[i].end_blkaddr = -1;
 		c.devices[i].zoned_model = F2FS_ZONED_NONE;

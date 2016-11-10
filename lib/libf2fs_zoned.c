@@ -296,13 +296,13 @@ int f2fs_get_zone_blocks(int i)
 
 int f2fs_check_zones(int i)
 {
-	ERR_MSG("Zoned block devices are not supported\n");
+	ERR_MSG("%d: Zoned block devices are not supported\n", i);
 	return -1;
 }
 
 int f2fs_reset_zones(int i)
 {
-	ERR_MSG("Zoned block devices are not supported\n");
+	ERR_MSG("%d: Zoned block devices are not supported\n", i);
 	return -1;
 }
 
