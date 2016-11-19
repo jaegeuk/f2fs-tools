@@ -34,7 +34,7 @@ void nat_dump(struct f2fs_sb_info *sbi)
 	pgoff_t block_addr;
 	char buf[BUF_SZ];
 	int seg_off;
-	int fd, ret, pack = 1;
+	int fd, ret, pack;
 	unsigned int i;
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
@@ -47,7 +47,7 @@ void nat_dump(struct f2fs_sb_info *sbi)
 	fd = open("dump_nat", O_CREAT|O_WRONLY|O_TRUNC, 0666);
 	ASSERT(fd >= 0);
 
-	for (block_off = 0; block_off < nr_nat_blks; block_off++) {
+	for (block_off = 0; block_off < nr_nat_blks; pack = 1, block_off++) {
 
 		seg_off = block_off >> sbi->log_blocks_per_seg;
 		block_addr = (pgoff_t)(nm_i->nat_blkaddr +
