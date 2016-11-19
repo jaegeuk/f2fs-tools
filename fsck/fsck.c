@@ -1494,7 +1494,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	return 0;
 }
 
-void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
+int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 {
 	u32 blk_cnt = 0;
 	block_t start_blk, orphan_blkaddr, i, j;
@@ -1503,7 +1503,7 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	u32 entry_count;
 
 	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_ORPHAN_PRESENT_FLAG))
-		return;
+		return 0;
 
 	start_blk = __start_cp_addr(sbi) + 1 + get_sb(cp_payload);
 	orphan_blkaddr = __start_sum_addr(sbi) - 1 - get_sb(cp_payload);
@@ -1524,7 +1524,18 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		for (j = 0; j < entry_count; j++) {
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
 			DBG(1, "[%3d] ino [0x%x]\n", i, ino);
+			struct node_info ni;
 			blk_cnt = 1;
+
+			if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
+				get_node_info(sbi, ino, &ni);
+				if (!IS_VALID_NID(sbi, ino) ||
+						!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+					return -EINVAL;
+
+				continue;
+			}
+
 			ret = fsck_chk_node_blk(sbi, NULL, ino, NULL,
 					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt,
 					NULL);
@@ -1547,6 +1558,8 @@ void fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	}
 	free(orphan_blk);
 	free(new_blk);
+
+	return 0;
 }
 
 int fsck_chk_meta(struct f2fs_sb_info *sbi)
@@ -1604,6 +1617,10 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 				le32_to_cpu(cp->valid_node_count));
 		return -EINVAL;
 	}
+
+	/* 4. check orphan inode simply */
+	if (fsck_chk_orphan_node(sbi))
+		return -EINVAL;
 
 	if (fsck->nat_valid_inode_cnt != le32_to_cpu(cp->valid_inode_count)) {
 		ASSERT_MSG("valid inode does not match: nat_valid_inode_cnt %u,"

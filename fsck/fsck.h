@@ -109,7 +109,7 @@ enum seg_type {
 
 struct selabel_handle;
 
-extern void fsck_chk_orphan_node(struct f2fs_sb_info *);
+extern int fsck_chk_orphan_node(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		u8 *, enum FILE_TYPE, enum NODE_TYPE, u32 *,
 		struct child_info *);
