@@ -1050,7 +1050,7 @@ static inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
 	ASSERT(segno <= end_segno);
 }
 
-static struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
+struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
 						unsigned int segno)
 {
 	struct sit_info *sit_i = SIT_I(sbi);

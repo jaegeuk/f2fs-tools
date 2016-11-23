@@ -1746,6 +1746,30 @@ static void fix_nat_entries(struct f2fs_sb_info *sbi)
 			nullify_nat_entry(sbi, i);
 }
 
+static void flush_curseg_sit_entries(struct f2fs_sb_info *sbi)
+{
+	struct sit_info *sit_i = SIT_I(sbi);
+	int i;
+
+	/* update curseg sit entries, since we may change
+	 * a segment type in move_curseg_info
+	 */
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *curseg = CURSEG_I(sbi, i);
+		struct f2fs_sit_block *sit_blk;
+		struct f2fs_sit_entry *sit;
+		struct seg_entry *se;
+
+		se = get_seg_entry(sbi, curseg->segno);
+		sit_blk = get_current_sit_page(sbi, curseg->segno);
+		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, curseg->segno)];
+		sit->vblocks = cpu_to_le16((se->type << SIT_VBLOCKS_SHIFT) |
+							se->valid_blocks);
+		rewrite_current_sit_page(sbi, curseg->segno, sit_blk);
+		free(sit_blk);
+	}
+}
+
 static void fix_checkpoint(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -1999,6 +2023,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			rewrite_sit_area_bitmap(sbi);
 			move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
 			write_curseg_info(sbi);
+			flush_curseg_sit_entries(sbi);
 			fix_checkpoint(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG)) {
 			write_checkpoint(sbi);
