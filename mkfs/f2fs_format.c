@@ -507,7 +507,7 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* 1. cp page 1 of checkpoint pack 1 */
-	set_cp(checkpoint_ver, 1);
+	cp->checkpoint_ver = rand() | 0x1;
 	set_cp(cur_node_segno[0], c.cur_seg[CURSEG_HOT_NODE]);
 	set_cp(cur_node_segno[1], c.cur_seg[CURSEG_WARM_NODE]);
 	set_cp(cur_node_segno[2], c.cur_seg[CURSEG_COLD_NODE]);
