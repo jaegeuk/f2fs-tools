@@ -16,7 +16,6 @@
 #ifndef _XATTR_H_
 #define _XATTR_H_
 
-#include <f2fs_fs.h>
 #include "f2fs.h"
 
 struct f2fs_xattr_header {

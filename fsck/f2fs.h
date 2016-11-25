@@ -19,8 +19,6 @@
 #include <string.h>
 #include <errno.h>
 #include <mntent.h>
-#include <linux/types.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
