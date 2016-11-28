@@ -143,7 +143,7 @@ static void migrate_main(struct f2fs_sb_info *sbi,
 
 	ASSERT(raw != NULL);
 
-	for (i = TOTAL_SEGS(sbi); i >= 0; i--) {
+	for (i = TOTAL_SEGS(sbi) - 1; i >= 0; i--) {
 		se = get_seg_entry(sbi, i);
 		if (!se->valid_blocks)
 			continue;
