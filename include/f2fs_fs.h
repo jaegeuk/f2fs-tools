@@ -416,6 +416,8 @@ enum {
 	NO_CHECK_TYPE
 };
 
+#define F2FS_MIN_SEGMENTS	9 /* SB + 2 (CP + SIT + NAT) + SSA + MAIN */
+
 /*
  * Copied from fs/f2fs/segment.h
  */
