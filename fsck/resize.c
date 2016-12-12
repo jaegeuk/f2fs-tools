@@ -9,7 +9,7 @@
  */
 #include "fsck.h"
 
-static int get_new_sb(struct f2fs_sb_info *sbi, struct f2fs_super_block *sb)
+static int get_new_sb(struct f2fs_super_block *sb)
 {
 	u_int32_t zone_size_bytes, zone_align_start_offset;
 	u_int32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
@@ -132,8 +132,7 @@ static int get_new_sb(struct f2fs_sb_info *sbi, struct f2fs_super_block *sb)
 	return 0;
 }
 
-static void migrate_main(struct f2fs_sb_info *sbi,
-		struct f2fs_super_block *new_sb, unsigned int offset)
+static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 {
 	void *raw = calloc(BLOCK_SZ, 1);
 	struct seg_entry *se;
@@ -530,8 +529,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	DBG(0, "Info: Done to rebuild checkpoint blocks\n");
 }
 
-static void rebuild_superblock(struct f2fs_sb_info *sbi,
-				struct f2fs_super_block *new_sb)
+static void rebuild_superblock(struct f2fs_super_block *new_sb)
 {
 	int index, ret;
 	u_int8_t *buf;
@@ -561,7 +559,7 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	flush_journal_entries(sbi);
 
 	memcpy(new_sb, F2FS_RAW_SUPER(sbi), sizeof(*new_sb));
-	if (get_new_sb(sbi, new_sb))
+	if (get_new_sb(new_sb))
 		return -1;
 
 	/* check nat availability */
@@ -592,12 +590,12 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	}
 	/* move whole data region */
 	if (err)
-		migrate_main(sbi, new_sb, offset);
+		migrate_main(sbi, offset);
 
 	migrate_ssa(sbi, new_sb, offset_seg);
 	migrate_nat(sbi, new_sb);
 	migrate_sit(sbi, new_sb, offset_seg);
 	rebuild_checkpoint(sbi, new_sb, offset_seg);
-	rebuild_superblock(sbi, new_sb);
+	rebuild_superblock(new_sb);
 	return 0;
 }
