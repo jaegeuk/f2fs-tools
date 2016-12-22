@@ -423,26 +423,6 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 
-	if (ntype == TYPE_INODE && ftype == F2FS_FT_DIR) {
-		u32 len = le32_to_cpu(node_blk->i.i_namelen);
-		if (name && memcmp(name, node_blk->i.i_name, len)) {
-			int is_encrypt = file_is_encrypt(&node_blk->i);
-			unsigned char en1[F2FS_NAME_LEN + 1];
-			unsigned char en2[F2FS_NAME_LEN + 1];
-			/* if file is encrypted, its parent must be encrypted */
-			int len1 = convert_encrypted_name(name, len, en1,
-							is_encrypt);
-			int len2 = convert_encrypted_name(node_blk->i.i_name,
-							len, en2, is_encrypt);
-			en1[len1] = '\0';
-			en2[len2] = '\0';
-			ASSERT_MSG("mismatch name [0x%x] [%s vs. %s]%s",
-					nid, en1, en2,
-					is_encrypt ? " <encrypted>" : "");
-			return -EINVAL;
-		}
-	}
-
 	/* this if only from fix_hard_links */
 	if (ftype == F2FS_FT_MAX)
 		return 0;
