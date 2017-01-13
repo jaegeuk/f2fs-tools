@@ -45,6 +45,12 @@ AC_CHECK_HEADERS_ONCE([
 	sys/mount.h
 ])
 
+# Test configure options.
+AC_ARG_WITH([selinux],
+	AS_HELP_STRING([--without-selinux],
+	  [Ignore presence of libselinux and disable selinux support])
+)
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_LIBTOOL
@@ -54,9 +60,19 @@ AC_PATH_PROG([LDCONFIG], [ldconfig],
 
 # Checks for libraries.
 PKG_CHECK_MODULES([libuuid], [uuid])
-PKG_CHECK_MODULES([libselinux], [libselinux],
+
+AS_IF([test "x$with_selinux" != "xno"],
+	[PKG_CHECK_MODULES([libselinux], [libselinux],
+	                   [have_selinux=yes], [have_selinux=no])],
+	[have_selinux=no]
+)
+
+AS_IF([test "x$have_selinux" = "xyes"],
 	[AC_DEFINE([HAVE_LIBSELINUX], [1], [Use libselinux])],
-	[AC_MSG_NOTICE([libselinux not found])])
+	[AS_IF([test "x$with_selinux" = "xyes"],
+		[AC_MSG_ERROR([selinux support requested but libselinux not found])]
+	)]
+)
 
 # Checks for header files.
 AC_CHECK_HEADERS([linux/fs.h linux/blkzoned.h fcntl.h mntent.h stdlib.h string.h \
