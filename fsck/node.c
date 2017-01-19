@@ -78,7 +78,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 
 	type = CURSEG_COLD_NODE;
 	if (IS_DNODE(node_blk)) {
-		if (S_ISDIR(f2fs_inode->i.i_mode))
+		if (S_ISDIR(le16_to_cpu(f2fs_inode->i.i_mode)))
 			type = CURSEG_HOT_NODE;
 		else
 			type = CURSEG_WARM_NODE;

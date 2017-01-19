@@ -1407,12 +1407,12 @@ void build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 		ptr += SIT_VBLOCK_MAP_SIZE;
 
 		if (se->valid_blocks == 0x0) {
-			if (sbi->ckpt->cur_node_segno[0] == segno ||
-					sbi->ckpt->cur_data_segno[0] == segno ||
-					sbi->ckpt->cur_node_segno[1] == segno ||
-					sbi->ckpt->cur_data_segno[1] == segno ||
-					sbi->ckpt->cur_node_segno[2] == segno ||
-					sbi->ckpt->cur_data_segno[2] == segno) {
+			if (le32_to_cpu(sbi->ckpt->cur_node_segno[0]) == segno ||
+				le32_to_cpu(sbi->ckpt->cur_data_segno[0]) == segno ||
+				le32_to_cpu(sbi->ckpt->cur_node_segno[1]) == segno ||
+				le32_to_cpu(sbi->ckpt->cur_data_segno[1]) == segno ||
+				le32_to_cpu(sbi->ckpt->cur_node_segno[2]) == segno ||
+				le32_to_cpu(sbi->ckpt->cur_data_segno[2]) == segno) {
 				continue;
 			} else {
 				free_segs++;

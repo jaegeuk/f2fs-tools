@@ -170,15 +170,17 @@ static inline uint64_t bswap_64(uint64_t val)
 #define DISP_u32(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) <= 4);			\
-		printf("%-30s" "\t\t[0x%8x : %u]\n",		\
-			#member, ((ptr)->member), ((ptr)->member));	\
+		printf("%-30s" "\t\t[0x%8x : %u]\n",			\
+			#member, le32_to_cpu(((ptr)->member)),		\
+			le32_to_cpu(((ptr)->member)));			\
 	} while (0)
 
 #define DISP_u64(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 8);			\
 		printf("%-30s" "\t\t[0x%8llx : %llu]\n",		\
-			#member, ((ptr)->member), ((ptr)->member));	\
+			#member, le64_to_cpu(((ptr)->member)),		\
+			le64_to_cpu(((ptr)->member)));			\
 	} while (0)
 
 #define DISP_utf(ptr, member)						\

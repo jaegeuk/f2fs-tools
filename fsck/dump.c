@@ -81,7 +81,7 @@ void nat_dump(struct f2fs_sb_info *sbi)
 						"nid:%5u\tino:%5u\toffset:%5u"
 						"\tblkaddr:%10u\tpack:%d\n",
 						ni.nid, ni.ino,
-						node_block->footer.flag >>
+						le32_to_cpu(node_block->footer.flag) >>
 							OFFSET_BIT_SHIFT,
 						ni.blk_addr, pack);
 					ret = write(fd, buf, strlen(buf));
@@ -100,7 +100,7 @@ void nat_dump(struct f2fs_sb_info *sbi)
 					"nid:%5u\tino:%5u\toffset:%5u"
 					"\tblkaddr:%10u\tpack:%d\n",
 					ni.nid, ni.ino,
-					node_block->footer.flag >>
+					le32_to_cpu(node_block->footer.flag) >>
 						OFFSET_BIT_SHIFT,
 					ni.blk_addr, pack);
 				ret = write(fd, buf, strlen(buf));
@@ -335,13 +335,13 @@ static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	for (i = 0; i < 5; i++) {
 		if (i == 0 || i == 1)
 			dump_node_blk(sbi, TYPE_DIRECT_NODE,
-					node_blk->i.i_nid[i], &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
 		else if (i == 2 || i == 3)
 			dump_node_blk(sbi, TYPE_INDIRECT_NODE,
-					node_blk->i.i_nid[i], &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
 		else if (i == 4)
 			dump_node_blk(sbi, TYPE_DOUBLE_INDIRECT_NODE,
-					node_blk->i.i_nid[i], &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
 		else
 			ASSERT(0);
 	}

@@ -134,7 +134,7 @@ static int find_in_level(struct f2fs_sb_info *sbi,struct f2fs_node *dir,
 	struct dnode_of_data dn = {0};
 	void *dentry_blk;
 	int max_slots = 214;
-	nid_t ino = dir->footer.ino;
+	nid_t ino = le32_to_cpu(dir->footer.ino);
 	f2fs_hash_t namehash;
 	int ret = 0;
 
@@ -191,7 +191,7 @@ static int f2fs_find_entry(struct f2fs_sb_info *sbi,
 		return 0;
 	}
 
-	max_depth = dir->i.i_current_depth;
+	max_depth = le32_to_cpu(dir->i.i_current_depth);
 	for (level = 0; level < max_depth; level ++) {
 		if (find_in_level(sbi, dir, level, de))
 			return 1;
@@ -209,7 +209,7 @@ static void f2fs_update_dentry(nid_t ino, umode_t mode,
 	int i;
 
 	de = &d->dentry[bit_pos];
-	de->name_len = len;
+	de->name_len = cpu_to_le16(len);
 	de->hash_code = name_hash;
 	memcpy(d->filename[bit_pos], name, len);
 	d->filename[bit_pos][len] = 0;

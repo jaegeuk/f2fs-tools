@@ -80,7 +80,8 @@ static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 	ret = dev_read_block(inode, ni.blk_addr);
 	ASSERT(ret >= 0);
 
-	if (S_ISDIR(inode->i.i_mode) || S_ISLNK(inode->i.i_mode))
+	if (S_ISDIR(le16_to_cpu(inode->i.i_mode)) ||
+			S_ISLNK(le16_to_cpu(inode->i.i_mode)))
 		ASSERT(0);
 
 	off_in_block = offset & ((1 << F2FS_BLKSIZE_BITS) - 1);
