@@ -21,6 +21,14 @@ enum {
 	PREEN_MODE_MAX
 };
 
+enum {
+	NOERROR,
+	EWRONG_OPT,
+	ENEED_ARG,
+	EUNKNOWN_OPT,
+	EUNKNOWN_ARG,
+};
+
 /* fsck.c */
 struct orphan_info {
 	u32 nr_inodes;
