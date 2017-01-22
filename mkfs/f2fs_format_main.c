@@ -28,7 +28,7 @@ static void mkfs_usage()
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a heap-based allocation [default:1]\n");
-	MSG(0, "  -c [device path]\n");
+	MSG(0, "  -c [device path] up to 7 devices excepts meta device\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -l label\n");
@@ -84,6 +84,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 			c.heap = atoi(optarg);
 			break;
 		case 'c':
+			if (c.ndevs >= MAX_DEVICES) {
+				MSG(0, "Error: Too many devices\n");
+				mkfs_usage();
+			}
+
 			if (strlen(optarg) > MAX_PATH_LEN) {
 				MSG(0, "Error: device path should be less than "
 					"%d characters\n", MAX_PATH_LEN);
@@ -135,12 +140,8 @@ static void f2fs_parse_options(int argc, char *argv[])
 		mkfs_usage();
 	}
 
-	/* [0] : META, [1 to MAX_DEVICES + 1] : NODE/DATA */
+	/* [0] : META, [1 to MAX_DEVICES - 1] : NODE/DATA */
 	c.devices[0].path = strdup(argv[optind]);
-	if (c.ndevs > MAX_DEVICES) {
-		MSG(0, "\tError: Too many devices\n");
-		mkfs_usage();
-	}
 
 	if ((optind + 1) < argc) {
 		if (c.ndevs > 1) {
