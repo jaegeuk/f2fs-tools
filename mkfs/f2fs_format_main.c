@@ -151,9 +151,6 @@ static void f2fs_parse_options(int argc, char *argv[])
 		c.wanted_total_sectors = atoll(argv[optind+1]);
 	}
 
-	if ((optind + 1) < argc)
-		c.total_sectors = atoll(argv[optind+1]);
-
 	if (c.zoned_mode)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_BLKZONED);
 }
