@@ -1324,9 +1324,21 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 		if (f2fs_check_hash_code(dentry + i, name, name_len, encrypted))
 			fixed = 1;
 
-		if (max == NR_DENTRY_IN_BLOCK)
-			f2fs_check_dirent_position(name, name_len, child->pgofs,
-						child->dir_level, child->p_ino);
+		if (max == NR_DENTRY_IN_BLOCK) {
+			ret = f2fs_check_dirent_position(name, name_len,
+					child->pgofs,
+					child->dir_level, child->p_ino);
+			if (ret) {
+				if (c.fix_on) {
+					FIX_MSG("Clear bad dentry 0x%x", i);
+					test_and_clear_bit_le(i, bitmap);
+					fixed = 1;
+				}
+				i++;
+				free(name);
+				continue;
+			}
+		}
 
 		en_len = convert_encrypted_name(name, name_len, en, encrypted);
 		en[en_len] = '\0';
