@@ -415,6 +415,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 			struct f2fs_super_block *new_sb, unsigned int offset)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	unsigned long long cp_ver = get_cp(checkpoint_ver);
 	struct f2fs_checkpoint *new_cp;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	unsigned int free_segment_count, new_segment_count;
@@ -476,6 +477,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 
 	memcpy(new_cp, cp, (unsigned char *)cp->sit_nat_version_bitmap -
 						(unsigned char *)cp);
+	new_cp->checkpoint_ver = cpu_to_le64(cp_ver + 1);
 
 	crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, new_cp, CHECKSUM_OFFSET);
 	*((__le32 *)((unsigned char *)new_cp + CHECKSUM_OFFSET)) = cpu_to_le32(crc);
