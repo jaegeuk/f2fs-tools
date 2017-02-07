@@ -775,6 +775,8 @@ static int f2fs_write_super_block(void)
 #ifndef WITH_ANDROID
 static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 {
+	u_int64_t next_blkaddr = 0;
+
 	if (c.zoned_mode)
 		return 0;
 	do {
@@ -787,6 +789,7 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 			return -1;
 		}
 
+		next_blkaddr = le32_to_cpu(raw_node->footer.next_blkaddr);
 		memset(raw_node, 0, F2FS_BLKSIZE);
 
 		DBG(1, "\tDiscard dnode, at offset 0x%08"PRIx64"\n", offset);
@@ -794,7 +797,7 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 			MSG(1, "\tError: While discarding direct node!!!\n");
 			return -1;
 		}
-		offset = le32_to_cpu(raw_node->footer.next_blkaddr);
+		offset = next_blkaddr;
 	} while (1);
 
 	return 0;
