@@ -1779,8 +1779,10 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 		flags |= CP_ORPHAN_PRESENT_FLAG;
 	}
 
-	set_cp(ckpt_flags, flags);
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
+
+	flags = update_nat_bits_flags(sb, cp, flags);
+	set_cp(ckpt_flags, flags);
 
 	set_cp(free_segment_count, get_free_segments(sbi));
 	set_cp(valid_block_count, fsck->chk.valid_blk_cnt);
@@ -1814,6 +1816,10 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 
 	ret = dev_write_block(cp, cp_blk_no++);
 	ASSERT(ret >= 0);
+
+	/* Write nat bits */
+	if (flags & CP_NAT_BITS_FLAG)
+		write_nat_bits(sbi, sb, cp, sbi->cur_cp);
 }
 
 int check_curseg_offset(struct f2fs_sb_info *sbi)

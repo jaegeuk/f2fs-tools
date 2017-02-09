@@ -178,6 +178,11 @@ extern struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *,
 extern void rewrite_current_sit_page(struct f2fs_sb_info *, unsigned int,
 			struct f2fs_sit_block *);
 
+extern u32 update_nat_bits_flags(struct f2fs_super_block *,
+				struct f2fs_checkpoint *, u32);
+extern void write_nat_bits(struct f2fs_sb_info *, struct f2fs_super_block *,
+			struct f2fs_checkpoint *, int);
+
 /* dump.c */
 struct dump_option {
 	nid_t nid;

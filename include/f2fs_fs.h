@@ -514,6 +514,7 @@ struct f2fs_super_block {
 /*
  * For checkpoint
  */
+#define CP_NAT_BITS_FLAG	0x00000080
 #define CP_CRC_RECOVERY_FLAG	0x00000040
 #define CP_FASTBOOT_FLAG	0x00000020
 #define CP_FSCK_FLAG		0x00000010
@@ -1082,6 +1083,17 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 		}
 	}
 	return max_ovp;
+}
+
+static inline __le64 get_cp_crc(struct f2fs_checkpoint *cp)
+{
+	u_int64_t cp_ver = get_cp(checkpoint_ver);
+	size_t crc_offset = get_cp(checksum_offset);
+	u_int32_t crc = le32_to_cpu(*(__le32 *)((unsigned char *)cp +
+							crc_offset));
+
+	cp_ver |= ((u_int64_t)crc << 32);
+	return cpu_to_le64(cp_ver);
 }
 
 #endif	/*__F2FS_FS_H */

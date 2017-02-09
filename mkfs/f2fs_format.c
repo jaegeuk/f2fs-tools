@@ -472,8 +472,10 @@ static int f2fs_write_check_point_pack(void)
 	struct f2fs_summary_block *sum = NULL;
 	struct f2fs_journal *journal;
 	u_int32_t blk_size_bytes;
+	u_int32_t nat_bits_bytes, nat_bits_blocks;
+	unsigned char *nat_bits = NULL, *empty_nat_bits;
 	u_int64_t cp_seg_blk = 0;
-	u_int32_t crc = 0;
+	u_int32_t crc = 0, flags;
 	unsigned int i;
 	char *cp_payload = NULL;
 	char *sum_compact, *sum_compact_p;
@@ -499,10 +501,19 @@ static int f2fs_write_check_point_pack(void)
 	}
 	sum_compact_p = sum_compact;
 
+	nat_bits_bytes = get_sb(segment_count_nat) << 5;
+	nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) + 8 +
+						F2FS_BLKSIZE - 1);
+	nat_bits = calloc(F2FS_BLKSIZE, nat_bits_blocks);
+	if (nat_bits == NULL) {
+		MSG(1, "\tError: Calloc Failed for nat bits buffer!!!\n");
+		goto free_sum_compact;
+	}
+
 	cp_payload = calloc(F2FS_BLKSIZE, 1);
 	if (cp_payload == NULL) {
 		MSG(1, "\tError: Calloc Failed for cp_payload!!!\n");
-		goto free_sum_compact;
+		goto free_nat_bits;
 	}
 
 	/* 1. cp page 1 of checkpoint pack 1 */
@@ -539,7 +550,11 @@ static int f2fs_write_check_point_pack(void)
 			get_cp(overprov_segment_count)) * c.blks_per_seg));
 	/* cp page (2), data summaries (1), node summaries (3) */
 	set_cp(cp_pack_total_block_count, 6 + get_sb(cp_payload));
-	set_cp(ckpt_flags, CP_UMOUNT_FLAG | CP_COMPACT_SUM_FLAG);
+	flags = CP_UMOUNT_FLAG | CP_COMPACT_SUM_FLAG;
+	if (get_cp(cp_pack_total_block_count) <=
+			(1 << get_sb(log_blocks_per_seg)) - nat_bits_blocks)
+		flags |= CP_NAT_BITS_FLAG;
+	set_cp(ckpt_flags, flags);
 	set_cp(cp_pack_start_sum, 1 + get_sb(cp_payload));
 	set_cp(valid_node_count, 1);
 	set_cp(valid_inode_count, 1);
@@ -702,6 +717,31 @@ static int f2fs_write_check_point_pack(void)
 		goto free_cp_payload;
 	}
 
+	/* write NAT bits, if possible */
+	if (flags & CP_NAT_BITS_FLAG) {
+		int i;
+
+		*(__le64 *)nat_bits = get_cp_crc(cp);
+		empty_nat_bits = nat_bits + 8 + nat_bits_bytes;
+		memset(empty_nat_bits, 0xff, nat_bits_bytes);
+		test_and_clear_bit_le(0, empty_nat_bits);
+
+		/* write the last blocks in cp pack */
+		cp_seg_blk = get_sb(segment0_blkaddr) + (1 <<
+				get_sb(log_blocks_per_seg)) - nat_bits_blocks;
+
+		DBG(1, "\tWriting NAT bits pages, at offset 0x%08"PRIx64"\n",
+					cp_seg_blk);
+
+		for (i = 0; i < nat_bits_blocks; i++) {
+			if (dev_write_block(nat_bits + i *
+						F2FS_BLKSIZE, cp_seg_blk + i)) {
+				MSG(1, "\tError: write NAT bits to disk!!!\n");
+				goto free_cp_payload;
+			}
+		}
+	}
+
 	/* cp page 1 of check point pack 2
 	 * Initiatialize other checkpoint pack with version zero
 	 */
@@ -741,6 +781,8 @@ static int f2fs_write_check_point_pack(void)
 
 free_cp_payload:
 	free(cp_payload);
+free_nat_bits:
+	free(nat_bits);
 free_sum_compact:
 	free(sum_compact);
 free_sum:
