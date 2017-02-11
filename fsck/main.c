@@ -88,18 +88,20 @@ static int is_digits(char *optarg)
 	return i == strlen(optarg);
 }
 
-static void error_out(void)
+static void error_out(char *prog)
 {
-	if (c.func == FSCK)
+	if (!strcmp("fsck.f2fs", prog))
 		fsck_usage();
-	else if (c.func == DUMP)
+	else if (!strcmp("dump.f2fs", prog))
 		dump_usage();
-	else if (c.func == DEFRAG)
+	else if (!strcmp("defrag.f2fs", prog))
 		defrag_usage();
-	else if (c.func == RESIZE)
+	else if (!strcmp("resize.f2fs", prog))
 		resize_usage();
-	else if (c.func == SLOAD)
+	else if (!strcmp("sload.f2fs", prog))
 		sload_usage();
+	else
+		MSG(0, "\nWrong progam.\n");
 }
 
 void f2fs_parse_options(int argc, char *argv[])
@@ -110,7 +112,7 @@ void f2fs_parse_options(int argc, char *argv[])
 
 	if (argc < 2) {
 		MSG(0, "\tError: Device not specified\n");
-		error_out();
+		error_out(prog);
 	}
 	c.devices[0].path = strdup(argv[argc - 1]);
 	argv[argc-- - 1] = 0;
@@ -392,7 +394,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		MSG(0, "\tError: Unknown argument %s\n", argv[optind]);
 		break;
 	}
-	error_out();
+	error_out(prog);
 }
 
 static void do_fsck(struct f2fs_sb_info *sbi)
