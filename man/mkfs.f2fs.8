@@ -16,28 +16,42 @@ mkfs.f2fs \- create an F2FS file system
 .I device
 ]
 [
+.B \-d
+.I debugging-level
+]
+[
+.B \-e
+.I extension-list
+]
+[
 .B \-l
 .I volume-label
+]
+[
+.B \-m
 ]
 [
 .B \-o
 .I overprovision-ratio-percentage
 ]
 [
+.B \-O
+.I feature-list
+]
+[
+.B \-q
+]
+[
 .B \-s
 .I #-of-segments-per-section
 ]
 [
+.B \-t
+.I nodiscard/discard
+]
+[
 .B \-z
 .I #-of-sections-per-zone
-]
-[
-.B \-e
-.I extenstion-list
-]
-[
-.B \-d
-.I debugging-level
 ]
 .I device
 .I [sectors]
@@ -63,23 +77,9 @@ The default value is 1.
 Build f2fs with this device additionally, so that user can see all
 the devices as one big volume.
 .TP
-.BI \-l " volume-label"
-Specify the volume label to the partition mounted as F2FS.
-.TP
-.BI \-o " overprovision-ratio-percentage"
-Specify the percentage over the volume size for overprovision area. This area
-is hidden to users, and utilized by F2FS cleaner. If not specified, the best
-number will be assigned automatically accoring to the partition size.
-.TP
-.BI \-s " #-of-segments-per-section"
-Specify the number of segments per section. A section consists of
-multiple consecutive segments, and is the unit of garbage collection.
-The default number is 1, which means one segment is assigned to a section.
-.TP
-.BI \-z " #-of-sections-per-zone"
-Specify the number of sections per zone. A zone consists of multiple sections.
-F2FS allocates segments for active logs with separated zones as much as possible.
-The default number is 1, which means a zone consists of one section.
+.BI \-d " debug-level"
+Specify the level of debugging options.
+The default number is 0, which shows basic debugging messages.
 .TP
 .BI \-e " extension-list"
 Specify a file extension list in order f2fs to treat them as cold files.
@@ -87,9 +87,40 @@ The data of files having those extensions will be stored to the cold log.
 The default list includes most of multimedia file extensions such as jpg, gif,
 mpeg, mkv, and so on.
 .TP
-.BI \-d " debug-level"
-Specify the level of debugging options.
-The default number is 0, which shows basic debugging messages.
+.BI \-l " volume-label"
+Specify the volume label to the partition mounted as F2FS.
+.TP
+.BI \-m
+Specify f2fs filesystem to supports the block zoned feature.
+Without it, the filesystem isn't supports the feature.
+.TP
+.BI \-o " overprovision-ratio-percentage"
+Specify the percentage over the volume size for overprovision area. This area
+is hidden to users, and utilized by F2FS cleaner. If not specified, the best
+number will be assigned automatically accoring to the partition size.
+.TP
+.BI \-O " feature-list"
+Specify a feature list in order f2fs filesystem will supports.
+e.g "encrypt" and so on.
+.TP
+.BI \-q
+Quiet mode.
+With it, mkfs.f2fs does not show any messages include the basic messages.
+.TP
+.BI \-s " #-of-segments-per-section"
+Specify the number of segments per section. A section consists of
+multiple consecutive segments, and is the unit of garbage collection.
+The default number is 1, which means one segment is assigned to a section.
+.TP
+.BI \-t " nodiscard/discard"
+Specify 1 or 0 to enable/disable discard policy.
+If the value is equal to 1, discard policy is enabled, otherwise is disable.
+The default value is 1.
+.TP
+.BI \-z " #-of-sections-per-zone"
+Specify the number of sections per zone. A zone consists of multiple sections.
+F2FS allocates segments for active logs with separated zones as much as possible.
+The default number is 1, which means a zone consists of one section.
 .TP
 .SH AUTHOR
 This version of
