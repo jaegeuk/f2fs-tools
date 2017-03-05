@@ -24,6 +24,9 @@ mkfs.f2fs \- create an F2FS file system
 .I extension-list
 ]
 [
+.B \-f
+]
+[
 .B \-l
 .I volume-label
 ]
@@ -86,6 +89,11 @@ Specify a file extension list in order f2fs to treat them as cold files.
 The data of files having those extensions will be stored to the cold log.
 The default list includes most of multimedia file extensions such as jpg, gif,
 mpeg, mkv, and so on.
+.TP
+.BI \-f
+Force overwrite when an existing filesystem is detected on the device.
+By default, mkfs.f2fs will not write to the device if it suspects that
+there is a filesystem or partition table on the device already.
 .TP
 .BI \-l " volume-label"
 Specify the volume label to the partition mounted as F2FS.

@@ -48,8 +48,11 @@ AC_CHECK_HEADERS_ONCE([
 # Test configure options.
 AC_ARG_WITH([selinux],
 	AS_HELP_STRING([--without-selinux],
-	  [Ignore presence of libselinux and disable selinux support])
-)
+	  [Ignore presence of libselinux and disable selinux support]))
+
+AC_ARG_WITH([blkid],
+	AS_HELP_STRING([--without-blkid],
+	  [Ignore presence of libblkid and disable blkid support]))
 
 # Checks for programs.
 AC_PROG_CC
@@ -71,6 +74,19 @@ AS_IF([test "x$have_selinux" = "xyes"],
 	[AC_DEFINE([HAVE_LIBSELINUX], [1], [Use libselinux])],
 	[AS_IF([test "x$with_selinux" = "xyes"],
 		[AC_MSG_ERROR([selinux support requested but libselinux not found])]
+	)]
+)
+
+AS_IF([test "x$with_blkid" != "xno"],
+	[PKG_CHECK_MODULES([libblkid], [blkid],
+	                   [have_blkid=yes], [have_blkid=no])],
+	[have_blkid=no]
+)
+
+AS_IF([test "x$have_blkid" = "xyes"],
+	[AC_DEFINE([HAVE_LIBBLKID], [1], [Use blkid])],
+	[AS_IF([test "x$with_blkid" = "xyes"],
+		[AC_MSG_ERROR([blkid support requested but libblkid not found])]
 	)]
 )
 

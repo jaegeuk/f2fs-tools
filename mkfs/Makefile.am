@@ -1,10 +1,10 @@
 ## Makefile.am
 
-AM_CPPFLAGS = ${libuuid_CFLAGS} -I$(top_srcdir)/include
+AM_CPPFLAGS = ${libuuid_CFLAGS} ${libblkid_CFLAGS} -I$(top_srcdir)/include
 AM_CFLAGS = -Wall -DWITH_BLKDISCARD
 sbin_PROGRAMS = mkfs.f2fs
 mkfs_f2fs_SOURCES = f2fs_format_main.c f2fs_format.c f2fs_format_utils.c f2fs_format_utils.h $(top_srcdir)/include/f2fs_fs.h
-mkfs_f2fs_LDADD = ${libuuid_LIBS} $(top_builddir)/lib/libf2fs.la
+mkfs_f2fs_LDADD = ${libuuid_LIBS} ${libblkid_LIBS} $(top_builddir)/lib/libf2fs.la
 
 lib_LTLIBRARIES = libf2fs_format.la
 libf2fs_format_la_SOURCES = f2fs_format_main.c f2fs_format.c f2fs_format_utils.c
