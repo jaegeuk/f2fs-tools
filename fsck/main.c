@@ -537,8 +537,9 @@ static int do_resize(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
-	if (c.target_sectors <=
-			(get_sb(block_count) << get_sb(log_sectors_per_block))) {
+	/* may different sector size */
+	if ((c.target_sectors * c.sector_size >>
+			get_sb(log_blocksize)) <= get_sb(block_count)) {
 		ASSERT_MSG("Nothing to resize, now only support resize to expand\n");
 		return -1;
 	}
