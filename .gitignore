@@ -49,3 +49,4 @@ stamp-h1
 /tools/f2fstat
 /tools/fibmap.f2fs
 /tools/parse.f2fs
+/tools/f2fscrypt
