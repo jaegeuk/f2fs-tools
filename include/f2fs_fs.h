@@ -285,6 +285,7 @@ struct f2fs_configuration {
 	char *extension_list;
 	const char *rootdev_name;
 	int dbg_lv;
+	int show_dentry;
 	int trim;
 	int func;
 	void *private;

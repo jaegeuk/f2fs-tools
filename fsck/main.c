@@ -29,7 +29,7 @@ void fsck_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
-	MSG(0, "  -t show directory tree [-d -1]\n");
+	MSG(0, "  -t show directory tree\n");
 	exit(1);
 }
 
@@ -166,7 +166,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				MSG(0, "Info: Force to fix corruption\n");
 				break;
 			case 't':
-				c.dbg_lv = -1;
+				c.show_dentry = 1;
 				break;
 
 

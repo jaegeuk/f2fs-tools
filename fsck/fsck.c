@@ -1028,7 +1028,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	int bit_offset;
 	unsigned char new[F2FS_NAME_LEN + 1];
 
-	if (c.dbg_lv != -1)
+	if (!c.show_dentry)
 		return;
 
 	name_len = le16_to_cpu(dentry[idx].name_len);
