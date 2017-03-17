@@ -114,8 +114,6 @@ void f2fs_parse_options(int argc, char *argv[])
 		MSG(0, "\tError: Device not specified\n");
 		error_out(prog);
 	}
-	c.devices[0].path = strdup(argv[argc - 1]);
-	argv[argc-- - 1] = 0;
 
 	if (!strcmp("fsck.f2fs", prog)) {
 		const char *option_string = ":ad:fp:t";
@@ -372,7 +370,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	}
-	if (argc > optind) {
+
+	if (optind >= argc) {
+		MSG(0, "\tError: Device not specified\n");
+		error_out(prog);
+	}
+
+	c.devices[0].path = strdup(argv[optind]);
+	if (argc > (optind + 1)) {
 		c.dbg_lv = 0;
 		err = EUNKNOWN_ARG;
 	}
