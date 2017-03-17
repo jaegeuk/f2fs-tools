@@ -1075,11 +1075,8 @@ void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
 							SUM_TYPE_DATA;
 
 	/* write SSA all the time */
-	if (type < SEG_TYPE_MAX) {
-		u64 ssa_blk = GET_SUM_BLKADDR(sbi, segno);
-		ret = dev_write_block(sum_blk, ssa_blk);
-		ASSERT(ret >= 0);
-	}
+	ret = dev_write_block(sum_blk, GET_SUM_BLKADDR(sbi, segno));
+	ASSERT(ret >= 0);
 
 	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
 					type == SEG_TYPE_MAX)
