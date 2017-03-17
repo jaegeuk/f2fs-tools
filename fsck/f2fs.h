@@ -444,9 +444,9 @@ static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
 	[S_IFLNK >> S_SHIFT]    = F2FS_FT_SYMLINK,
 };
 
-static inline void set_de_type(struct f2fs_dir_entry *de, umode_t mode)
+static inline int map_de_type(umode_t mode)
 {
-	de->file_type = f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
+       return f2fs_type_by_mode[(mode & S_IFMT) >> S_SHIFT];
 }
 
 static inline void *inline_xattr_addr(struct f2fs_inode *inode)
