@@ -613,8 +613,10 @@ struct f2fs_extent {
 #define FADVISE_COLD_BIT       0x01
 #define FADVISE_LOST_PINO_BIT  0x02
 #define FADVISE_ENCRYPT_BIT    0x04
+#define FADVISE_ENC_NAME_BIT   0x08
 
 #define file_is_encrypt(fi)      ((fi)->i_advise & FADVISE_ENCRYPT_BIT)
+#define file_enc_name(fi)        ((fi)->i_advise & FADVISE_ENC_NAME_BIT)
 
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */

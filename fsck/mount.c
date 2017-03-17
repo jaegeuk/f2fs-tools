@@ -40,14 +40,14 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	unsigned char en[F2FS_NAME_LEN + 1];
 	unsigned int i = 0;
 	int namelen = le32_to_cpu(inode->i_namelen);
-	int is_encrypt = file_is_encrypt(inode);
+	int enc_name = file_enc_name(inode);
 
-	namelen = convert_encrypted_name(inode->i_name, namelen, en, is_encrypt);
+	namelen = convert_encrypted_name(inode->i_name, namelen, en, enc_name);
 	en[namelen] = '\0';
 	if (name && namelen) {
 		inode->i_name[namelen] = '\0';
 		MSG(0, " - File name         : %s%s\n", en,
-				is_encrypt ? " <encrypted>" : "");
+				enc_name ? " <encrypted>" : "");
 		setlocale(LC_ALL, "");
 		MSG(0, " - File size         : %'llu (bytes)\n",
 				le64_to_cpu(inode->i_size));
