@@ -1084,33 +1084,6 @@ static int f2fs_check_hash_code(struct f2fs_dir_entry *dentry,
 	return 0;
 }
 
-static unsigned int dir_buckets(unsigned int level, int dir_level)
-{
-	if (level + dir_level < MAX_DIR_HASH_DEPTH / 2)
-		return 1 << (level + dir_level);
-	else
-		return MAX_DIR_BUCKETS;
-}
-
-static unsigned int bucket_blocks(unsigned int level)
-{
-	if (level < MAX_DIR_HASH_DEPTH / 2)
-		return 2;
-	else
-		return 4;
-}
-
-static unsigned long dir_block_index(unsigned int level,
-				int dir_level, unsigned int idx)
-{
-	unsigned long i;
-	unsigned long bidx = 0;
-
-	for (i = 0; i < level; i++)
-		bidx += dir_buckets(i, dir_level) * bucket_blocks(i);
-	bidx += idx * bucket_blocks(level);
-	return bidx;
-}
 
 static int __get_current_level(int dir_level, u32 pgofs)
 {

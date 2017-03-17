@@ -465,4 +465,41 @@ extern int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid, struct f2fs_
 #define IS_SUM_NODE_SEG(footer)		(footer.entry_type == SUM_TYPE_NODE)
 #define IS_SUM_DATA_SEG(footer)		(footer.entry_type == SUM_TYPE_DATA)
 
+static inline unsigned int dir_buckets(unsigned int level, int dir_level)
+{
+	if (level + dir_level < MAX_DIR_HASH_DEPTH / 2)
+		return 1 << (level + dir_level);
+	else
+		return MAX_DIR_BUCKETS;
+}
+
+static inline unsigned int bucket_blocks(unsigned int level)
+{
+	if (level < MAX_DIR_HASH_DEPTH / 2)
+		return 2;
+	else
+		return 4;
+}
+
+static inline unsigned long dir_block_index(unsigned int level,
+				int dir_level, unsigned int idx)
+{
+	unsigned long i;
+	unsigned long bidx = 0;
+
+	for (i = 0; i < level; i++)
+		bidx += dir_buckets(i, dir_level) * bucket_blocks(i);
+	bidx += idx * bucket_blocks(level);
+	return bidx;
+}
+
+static inline int is_dot_dotdot(const unsigned char *name, const int len)
+{
+	if (len == 1 && name[0] == '.')
+		return 1;
+	if (len == 2 && name[0] == '.' && name[1] == '.')
+		return 1;
+	return 0;
+}
+
 #endif /* _F2FS_H_ */

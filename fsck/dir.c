@@ -16,34 +16,6 @@
 #include "fsck.h"
 #include "node.h"
 
-static unsigned int dir_buckets(unsigned int level)
-{
-	if (level < MAX_DIR_HASH_DEPTH / 2)
-		return 1 << level;
-	else
-		return MAX_DIR_BUCKETS;
-}
-
-static unsigned int bucket_blocks(unsigned int level)
-{
-	if (level < MAX_DIR_HASH_DEPTH / 2)
-		return 2;
-	else
-		return 4;
-}
-
-static unsigned long dir_block_index(unsigned int level,
-		int dir_level, unsigned int idx)
-{
-	unsigned long i;
-	unsigned long bidx = 0;
-
-	for (i = 0; i < level; i++)
-		bidx += dir_buckets(i + dir_level) * bucket_blocks(i);
-	bidx += idx * bucket_blocks(level);
-	return bidx;
-}
-
 static int room_for_filename(const u8 *bitmap, int slots, int max_slots)
 {
 	int bit_start = 0;
@@ -136,14 +108,15 @@ static int find_in_level(struct f2fs_sb_info *sbi,struct f2fs_node *dir,
 	int max_slots = 214;
 	nid_t ino = le32_to_cpu(dir->footer.ino);
 	f2fs_hash_t namehash;
+	unsigned int dir_level = dir->i.i_dir_level;
 	int ret = 0;
 
 	namehash = f2fs_dentry_hash(de->name, de->len);
 
-	nbucket = dir_buckets(level);
+	nbucket = dir_buckets(level, dir_level);
 	nblock = bucket_blocks(level);
 
-	bidx = dir_block_index(level, 0, le32_to_cpu(namehash) % nbucket);
+	bidx = dir_block_index(level, dir_level, le32_to_cpu(namehash) % nbucket);
 	end_block = bidx + nblock;
 
 	dentry_blk = calloc(BLOCK_SZ, 1);
@@ -237,6 +210,7 @@ static int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 	nid_t pino = le32_to_cpu(parent->footer.ino);
 	nid_t ino = le32_to_cpu(child->footer.ino);
 	umode_t mode = le16_to_cpu(child->i.i_mode);
+	unsigned int dir_level = parent->i.i_dir_level;
 	int ret;
 
 	if (parent == NULL || child == NULL)
@@ -262,9 +236,9 @@ start:
 	if (level == current_depth)
 		++current_depth;
 
-	nbucket = dir_buckets(level);
+	nbucket = dir_buckets(level, dir_level);
 	nblock = bucket_blocks(level);
-	bidx = dir_block_index(level, 0, le32_to_cpu(dentry_hash) % nbucket);
+	bidx = dir_block_index(level, dir_level, le32_to_cpu(dentry_hash) % nbucket);
 
 	for (block = bidx; block <= (bidx + nblock - 1); block++) {
 
