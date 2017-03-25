@@ -33,7 +33,7 @@ static void mkfs_usage()
 {
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
-	MSG(0, "  -a heap-based allocation [default:1]\n");
+	MSG(0, "  -a heap-based allocation [default:0]\n");
 	MSG(0, "  -c [device path] up to 7 devices excepts meta device\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");

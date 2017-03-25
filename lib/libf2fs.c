@@ -568,7 +568,7 @@ void f2fs_init_configuration(void)
 	c.segs_per_sec = 1;
 	c.secs_per_zone = 1;
 	c.segs_per_zone = 1;
-	c.heap = 1;
+	c.heap = 0;
 	c.vol_label = "";
 	c.trim = 1;
 	c.ro = 0;
