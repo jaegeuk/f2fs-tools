@@ -1804,6 +1804,8 @@ int check_curseg_offset(struct f2fs_sb_info *sbi)
 		struct seg_entry *se;
 		int j, nblocks;
 
+		if ((curseg->next_blkoff >> 3) >= SIT_VBLOCK_MAP_SIZE)
+			return -EINVAL;
 		se = get_seg_entry(sbi, curseg->segno);
 		if (f2fs_test_bit(curseg->next_blkoff,
 					(const char *)se->cur_valid_map)) {
