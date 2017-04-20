@@ -440,9 +440,19 @@ enum {
 #define NULL_ADDR		0x0U
 #define NEW_ADDR		-1U
 
+enum {
+	USR_QUOTA = 0,
+	GRP_QUOTA,
+	PRJ_QUOTA,
+	MAX_QUOTAS,
+};
+
 #define F2FS_ROOT_INO(sbi)	(sbi->root_ino_num)
 #define F2FS_NODE_INO(sbi)	(sbi->node_ino_num)
 #define F2FS_META_INO(sbi)	(sbi->meta_ino_num)
+#define F2FS_USR_QUOTA_INO(sbi)	((sbi)->quota_ino_num[USR_QUOTA])
+#define F2FS_GRP_QUOTA_INO(sbi)	((sbi)->quota_ino_num[GRP_QUOTA])
+#define F2FS_PRJ_QUOTA_INO(sbi)	((sbi)->quota_ino_num[PRJ_QUOTA])
 
 /* This flag is used by node and meta inodes, and by recovery */
 #define GFP_F2FS_ZERO	(GFP_NOFS | __GFP_ZERO)
@@ -509,7 +519,8 @@ struct f2fs_super_block {
 	__u8 encryption_level;		/* versioning level for encryption */
 	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
 	struct f2fs_device devs[MAX_DEVICES];	/* device list */
-	__u8 reserved[327];		/* valid reserved region */
+	__le32 quota_ino[MAX_QUOTAS];	/* inodes for tracking quotas */
+	__u8 reserved[315];		/* valid reserved region */
 } __attribute__((packed));
 
 /*

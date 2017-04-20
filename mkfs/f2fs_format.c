@@ -356,6 +356,9 @@ static int f2fs_prepare_super_block(void)
 	set_sb(node_ino, 1);
 	set_sb(meta_ino, 2);
 	set_sb(root_ino, 3);
+	set_sb(quota_ino[USR_QUOTA], 4);
+	set_sb(quota_ino[GRP_QUOTA], 5);
+	set_sb(quota_ino[PRJ_QUOTA], 6);
 
 	if (total_zones <= 6) {
 		MSG(1, "\tError: %d zones: Need more zones "
@@ -562,7 +565,7 @@ static int f2fs_write_check_point_pack(void)
 	set_cp(cp_pack_start_sum, 1 + get_sb(cp_payload));
 	set_cp(valid_node_count, 1);
 	set_cp(valid_inode_count, 1);
-	set_cp(next_free_nid, get_sb(root_ino) + 1);
+	set_cp(next_free_nid, get_sb(quota_ino[PRJ_QUOTA]) + 1);
 	set_cp(sit_ver_bitmap_bytesize, ((get_sb(segment_count_sit) / 2) <<
 			get_sb(log_blocks_per_seg)) / 8);
 
@@ -933,6 +936,7 @@ static int f2fs_update_nat_root(void)
 {
 	struct f2fs_nat_block *nat_blk = NULL;
 	u_int64_t nat_seg_blk_offset = 0;
+	int i;
 
 	nat_blk = calloc(F2FS_BLKSIZE, 1);
 	if(nat_blk == NULL) {
@@ -953,6 +957,12 @@ static int f2fs_update_nat_root(void)
 	/* update meta nat */
 	nat_blk->entries[get_sb(meta_ino)].block_addr = cpu_to_le32(1);
 	nat_blk->entries[get_sb(meta_ino)].ino = sb->meta_ino;
+
+	for (i = 0; i < MAX_QUOTAS; i++) {
+		nat_blk->entries[get_sb(quota_ino[i])].block_addr =
+							cpu_to_le32(1);
+		nat_blk->entries[get_sb(quota_ino[i])].ino = sb->quota_ino[i];
+	}
 
 	nat_seg_blk_offset = get_sb(nat_blkaddr);
 

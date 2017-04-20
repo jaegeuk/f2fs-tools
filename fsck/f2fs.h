@@ -180,6 +180,7 @@ struct f2fs_sb_info {
 	unsigned int root_ino_num;              /* root inode number*/
 	unsigned int node_ino_num;              /* node inode number*/
 	unsigned int meta_ino_num;              /* meta inode number*/
+	unsigned int quota_ino_num[MAX_QUOTAS];	/* quota inode numbers */
 	unsigned int log_blocks_per_seg;        /* log2 blocks per segment */
 	unsigned int blocks_per_seg;            /* blocks per segment */
 	unsigned int segs_per_sec;              /* segments per section */

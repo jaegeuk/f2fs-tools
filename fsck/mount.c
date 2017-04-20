@@ -182,6 +182,9 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 	DISP_u32(sb, root_ino);
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
+	DISP_u32(sb, quota_ino[USR_QUOTA]);
+	DISP_u32(sb, quota_ino[GRP_QUOTA]);
+	DISP_u32(sb, quota_ino[PRJ_QUOTA]);
 	DISP_u32(sb, cp_payload);
 	DISP("%s", sb, version);
 	printf("\n");
@@ -487,6 +490,8 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->root_ino_num = get_sb(root_ino);
 	sbi->node_ino_num = get_sb(node_ino);
 	sbi->meta_ino_num = get_sb(meta_ino);
+	for (i = 0; i < MAX_QUOTAS; i++)
+		sbi->quota_ino_num[i] = get_sb(quota_ino[i]);
 	sbi->cur_victim_sec = NULL_SEGNO;
 
 	for (i = 0; i < MAX_DEVICES; i++) {
@@ -1962,7 +1967,10 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 			ni.nid = nid + i;
 
 			if ((nid + i) == F2FS_NODE_INO(sbi) ||
-					(nid + i) == F2FS_META_INO(sbi)) {
+					(nid + i) == F2FS_META_INO(sbi) ||
+					(nid + i) == F2FS_USR_QUOTA_INO(sbi) ||
+					(nid + i) == F2FS_GRP_QUOTA_INO(sbi) ||
+					(nid + i) == F2FS_PRJ_QUOTA_INO(sbi)) {
 				/* block_addr of node/meta inode should be 0x1 */
 				if (le32_to_cpu(nat_block->entries[i].block_addr) != 0x1) {
 					FIX_MSG("ino: 0x%x node/meta inode, block_addr= 0x%x -> 0x1",
