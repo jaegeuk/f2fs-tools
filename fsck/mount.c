@@ -408,6 +408,9 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 		return -1;
 	}
 
+	if (get_sb(segment_count) > F2FS_MAX_SEGMENT)
+		return -1;
+
 	if (sanity_check_area_boundary(sb, offset))
 		return -1;
 	return 0;
