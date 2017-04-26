@@ -117,6 +117,24 @@ next:
 	free(c.extension_list);
 }
 
+static void verify_cur_segs(void)
+{
+	int i, j;
+
+	for (i = 0; i < NR_CURSEG_TYPE; i++) {
+		for (j = 0; j < NR_CURSEG_TYPE; j++)
+			if (c.cur_seg[i] == c.cur_seg[j])
+				break;
+	}
+
+	if (i == NR_CURSEG_TYPE && j == NR_CURSEG_TYPE)
+		return;
+
+	c.cur_seg[0] = 0;
+	for (i = 1; i < NR_CURSEG_TYPE; i++)
+		c.cur_seg[i] = next_zone(i - 1);
+}
+
 static int f2fs_prepare_super_block(void)
 {
 	u_int32_t blk_size_bytes;
@@ -383,6 +401,9 @@ static int f2fs_prepare_super_block(void)
 				max(last_zone((total_zones >> 1)),
 					next_zone(CURSEG_COLD_DATA));
 	}
+
+	/* if there is redundancy, reassign it */
+	verify_cur_segs();
 
 	cure_extension_list();
 
