@@ -1130,6 +1130,9 @@ static void build_curseg(struct f2fs_sb_info *sbi)
 			blk_off = get_cp(cur_node_blkoff[i - CURSEG_HOT_NODE]);
 			segno = get_cp(cur_node_segno[i - CURSEG_HOT_NODE]);
 		}
+		ASSERT(segno < TOTAL_SEGS(sbi));
+		ASSERT(blk_off < DEFAULT_BLOCKS_PER_SEGMENT);
+
 		array[i].segno = segno;
 		array[i].zone = GET_ZONENO_FROM_SEGNO(sbi, segno);
 		array[i].next_segno = NULL_SEGNO;
