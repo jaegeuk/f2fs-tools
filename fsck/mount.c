@@ -594,9 +594,14 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	unsigned long blk_size = sbi->blocksize;
 	unsigned long long cp1_version = 0, cp2_version = 0, version;
 	unsigned long long cp_start_blk_no;
-	unsigned int cp_blks = 1 + get_sb(cp_payload);
+	unsigned int cp_payload, cp_blks;
 	int ret;
 
+	cp_payload = get_sb(cp_payload);
+	if (cp_payload > F2FS_BLK_ALIGN(MAX_SIT_BITMAP_SIZE))
+		return -EINVAL;
+
+	cp_blks = 1 + cp_payload;
 	sbi->ckpt = malloc(cp_blks * blk_size);
 	if (!sbi->ckpt)
 		return -ENOMEM;
