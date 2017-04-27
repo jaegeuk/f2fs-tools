@@ -980,6 +980,8 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 		else
 			blk_off = curseg->next_blkoff;
 
+		ASSERT(blk_off <= ENTRIES_IN_SUM);
+
 		for (j = 0; j < blk_off; j++) {
 			struct f2fs_summary *s;
 			s = (struct f2fs_summary *)(kaddr + offset);
