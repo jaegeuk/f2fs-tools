@@ -287,6 +287,7 @@ struct f2fs_configuration {
 	int dbg_lv;
 	int show_dentry;
 	int trim;
+	int trimmed;
 	int func;
 	void *private;
 	int fix_on;
@@ -515,6 +516,7 @@ struct f2fs_super_block {
 /*
  * For checkpoint
  */
+#define CP_TRIMMED_FLAG		0x00000100
 #define CP_NAT_BITS_FLAG	0x00000080
 #define CP_CRC_RECOVERY_FLAG	0x00000040
 #define CP_FASTBOOT_FLAG	0x00000020

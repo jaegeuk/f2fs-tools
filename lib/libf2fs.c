@@ -571,6 +571,7 @@ void f2fs_init_configuration(void)
 	c.heap = 0;
 	c.vol_label = "";
 	c.trim = 1;
+	c.trimmed = 0;
 	c.ro = 0;
 	c.kd = -1;
 }

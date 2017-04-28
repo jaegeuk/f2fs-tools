@@ -579,6 +579,10 @@ static int f2fs_write_check_point_pack(void)
 	if (get_cp(cp_pack_total_block_count) <=
 			(1 << get_sb(log_blocks_per_seg)) - nat_bits_blocks)
 		flags |= CP_NAT_BITS_FLAG;
+
+	if (c.trimmed)
+		flags |= CP_TRIMMED_FLAG;
+
 	set_cp(ckpt_flags, flags);
 	set_cp(cp_pack_start_sum, 1 + get_sb(cp_payload));
 	set_cp(valid_node_count, 1);

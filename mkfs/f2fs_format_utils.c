@@ -90,5 +90,6 @@ int f2fs_trim_devices(void)
 	for (i = 0; i < c.ndevs; i++)
 		if (trim_device(i))
 			return -1;
+	c.trimmed = 1;
 	return 0;
 }

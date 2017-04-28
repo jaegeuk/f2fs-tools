@@ -259,6 +259,8 @@ void print_cp_state(u32 flag)
 		MSG(0, "%s", " fastboot");
 	if (flag & CP_NAT_BITS_FLAG)
 		MSG(0, "%s", " nat_bits");
+	if (flag & CP_TRIMMED_FLAG)
+		MSG(0, "%s", " trimmed");
 	if (flag & CP_UMOUNT_FLAG)
 		MSG(0, "%s", " unmount");
 	else
