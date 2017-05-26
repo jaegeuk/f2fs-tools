@@ -847,6 +847,10 @@ static int f2fs_write_super_block(void)
 static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 {
 	u_int64_t next_blkaddr = 0;
+	u_int64_t root_inode_pos = get_sb(main_blkaddr);
+
+	/* only root inode was written before truncating dnodes */
+	root_inode_pos += c.cur_seg[CURSEG_HOT_NODE] * c.blks_per_seg;
 
 	if (c.zoned_mode)
 		return 0;
@@ -869,6 +873,9 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 			return -1;
 		}
 		offset = next_blkaddr;
+		/* should avoid recursive chain due to stale data */
+		if (offset == root_inode_pos)
+			break;
 	} while (1);
 
 	return 0;
