@@ -306,7 +306,7 @@ struct f2fs_configuration {
 	/* sload parameters */
 	char *from_dir;
 	char *mount_point;
-} __attribute__((packed));
+};
 
 #ifdef CONFIG_64BIT
 #define BITS_PER_LONG	64

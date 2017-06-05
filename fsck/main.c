@@ -80,7 +80,7 @@ void sload_usage()
 
 static int is_digits(char *optarg)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < strlen(optarg); i++)
 		if (!isdigit(optarg[i]))
@@ -447,7 +447,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
-	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num, (u8 *)"/",
+	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, NULL);
 	fsck_verify(sbi);
 	fsck_free(sbi);

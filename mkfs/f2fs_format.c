@@ -748,7 +748,7 @@ static int f2fs_write_check_point_pack(void)
 
 	/* write NAT bits, if possible */
 	if (flags & CP_NAT_BITS_FLAG) {
-		int i;
+		uint32_t i;
 
 		*(__le64 *)nat_bits = get_cp_crc(cp);
 		empty_nat_bits = nat_bits + 8 + nat_bits_bytes;

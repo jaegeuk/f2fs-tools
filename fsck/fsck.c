@@ -347,7 +347,7 @@ err:
 static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 			struct f2fs_node *node_blk,
 			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-			struct node_info *ni, u8 *name)
+			struct node_info *ni)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	int ret;
@@ -470,7 +470,7 @@ static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 
 	/* Sanity check */
 	if (sanity_check_nid(sbi, x_nid, node_blk,
-				F2FS_FT_XATTR, TYPE_XATTR, &ni, NULL)) {
+				F2FS_FT_XATTR, TYPE_XATTR, &ni)) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -484,7 +484,7 @@ out:
 }
 
 int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
-		u32 nid, u8 *name, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
+		u32 nid, enum FILE_TYPE ftype, enum NODE_TYPE ntype,
 		u32 *blk_cnt, struct child_info *child)
 {
 	struct node_info ni;
@@ -493,7 +493,7 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
 	ASSERT(node_blk != NULL);
 
-	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni, name))
+	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni))
 		goto err;
 
 	if (ntype == TYPE_INODE) {
@@ -748,7 +748,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			goto skip;
 
 		ret = fsck_chk_node_blk(sbi, &node_blk->i, i_nid,
-				NULL, ftype, ntype, blk_cnt, &child);
+					ftype, ntype, blk_cnt, &child);
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
 		} else if (ret == -EINVAL) {
@@ -905,7 +905,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
 			goto skip;
 		ret = fsck_chk_node_blk(sbi, inode,
-				le32_to_cpu(node_blk->in.nid[i]), NULL,
+				le32_to_cpu(node_blk->in.nid[i]),
 				ftype, TYPE_DIRECT_NODE, blk_cnt, child);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
@@ -945,7 +945,7 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
 			goto skip;
 		ret = fsck_chk_node_blk(sbi, inode,
-				le32_to_cpu(node_blk->in.nid[i]), NULL,
+				le32_to_cpu(node_blk->in.nid[i]),
 				ftype, TYPE_INDIRECT_NODE, blk_cnt, child);
 		if (!ret)
 			*blk_cnt = *blk_cnt + 1;
@@ -1325,7 +1325,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 
 		blk_cnt = 1;
 		ret = fsck_chk_node_blk(sbi,
-				NULL, le32_to_cpu(dentry[i].ino), name,
+				NULL, le32_to_cpu(dentry[i].ino),
 				ftype, TYPE_INODE, &blk_cnt, NULL);
 
 		if (ret && c.fix_on) {
@@ -1501,7 +1501,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 				continue;
 			}
 
-			ret = fsck_chk_node_blk(sbi, NULL, ino, NULL,
+			ret = fsck_chk_node_blk(sbi, NULL, ino,
 					F2FS_FT_ORPHAN, TYPE_INODE, &blk_cnt,
 					NULL);
 			if (!ret)
@@ -1684,7 +1684,7 @@ static void fix_hard_links(struct f2fs_sb_info *sbi)
 	while (node) {
 		/* Sanity check */
 		if (sanity_check_nid(sbi, node->nid, node_blk,
-					F2FS_FT_MAX, TYPE_INODE, &ni, NULL))
+					F2FS_FT_MAX, TYPE_INODE, &ni))
 			FIX_MSG("Failed to fix, rerun fsck.f2fs");
 
 		node_blk->i.i_links = cpu_to_le32(node->actual_links);
