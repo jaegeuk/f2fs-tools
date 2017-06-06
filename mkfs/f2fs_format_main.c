@@ -70,6 +70,8 @@ static void f2fs_show_info()
 
 static void parse_feature(const char *features)
 {
+	while (*features == ' ')
+		features++;
 	if (!strcmp(features, "encrypt")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
 	} else {
