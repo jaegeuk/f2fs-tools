@@ -256,6 +256,7 @@ struct device_info {
 struct f2fs_configuration {
 	u_int32_t reserved_segments;
 	u_int32_t new_reserved_segments;
+	int sparse_mode;
 	int zoned_mode;
 	int zoned_model;
 	size_t zone_blocks;
@@ -268,6 +269,7 @@ struct f2fs_configuration {
 	u_int32_t start_sector;
 	u_int32_t total_segments;
 	u_int32_t sector_size;
+	u_int64_t device_size;
 	u_int64_t total_sectors;
 	u_int64_t wanted_total_sectors;
 	u_int64_t target_sectors;

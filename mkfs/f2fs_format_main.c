@@ -27,6 +27,11 @@
 #include "f2fs_fs.h"
 #include "f2fs_format_utils.h"
 
+#ifdef WITH_ANDROID
+#include <sparse/sparse.h>
+extern struct sparse_file *f2fs_sparse_file;
+#endif
+
 extern struct f2fs_configuration c;
 static int force_overwrite = 0;
 
@@ -45,6 +50,7 @@ static void mkfs_usage()
 	MSG(0, "  -O [feature list] e.g. \"encrypt\"\n");
 	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
+	MSG(0, "  -S sparse mode\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
@@ -82,7 +88,7 @@ static void parse_feature(const char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:l:mo:O:s:z:t:f";
+	static const char *option_string = "qa:c:d:e:l:mo:O:s:S:z:t:f";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -132,6 +138,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 's':
 			c.segs_per_sec = atoi(optarg);
 			break;
+		case 'S':
+			c.device_size = atoll(optarg);
+			c.device_size &= (~((u_int64_t)(F2FS_BLKSIZE - 1)));
+			c.sparse_mode = 1;
+			break;
 		case 'z':
 			c.secs_per_zone = atoi(optarg);
 			break;
@@ -163,6 +174,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 		}
 		c.wanted_total_sectors = atoll(argv[optind+1]);
 	}
+
+	if (c.sparse_mode)
+		c.trim = 0;
 
 	if (c.zoned_mode)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_BLKZONED);
@@ -275,6 +289,17 @@ int main(int argc, char *argv[])
 	if (c.zoned_mode && !c.trim) {
 		MSG(0, "\tError: Trim is required for zoned block devices\n");
 		return -1;
+	}
+
+	if (c.sparse_mode) {
+#ifndef WITH_ANDROID
+		MSG(0, "\tError: Sparse mode is only supported for android\n");
+		return -1;
+#else
+		if (f2fs_sparse_file)
+			sparse_file_destroy(f2fs_sparse_file);
+		f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE, c.device_size);
+#endif
 	}
 
 	if (f2fs_format_device() < 0)

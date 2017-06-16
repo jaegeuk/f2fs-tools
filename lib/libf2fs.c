@@ -32,6 +32,10 @@
 #define MODELINQUIRY	0x12,0x00,0x00,0x00,0x4A,0x00
 #endif
 
+#ifndef _WIN32 /* O_BINARY is windows-specific flag */
+#define O_BINARY 0
+#endif
+
 /*
  * UTF conversion codes are Copied from exfat tools.
  */
@@ -689,7 +693,11 @@ int get_device_info(int i)
 #endif
 	struct device_info *dev = c.devices + i;
 
-	fd = open((char *)dev->path, O_RDWR);
+	if (c.sparse_mode) {
+		fd = open((char *)dev->path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
+	} else {
+		fd = open((char *)dev->path, O_RDWR);
+	}
 	if (fd < 0) {
 		MSG(0, "\tError: Failed to open the device!\n");
 		return -1;
@@ -710,7 +718,9 @@ int get_device_info(int i)
 		return -1;
 	}
 
-	if (S_ISREG(stat_buf.st_mode)) {
+	if (c.sparse_mode) {
+		dev->total_sectors = c.device_size / dev->sector_size;
+	} else if (S_ISREG(stat_buf.st_mode)) {
 		dev->total_sectors = stat_buf.st_size / dev->sector_size;
 	} else if (S_ISBLK(stat_buf.st_mode)) {
 		if (ioctl(fd, BLKSSZGET, &sector_size) < 0)

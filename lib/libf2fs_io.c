@@ -25,6 +25,19 @@
 
 struct f2fs_configuration c;
 
+#ifdef WITH_ANDROID
+#include <sparse/sparse.h>
+struct sparse_file *f2fs_sparse_file;
+
+struct buf_item {
+	void *buf;
+	size_t len;
+	struct buf_item *next;
+};
+
+struct buf_item *buf_list;
+#endif
+
 static int __get_device_fd(__u64 *offset)
 {
 	__u64 blk_addr = *offset >> F2FS_BLKSIZE_BITS;
@@ -46,6 +59,8 @@ static int __get_device_fd(__u64 *offset)
  */
 int dev_read_version(void *buf, __u64 offset, size_t len)
 {
+	if (c.sparse_mode)
+		return 0;
 	if (lseek64(c.kd, (off64_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (read(c.kd, buf, len) < 0)
@@ -55,8 +70,12 @@ int dev_read_version(void *buf, __u64 offset, size_t len)
 
 int dev_read(void *buf, __u64 offset, size_t len)
 {
-	int fd = __get_device_fd(&offset);
+	int fd;
 
+	if (c.sparse_mode)
+		return 0;
+
+	fd = __get_device_fd(&offset);
 	if (fd < 0)
 		return fd;
 
@@ -80,10 +99,40 @@ int dev_readahead(__u64 offset, size_t len)
 #endif
 }
 
+#ifdef WITH_ANDROID
+static int dev_write_sparse(void *buf, __u64 byte_offset, size_t byte_len)
+{
+	struct buf_item *bi = calloc(1, sizeof(struct buf_item));
+
+	if (bi == NULL) {
+		return -1;
+	}
+	bi->buf = malloc(byte_len);
+	if (bi->buf == NULL) {
+		free(bi);
+		return -1;
+	}
+
+	bi->len = byte_len;
+	memcpy(bi->buf, buf, byte_len);
+	bi->next = buf_list;
+	buf_list = bi;
+
+	sparse_file_add_data(f2fs_sparse_file, bi->buf, byte_len, byte_offset/F2FS_BLKSIZE);
+	return 0;
+}
+#else
+static int dev_write_sparse(void *buf, __u64 byte_offset, size_t byte_len) { return 0; }
+#endif
+
 int dev_write(void *buf, __u64 offset, size_t len)
 {
-	int fd = __get_device_fd(&offset);
+	int fd;
 
+	if (c.sparse_mode)
+		return dev_write_sparse(buf, offset, len);
+
+	fd = __get_device_fd(&offset);
 	if (fd < 0)
 		return fd;
 
@@ -110,8 +159,12 @@ int dev_write_dump(void *buf, __u64 offset, size_t len)
 
 int dev_fill(void *buf, __u64 offset, size_t len)
 {
-	int fd = __get_device_fd(&offset);
+	int fd;
 
+	if (c.sparse_mode)
+		return 0;
+
+	fd = __get_device_fd(&offset);
 	if (fd < 0)
 		return fd;
 
@@ -143,6 +196,20 @@ int dev_reada_block(__u64 blk_addr)
 void f2fs_finalize_device(void)
 {
 	int i;
+
+#ifdef WITH_ANDROID
+	if (c.sparse_mode) {
+		sparse_file_write(f2fs_sparse_file, c.devices[0].fd, /*gzip*/0, /*sparse*/1, /*crc*/0);
+		sparse_file_destroy(f2fs_sparse_file);
+		while (buf_list) {
+			struct buf_item *bi = buf_list;
+			buf_list = buf_list->next;
+			free(bi->buf);
+			free(bi);
+		}
+		f2fs_sparse_file = NULL;
+	}
+#endif
 
 	/*
 	 * We should call fsync() to flush out all the dirty pages
