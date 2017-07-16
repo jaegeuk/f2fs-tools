@@ -1355,17 +1355,18 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 		struct f2fs_node *node_blk, struct child_info *child)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	struct f2fs_inline_dentry *de_blk;
+	struct f2fs_dentry_ptr d;
+	void *inline_dentry;
 	int dentries;
 
-	de_blk = inline_data_addr(node_blk);
-	ASSERT(de_blk != NULL);
+	inline_dentry = inline_data_addr(node_blk);
+	ASSERT(inline_dentry != NULL);
+
+	make_dentry_ptr(&d, inline_dentry, 2);
 
 	fsck->dentry_depth++;
 	dentries = __chk_dentries(sbi, child,
-			de_blk->dentry_bitmap,
-			de_blk->dentry, de_blk->filename,
-			NR_INLINE_DENTRY, 1,
+			d.bitmap, d.dentry, d.filename, d.max, 1,
 			file_enc_name(&node_blk->i));
 	if (dentries < 0) {
 		DBG(1, "[%3d] Inline Dentry Block Fixed hash_codes\n\n",
@@ -1374,7 +1375,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 		DBG(1, "[%3d] Inline Dentry Block Done : "
 				"dentries:%d in %d slots (len:%d)\n\n",
 			fsck->dentry_depth, dentries,
-			(int)NR_INLINE_DENTRY, F2FS_NAME_LEN);
+			d.max, F2FS_NAME_LEN);
 	}
 	fsck->dentry_depth--;
 	return dentries;

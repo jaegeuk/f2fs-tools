@@ -221,6 +221,7 @@ block_t new_node_block(struct f2fs_sb_info *,
 					struct dnode_of_data *, unsigned int);
 void get_dnode_of_data(struct f2fs_sb_info *, struct dnode_of_data *,
 					pgoff_t, int);
+void make_dentry_ptr(struct f2fs_dentry_ptr *, void *, int);
 int f2fs_create(struct f2fs_sb_info *, struct dentry *);
 int f2fs_mkdir(struct f2fs_sb_info *, struct dentry *);
 int f2fs_symlink(struct f2fs_sb_info *, struct dentry *);

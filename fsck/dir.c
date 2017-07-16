@@ -34,17 +34,19 @@ next:
 
 }
 
-static void make_dentry_ptr(struct f2fs_dentry_ptr *d, void *src, int type)
+void make_dentry_ptr(struct f2fs_dentry_ptr *d, void *src, int type)
 {
 	if (type == 1) {
 		struct f2fs_dentry_block *t = (struct f2fs_dentry_block *)src;
 		d->max = NR_DENTRY_IN_BLOCK;
+		d->nr_bitmap = SIZE_OF_DENTRY_BITMAP;
 		d->bitmap = t->dentry_bitmap;
 		d->dentry = t->dentry;
 		d->filename = t->filename;
 	} else {
 		struct f2fs_inline_dentry *t = (struct f2fs_inline_dentry *)src;
 		d->max = NR_INLINE_DENTRY;
+		d->nr_bitmap = INLINE_DENTRY_BITMAP_SIZE;
 		d->bitmap = t->dentry_bitmap;
 		d->dentry = t->dentry;
 		d->filename = t->filename;
@@ -459,8 +461,8 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 	ASSERT(ret >= 0);
 
 	if (!dir_level) {
-		struct f2fs_inline_dentry *inline_dentry;
 		struct f2fs_dentry_block *dentry_blk;
+		struct f2fs_dentry_ptr src, dst;
 
 		dentry_blk = calloc(BLOCK_SZ, 1);
 		ASSERT(dentry_blk);
@@ -470,17 +472,16 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 		if (dn.data_blkaddr == NULL_ADDR)
 			new_data_block(sbi, dentry_blk, &dn, CURSEG_HOT_DATA);
 
-		inline_dentry = (struct f2fs_inline_dentry *)inline_data;
-		 /* copy data from inline dentry block to new dentry block */
-		memcpy(dentry_blk->dentry_bitmap, inline_dentry->dentry_bitmap,
-				INLINE_DENTRY_BITMAP_SIZE);
-		memset(dentry_blk->dentry_bitmap + INLINE_DENTRY_BITMAP_SIZE, 0,
-			SIZE_OF_DENTRY_BITMAP - INLINE_DENTRY_BITMAP_SIZE);
+		make_dentry_ptr(&src, (void *)inline_data, 2);
+		make_dentry_ptr(&dst, (void *)dentry_blk, 1);
 
-		memcpy(dentry_blk->dentry, inline_dentry->dentry,
-			sizeof(struct f2fs_dir_entry) * NR_INLINE_DENTRY);
-		memcpy(dentry_blk->filename, inline_dentry->filename,
-				NR_INLINE_DENTRY * F2FS_SLOT_LEN);
+		 /* copy data from inline dentry block to new dentry block */
+		memcpy(dst.bitmap, src.bitmap, src.nr_bitmap);
+		memset(dst.bitmap + src.nr_bitmap, 0,
+					dst.nr_bitmap - src.nr_bitmap);
+
+		memcpy(dst.dentry, src.dentry, SIZE_OF_DIR_ENTRY * src.max);
+		memcpy(dst.filename, src.filename, src.max * F2FS_SLOT_LEN);
 
 		ret = dev_write_block(dentry_blk, dn.data_blkaddr);
 		ASSERT(ret >= 0);
