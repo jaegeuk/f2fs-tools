@@ -82,6 +82,8 @@ static void parse_feature(const char *features)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
 	} else if (!strcmp(features, "extra_attr")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
+	} else if (!strcmp(features, "project_quota")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
@@ -158,6 +160,14 @@ static void f2fs_parse_options(int argc, char *argv[])
 			MSG(0, "\tError: Unknown option %c\n",option);
 			mkfs_usage();
 			break;
+		}
+	}
+
+	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR))) {
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
+			MSG(0, "\tInfo: project quota feature should always been"
+				"enabled with extra attr feature\n");
+			exit(1);
 		}
 	}
 

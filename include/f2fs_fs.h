@@ -472,6 +472,7 @@ enum {
 #define F2FS_FEATURE_BLKZONED		0x0002
 #define F2FS_FEATURE_ATOMIC_WRITE	0x0004
 #define F2FS_FEATURE_EXTRA_ATTR		0x0008
+#define F2FS_FEATURE_PRJQUOTA		0x0010
 
 #define MAX_VOLUME_NAME		512
 
@@ -624,6 +625,8 @@ struct f2fs_extent {
 	(offsetof(struct f2fs_inode, i_extra_end) -	\
 	offsetof(struct f2fs_inode, i_extra_isize))	\
 
+#define	F2FS_DEF_PROJID		0	/* default project ID */
+
 #define MAX_INLINE_DATA(node) (sizeof(__le32) *				\
 				(DEF_ADDRS_PER_INODE_INLINE_XATTR -	\
 				get_extra_isize(node) -			\
@@ -679,6 +682,7 @@ struct f2fs_inode {
 		struct {
 			__le16 i_extra_isize;	/* extra inode attribute size */
 			__le16 i_padding;	/* padding */
+			__le32 i_projid;	/* project id */
 			__le32 i_extra_end[0];	/* for attribute size calculation */
 		};
 		__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
