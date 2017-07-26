@@ -179,7 +179,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 	}
 
 	/* inline_data support */
-	if (de->size <= MAX_INLINE_DATA) {
+	if (de->size <= DEF_MAX_INLINE_DATA) {
 		struct node_info ni;
 		struct f2fs_node *node_blk;
 		int ret;
@@ -194,9 +194,15 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 
 		node_blk->i.i_inline |= F2FS_INLINE_DATA;
 		node_blk->i.i_inline |= F2FS_DATA_EXIST;
+
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+			node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
+			node_blk->i.i_extra_isize =
+				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		}
 		n = read(fd, buffer, BLOCK_SZ);
 		ASSERT(n == de->size);
-		memcpy(&node_blk->i.i_addr[1], buffer, de->size);
+		memcpy(inline_data_addr(node_blk), buffer, de->size);
 
 		node_blk->i.i_size = cpu_to_le64(de->size);
 

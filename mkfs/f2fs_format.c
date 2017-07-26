@@ -923,9 +923,15 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_current_depth = cpu_to_le32(1);
 	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
 
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
+		raw_node->i.i_extra_isize =
+				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+	}
+
 	data_blk_nor = get_sb(main_blkaddr) +
 		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg;
-	raw_node->i.i_addr[0] = cpu_to_le32(data_blk_nor);
+	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
 
 	raw_node->i.i_ext.fofs = 0;
 	raw_node->i.i_ext.blk_addr = 0;

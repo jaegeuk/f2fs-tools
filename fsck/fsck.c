@@ -226,10 +226,13 @@ static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 		goto out;
 
 	/* check its block address */
-	if (node_blk->footer.nid == node_blk->footer.ino)
-		target_blk_addr = node_blk->i.i_addr[ofs_in_node];
-	else
+	if (node_blk->footer.nid == node_blk->footer.ino) {
+		int ofs = get_extra_isize(node_blk);
+
+		target_blk_addr = node_blk->i.i_addr[ofs + ofs_in_node];
+	} else {
 		target_blk_addr = node_blk->dn.addr[ofs_in_node];
+	}
 
 	if (blk_addr == le32_to_cpu(target_blk_addr))
 		ret = 1;
@@ -658,20 +661,22 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		goto check;
 
 	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
-		if (le32_to_cpu(node_blk->i.i_addr[0]) != 0) {
+		int ofs = get_extra_isize(node_blk);
+
+		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
 			/* should fix this bug all the time */
 			FIX_MSG("inline_data has wrong 0'th block = %x",
-					le32_to_cpu(node_blk->i.i_addr[0]));
-			node_blk->i.i_addr[0] = 0;
+					le32_to_cpu(node_blk->i.i_addr[ofs]));
+			node_blk->i.i_addr[ofs] = 0;
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 			need_fix = 1;
 		}
 		if (!(node_blk->i.i_inline & F2FS_DATA_EXIST)) {
-			char buf[MAX_INLINE_DATA];
-			memset(buf, 0, MAX_INLINE_DATA);
+			char buf[MAX_INLINE_DATA(node_blk)];
+			memset(buf, 0, MAX_INLINE_DATA(node_blk));
 
-			if (memcmp(buf, &node_blk->i.i_addr[1],
-							MAX_INLINE_DATA)) {
+			if (memcmp(buf, inline_data_addr(node_blk),
+						MAX_INLINE_DATA(node_blk))) {
 				FIX_MSG("inline_data has DATA_EXIST");
 				node_blk->i.i_inline |= F2FS_DATA_EXIST;
 				need_fix = 1;
@@ -710,7 +715,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i);
 						idx++, child.pgofs++) {
-		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[idx]);
+		int ofs = get_extra_isize(node_blk);
+		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs + idx]);
 
 		/* check extent info */
 		check_extent_info(&child, blkaddr, 0);
@@ -724,9 +730,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (c.fix_on) {
-				node_blk->i.i_addr[idx] = 0;
+				node_blk->i.i_addr[ofs + idx] = 0;
 				need_fix = 1;
-				FIX_MSG("[0x%x] i_addr[%d] = 0", nid, idx);
+				FIX_MSG("[0x%x] i_addr[%d] = 0",
+							nid, ofs + idx);
 			}
 		}
 	}
@@ -1362,7 +1369,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 	inline_dentry = inline_data_addr(node_blk);
 	ASSERT(inline_dentry != NULL);
 
-	make_dentry_ptr(&d, inline_dentry, 2);
+	make_dentry_ptr(&d, node_blk, inline_dentry, 2);
 
 	fsck->dentry_depth++;
 	dentries = __chk_dentries(sbi, child,

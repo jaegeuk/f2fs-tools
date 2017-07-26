@@ -322,14 +322,14 @@ static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		/* recover from inline data */
 		dev_write_dump(((unsigned char *)node_blk) + INLINE_DATA_OFFSET,
-							0, MAX_INLINE_DATA);
+						0, MAX_INLINE_DATA(node_blk));
 		return;
 	}
 
 	/* check data blocks in inode */
 	for (i = 0; i < ADDRS_PER_INODE(&node_blk->i); i++, ofs++)
-		dump_data_blk(sbi, ofs * F2FS_BLKSIZE,
-				le32_to_cpu(node_blk->i.i_addr[i]));
+		dump_data_blk(sbi, ofs * F2FS_BLKSIZE, le32_to_cpu(
+			node_blk->i.i_addr[get_extra_isize(node_blk) + i]));
 
 	/* check node blocks in inode */
 	for (i = 0; i < 5; i++) {

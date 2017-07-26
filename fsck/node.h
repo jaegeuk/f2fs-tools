@@ -26,9 +26,14 @@ static inline int IS_INODE(struct f2fs_node *node)
 	return ((node)->footer.nid == (node)->footer.ino);
 }
 
+static inline __le32 *blkaddr_in_inode(struct f2fs_node *node)
+{
+	return node->i.i_addr + get_extra_isize(node);
+}
+
 static inline __le32 *blkaddr_in_node(struct f2fs_node *node)
 {
-	return IS_INODE(node) ? node->i.i_addr : node->dn.addr;
+	return IS_INODE(node) ? blkaddr_in_inode(node) : node->dn.addr;
 }
 
 static inline block_t datablock_addr(struct f2fs_node *node_page,

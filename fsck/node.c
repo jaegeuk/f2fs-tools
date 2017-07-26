@@ -105,10 +105,10 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
  *
  * By default, it sets inline_xattr and inline_data
  */
-static int get_node_path(unsigned long block,
+static int get_node_path(struct f2fs_node *node, unsigned long block,
 				int offset[4], unsigned int noffset[4])
 {
-	const long direct_index = DEF_ADDRS_PER_INODE_INLINE_XATTR;
+	const long direct_index = ADDRS_PER_INODE(&node->i);
 	const long direct_blks = ADDRS_PER_BLOCK;
 	const long dptrs_per_blk = NIDS_PER_BLOCK;
 	const long indirect_blks = ADDRS_PER_BLOCK * NIDS_PER_BLOCK;
@@ -191,7 +191,7 @@ void get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 	int level, i;
 	int ret;
 
-	level = get_node_path(index, offset, noffset);
+	level = get_node_path(dn->inode_blk, index, offset, noffset);
 
 	nids[0] = dn->nid;
 	parent = dn->inode_blk;

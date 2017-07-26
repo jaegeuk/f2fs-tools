@@ -457,8 +457,8 @@ f2fs_hash_t f2fs_dentry_hash(const unsigned char *name, int len)
 unsigned int addrs_per_inode(struct f2fs_inode *i)
 {
 	if (i->i_inline & F2FS_INLINE_XATTR)
-		return DEF_ADDRS_PER_INODE - F2FS_INLINE_XATTR_ADDRS;
-	return DEF_ADDRS_PER_INODE;
+		return CUR_ADDRS_PER_INODE(i) - F2FS_INLINE_XATTR_ADDRS;
+	return CUR_ADDRS_PER_INODE(i);
 }
 
 /*
