@@ -857,9 +857,32 @@ skip_blkcnt_fix:
 					nid, i_links);
 		}
 	}
-	if (need_fix && !c.ro) {
-		/* drop extent information to avoid potential wrong access */
+
+	/* drop extent information to avoid potential wrong access */
+	if (need_fix && !c.ro)
 		node_blk->i.i_ext.len = 0;
+
+	if ((c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) &&
+				f2fs_has_extra_isize(&node_blk->i)) {
+		__u32 provided, calculated;
+
+		provided = le32_to_cpu(node_blk->i.i_inode_checksum);
+		calculated = f2fs_inode_chksum(node_blk);
+
+		if (provided != calculated) {
+			ASSERT_MSG("ino: 0x%x chksum:0x%x, but calculated one is: 0x%x",
+				nid, provided, calculated);
+			if (c.fix_on) {
+				node_blk->i.i_inode_checksum =
+							cpu_to_le32(calculated);
+				need_fix = 1;
+				FIX_MSG("ino: 0x%x recover, i_inode_checksum= 0x%x -> 0x%x",
+						nid, provided, calculated);
+			}
+		}
+	}
+
+	if (need_fix && !c.ro) {
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
 	}

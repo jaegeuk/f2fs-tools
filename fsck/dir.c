@@ -447,6 +447,10 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 		make_empty_dir(sbi, node_blk);
 	else if (S_ISLNK(mode))
 		page_symlink(sbi, node_blk, de->link, size);
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		node_blk->i.i_inode_checksum =
+			cpu_to_le32(f2fs_inode_chksum(node_blk));
 }
 
 int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,

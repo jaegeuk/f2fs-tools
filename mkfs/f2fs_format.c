@@ -369,6 +369,10 @@ static int f2fs_prepare_super_block(void)
 
 	uuid_generate(sb->uuid);
 
+	/* precompute checksum seed for metadata */
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		c.chksum_seed = f2fs_cal_crc32(~0, sb->uuid, sizeof(sb->uuid));
+
 	utf8_to_utf16(sb->volume_name, (const char *)c.vol_label,
 				MAX_VOLUME_NAME, strlen(c.vol_label));
 	set_sb(node_ino, 1);
@@ -939,6 +943,10 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_ext.fofs = 0;
 	raw_node->i.i_ext.blk_addr = 0;
 	raw_node->i.i_ext.len = 0;
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		raw_node->i.i_inode_checksum =
+			cpu_to_le32(f2fs_inode_chksum(raw_node));
 
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *

@@ -84,6 +84,8 @@ static void parse_feature(const char *features)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
 	} else if (!strcmp(features, "project_quota")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
+	} else if (!strcmp(features, "inode_checksum")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
@@ -166,6 +168,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR))) {
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
 			MSG(0, "\tInfo: project quota feature should always been"
+				"enabled with extra attr feature\n");
+			exit(1);
+		}
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
+			MSG(0, "\tInfo: inode checksum feature should always been"
 				"enabled with extra attr feature\n");
 			exit(1);
 		}

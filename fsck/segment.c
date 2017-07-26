@@ -206,6 +206,10 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 
 		node_blk->i.i_size = cpu_to_le64(de->size);
 
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+			node_blk->i.i_inode_checksum =
+				cpu_to_le32(f2fs_inode_chksum(node_blk));
+
 		ret = dev_write_block(node_blk, ni.blk_addr);
 		ASSERT(ret >= 0);
 		free(node_blk);

@@ -91,6 +91,7 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	DISP_u16(inode, i_extra_isize);
 	DISP_u16(inode, i_padding);
 	DISP_u32(inode, i_projid);
+	DISP_u32(inode, i_inode_checksum);
 
 	DISP_u32(inode, i_addr[ofs]);		/* Pointers to data blocks */
 	DISP_u32(inode, i_addr[ofs + 1]);	/* Pointers to data blocks */
@@ -289,6 +290,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
 		MSG(0, "%s", " project quota");
+	}
+	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
+		MSG(0, "%s", " inode checksum");
 	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
@@ -2156,6 +2160,11 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 
 	c.bug_on = 0;
+	c.feature = sb->feature;
+
+	/* precompute checksum seed for metadata */
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		c.chksum_seed = f2fs_cal_crc32(~0, sb->uuid, sizeof(sb->uuid));
 
 	sbi->total_valid_node_count = get_cp(valid_node_count);
 	sbi->total_valid_inode_count = get_cp(valid_inode_count);
