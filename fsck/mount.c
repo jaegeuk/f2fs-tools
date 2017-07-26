@@ -97,12 +97,11 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 	DISP_u32(inode, i_addr[ofs + 2]);	/* Pointers to data blocks */
 	DISP_u32(inode, i_addr[ofs + 3]);	/* Pointers to data blocks */
 
-	for (i = ofs + 4; i < ADDRS_PER_INODE(inode); i++) {
-		if (inode->i_addr[i] != 0x0) {
-			printf("i_addr[0x%x] points data block\r\t\t[0x%4x]\n",
-					i, le32_to_cpu(inode->i_addr[i]));
+	for (i = ofs + 3; i < ADDRS_PER_INODE(inode); i++) {
+		if (inode->i_addr[i] == 0x0)
 			break;
-		}
+		printf("i_addr[0x%x] points data block\t\t[0x%4x]\n",
+				i, le32_to_cpu(inode->i_addr[i]));
 	}
 
 	DISP_u32(inode, i_nid[0]);	/* direct */
