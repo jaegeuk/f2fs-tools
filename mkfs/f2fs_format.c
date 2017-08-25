@@ -120,14 +120,18 @@ next:
 static void verify_cur_segs(void)
 {
 	int i, j;
+	int reorder = 0;
 
 	for (i = 0; i < NR_CURSEG_TYPE; i++) {
-		for (j = 0; j < NR_CURSEG_TYPE; j++)
-			if (c.cur_seg[i] == c.cur_seg[j])
+		for (j = i + 1; j < NR_CURSEG_TYPE; j++) {
+			if (c.cur_seg[i] == c.cur_seg[j]) {
+				reorder = 1;
 				break;
+			}
+		}
 	}
 
-	if (i == NR_CURSEG_TYPE && j == NR_CURSEG_TYPE)
+	if (!reorder)
 		return;
 
 	c.cur_seg[0] = 0;
