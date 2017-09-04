@@ -477,6 +477,7 @@ enum {
 #define F2FS_FEATURE_EXTRA_ATTR		0x0008
 #define F2FS_FEATURE_PRJQUOTA		0x0010
 #define F2FS_FEATURE_INODE_CHKSUM	0x0020
+#define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
 
 #define MAX_VOLUME_NAME		512
 
@@ -598,13 +599,12 @@ struct f2fs_extent {
 } __attribute__((packed));
 
 #define F2FS_NAME_LEN		255
-#define F2FS_INLINE_XATTR_ADDRS	50	/* 200 bytes for inline xattrs */
+/* 200 bytes for inline xattrs by default */
+#define DEFAULT_INLINE_XATTR_ADDRS	50
 #define DEF_ADDRS_PER_INODE	923	/* Address Pointers in an Inode */
 #define CUR_ADDRS_PER_INODE(inode)	(DEF_ADDRS_PER_INODE - \
 					__get_extra_isize(inode))
 #define ADDRS_PER_INODE(i)	addrs_per_inode(i)
-#define DEF_ADDRS_PER_INODE_INLINE_XATTR				\
-		(DEF_ADDRS_PER_INODE - F2FS_INLINE_XATTR_ADDRS)
 #define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
 
@@ -632,11 +632,13 @@ struct f2fs_extent {
 #define	F2FS_DEF_PROJID		0	/* default project ID */
 
 #define MAX_INLINE_DATA(node) (sizeof(__le32) *				\
-				(DEF_ADDRS_PER_INODE_INLINE_XATTR -	\
+				(DEF_ADDRS_PER_INODE -			\
+				get_inline_xattr_addrs(&node->i) -	\
 				get_extra_isize(node) -			\
 				DEF_INLINE_RESERVED_SIZE))
 #define DEF_MAX_INLINE_DATA	(sizeof(__le32) *			\
-				(DEF_ADDRS_PER_INODE_INLINE_XATTR -	\
+				(DEF_ADDRS_PER_INODE -			\
+				DEFAULT_INLINE_XATTR_ADDRS -		\
 				F2FS_TOTAL_EXTRA_ATTR_SIZE -		\
 				DEF_INLINE_RESERVED_SIZE))
 #define INLINE_DATA_OFFSET	(PAGE_CACHE_SIZE - sizeof(struct node_footer) \
@@ -685,7 +687,7 @@ struct f2fs_inode {
 	union {
 		struct {
 			__le16 i_extra_isize;	/* extra inode attribute size */
-			__le16 i_padding;	/* padding */
+			__le16 i_inline_xattr_size;	/* inline xattr size, unit: 4 bytes */
 			__le32 i_projid;	/* project id */
 			__le32 i_inode_checksum;/* inode meta checksum */
 			__le32 i_extra_end[0];	/* for attribute size calculation */
@@ -1040,6 +1042,18 @@ static inline int __get_extra_isize(struct f2fs_inode *inode)
 	if (f2fs_has_extra_isize(inode))
 		return le16_to_cpu(inode->i_extra_isize) / sizeof(__le32);
 	return 0;
+}
+
+extern struct f2fs_configuration c;
+static inline int get_inline_xattr_addrs(struct f2fs_inode *inode)
+{
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+		return le16_to_cpu(inode->i_inline_xattr_size);
+	else if (inode->i_inline & F2FS_INLINE_XATTR ||
+			inode->i_inline & F2FS_INLINE_DENTRY)
+		return DEFAULT_INLINE_XATTR_ADDRS;
+	else
+		return 0;
 }
 
 #define get_extra_isize(node)	__get_extra_isize(&node->i)

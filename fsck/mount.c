@@ -89,7 +89,7 @@ void print_inode_info(struct f2fs_inode *inode, int name)
 			le32_to_cpu(inode->i_ext.len));
 
 	DISP_u16(inode, i_extra_isize);
-	DISP_u16(inode, i_padding);
+	DISP_u16(inode, i_inline_xattr_size);
 	DISP_u32(inode, i_projid);
 	DISP_u32(inode, i_inode_checksum);
 
@@ -293,6 +293,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
 		MSG(0, "%s", " inode checksum");
+	}
+	if (f & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
+		MSG(0, "%s", " flexible inline xattr");
 	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",

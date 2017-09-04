@@ -454,14 +454,13 @@ static inline int map_de_type(umode_t mode)
 
 static inline void *inline_xattr_addr(struct f2fs_inode *inode)
 {
-	return (void *)&(inode->i_addr[DEF_ADDRS_PER_INODE_INLINE_XATTR]);
+	return (void *)&(inode->i_addr[DEF_ADDRS_PER_INODE -
+				get_inline_xattr_addrs(inode)]);
 }
 
 static inline int inline_xattr_size(struct f2fs_inode *inode)
 {
-	if (inode->i_inline & F2FS_INLINE_XATTR)
-		return F2FS_INLINE_XATTR_ADDRS << 2;
-	return 0;
+	return get_inline_xattr_addrs(inode) * sizeof(__le32);
 }
 
 extern int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid, struct f2fs_nat_entry *ne);
