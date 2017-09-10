@@ -2026,9 +2026,11 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
-			move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
-			write_curseg_info(sbi);
-			flush_curseg_sit_entries(sbi);
+			if (check_curseg_offset(sbi)) {
+				move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
+				write_curseg_info(sbi);
+				flush_curseg_sit_entries(sbi);
+			}
 			fix_checkpoint(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG)) {
 			write_checkpoint(sbi);
