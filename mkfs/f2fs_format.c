@@ -856,6 +856,8 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 {
 	u_int64_t next_blkaddr = 0;
 	u_int64_t root_inode_pos = get_sb(main_blkaddr);
+	u64 end_blkaddr = (get_sb(segment_count_main) <<
+			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
 
 	/* only root inode was written before truncating dnodes */
 	root_inode_pos += c.cur_seg[CURSEG_HOT_NODE] * c.blks_per_seg;
@@ -863,8 +865,7 @@ static int discard_obsolete_dnode(struct f2fs_node *raw_node, u_int64_t offset)
 	if (c.zoned_mode)
 		return 0;
 	do {
-		if (offset < get_sb(main_blkaddr) ||
-			offset >= get_sb(main_blkaddr) + get_sb(block_count))
+		if (offset < get_sb(main_blkaddr) || offset >= end_blkaddr)
 			break;
 
 		if (dev_read_block(raw_node, offset)) {
