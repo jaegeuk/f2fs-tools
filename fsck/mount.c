@@ -1939,7 +1939,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 		write_nat_bits(sbi, sb, cp, sbi->cur_cp);
 
 	/* in case of sudden power off */
-	f2fs_finalize_device();
+	f2fs_fsync_device();
 
 	/* write the last cp */
 	ret = dev_write_block(cp, cp_blk_no++);

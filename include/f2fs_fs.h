@@ -1013,6 +1013,7 @@ extern int f2fs_dev_is_umounted(char *);
 extern int f2fs_get_device_info(void);
 extern int get_device_info(int);
 extern void f2fs_finalize_device(void);
+extern void f2fs_fsync_device(void);
 
 extern int dev_read(void *, __u64, size_t);
 extern int dev_write(void *, __u64, size_t);

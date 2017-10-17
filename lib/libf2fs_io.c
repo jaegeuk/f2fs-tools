@@ -193,6 +193,16 @@ int dev_reada_block(__u64 blk_addr)
 	return dev_readahead(blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
+void f2fs_fsync_device(void)
+{
+	int i;
+
+	for (i = 0; i < c.ndevs; i++) {
+		if (fsync(c.devices[i].fd) < 0)
+			MSG(0, "\tError: Could not conduct fsync!!!\n");
+	}
+}
+
 void f2fs_finalize_device(void)
 {
 	int i;
