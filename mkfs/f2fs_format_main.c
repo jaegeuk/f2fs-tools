@@ -88,6 +88,8 @@ static void parse_feature(const char *features)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM);
 	} else if (!strcmp(features, "flexible_inline_xattr")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR);
+	} else if (!strcmp(features, "quota")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();

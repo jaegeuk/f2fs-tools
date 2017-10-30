@@ -458,6 +458,12 @@ enum {
 #define F2FS_NODE_INO(sbi)	(sbi->node_ino_num)
 #define F2FS_META_INO(sbi)	(sbi->meta_ino_num)
 
+#define F2FS_MAX_QUOTAS		3
+#define QUOTA_DATA(i)		(2)
+#define QUOTA_INO(sb,t)	(le32_to_cpu((sb)->qf_ino[t]))
+
+#define FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
+
 /* This flag is used by node and meta inodes, and by recovery */
 #define GFP_F2FS_ZERO	(GFP_NOFS | __GFP_ZERO)
 
@@ -478,6 +484,7 @@ enum {
 #define F2FS_FEATURE_PRJQUOTA		0x0010
 #define F2FS_FEATURE_INODE_CHKSUM	0x0020
 #define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
+#define F2FS_FEATURE_QUOTA_INO		0x0080
 
 #define MAX_VOLUME_NAME		512
 
@@ -528,7 +535,8 @@ struct f2fs_super_block {
 	__u8 encryption_level;		/* versioning level for encryption */
 	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
 	struct f2fs_device devs[MAX_DEVICES];	/* device list */
-	__u8 reserved[327];		/* valid reserved region */
+	__le32 qf_ino[F2FS_MAX_QUOTAS];	/* quota inode numbers */
+	__u8 reserved[315];		/* valid reserved region */
 } __attribute__((packed));
 
 /*
@@ -1169,6 +1177,16 @@ static inline __le64 get_cp_crc(struct f2fs_checkpoint *cp)
 
 	cp_ver |= ((u_int64_t)crc << 32);
 	return cpu_to_le64(cp_ver);
+}
+
+static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)
+{
+	int i;
+
+	for (i = 0; i < F2FS_MAX_QUOTAS; i++)
+		if (sb->qf_ino[i] == ino)
+			return 1;
+	return 0;
 }
 
 #endif	/*__F2FS_FS_H */
