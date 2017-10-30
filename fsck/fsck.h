@@ -154,6 +154,8 @@ extern void nullify_nat_entry(struct f2fs_sb_info *, u32);
 extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern void build_sit_area_bitmap(struct f2fs_sb_info *);
+extern int f2fs_set_main_bitmap(struct f2fs_sb_info *, u32, int);
+extern int f2fs_set_sit_bitmap(struct f2fs_sb_info *, u32);
 extern void fsck_init(struct f2fs_sb_info *);
 extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
