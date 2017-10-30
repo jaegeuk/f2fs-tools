@@ -71,6 +71,7 @@ static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 	void *data_blk;
 	struct node_info ni;
 	struct f2fs_node *inode;
+	int idirty = 0;
 	int ret = -1;
 
 	get_node_info(sbi, ino, &ni);
@@ -86,6 +87,8 @@ static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 
 	off_in_block = offset & ((1 << F2FS_BLKSIZE_BITS) - 1);
 	len_in_block = (1 << F2FS_BLKSIZE_BITS) - off_in_block;
+	if (len_in_block > count)
+		len_in_block = count;
 	len_already = 0;
 
 	/*
@@ -115,17 +118,20 @@ static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 			blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
 
 			/* A new page from WARM_DATA */
-			if (blkaddr == NULL_ADDR)
+			if (blkaddr == NULL_ADDR) {
 				new_data_block(sbi, data_blk, &dn,
 							CURSEG_WARM_DATA);
+				blkaddr = dn.data_blkaddr;
+				idirty |= dn.idirty;
+			}
 
 			/* Copy data from buffer to file */
-			ret = dev_read_block(data_blk, dn.data_blkaddr);
+			ret = dev_read_block(data_blk, blkaddr);
 			ASSERT(ret >= 0);
 
 			memcpy(data_blk + off_in_block, buffer, len_in_block);
 
-			ret = dev_write_block(data_blk, dn.data_blkaddr);
+			ret = dev_write_block(data_blk, blkaddr);
 			ASSERT(ret >= 0);
 
 			off_in_block = 0;
@@ -148,10 +154,10 @@ static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 	/* Update the inode info */
 	if (le64_to_cpu(inode->i.i_size) < offset + count) {
 		inode->i.i_size = cpu_to_le64(offset + count);
-		dn.idirty = 1;
+		idirty = 1;
 	}
 
-	if (dn.idirty) {
+	if (idirty) {
 		ASSERT(inode == dn.inode_blk);
 		ret = dev_write_block(inode, ni.blk_addr);
 		ASSERT(ret >= 0);
