@@ -297,6 +297,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	if (f & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
 		MSG(0, "%s", " flexible inline xattr");
 	}
+	if (f & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
+		MSG(0, "%s", " quota ino");
+	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
 					sb->encryption_level);
@@ -739,7 +742,7 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 	nid_t nid;
 	int i;
 
-	if (!(c.func == SLOAD))
+	if (!(c.func == SLOAD || c.func == FSCK))
 		return 0;
 
 	nm_i->nid_bitmap = (char *)calloc(nid_bitmap_size, 1);
@@ -2159,10 +2162,14 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	if (c.auto_fix || c.preen_mode) {
 		u32 flag = get_cp(ckpt_flags);
 
-		if (flag & CP_FSCK_FLAG)
+		if (flag & CP_FSCK_FLAG ||
+			(exist_qf_ino(sb) && (!(flag & CP_UMOUNT_FLAG) ||
+						flag & CP_ERROR_FLAG))) {
 			c.fix_on = 1;
-		else if (!c.preen_mode)
+		} else if (!c.preen_mode) {
+			print_cp_state(flag);
 			return 1;
+		}
 	}
 
 	c.bug_on = 0;
@@ -2224,7 +2231,7 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	unsigned int i;
 
 	/* free nm_info */
-	if (c.func == SLOAD)
+	if (c.func == SLOAD || c.func == FSCK)
 		free(nm_i->nid_bitmap);
 	free(nm_i->nat_bitmap);
 	free(sbi->nm_info);

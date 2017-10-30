@@ -24,6 +24,15 @@
 #include <linux/blkzoned.h>
 #endif
 
+#ifdef UNUSED
+#elif defined(__GNUC__)
+# define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#elif defined(__LCLINT__)
+# define UNUSED(x) x
+#else
+# define UNUSED(x) x
+#endif
+
 typedef u_int64_t	u64;
 typedef u_int32_t	u32;
 typedef u_int16_t	u16;
@@ -1177,6 +1186,16 @@ static inline __le64 get_cp_crc(struct f2fs_checkpoint *cp)
 
 	cp_ver |= ((u_int64_t)crc << 32);
 	return cpu_to_le64(cp_ver);
+}
+
+static inline int exist_qf_ino(struct f2fs_super_block *sb)
+{
+	int i;
+
+	for (i = 0; i < F2FS_MAX_QUOTAS; i++)
+		if (sb->qf_ino[i])
+			return 1;
+	return 0;
 }
 
 static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)

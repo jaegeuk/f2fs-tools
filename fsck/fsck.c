@@ -9,12 +9,12 @@
  * published by the Free Software Foundation.
  */
 #include "fsck.h"
+#include "quotaio.h"
 
 char *tree_mark;
 uint32_t tree_mark_size = 256;
 
-static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
-								int type)
+int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk, int type)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct seg_entry *se;
@@ -48,6 +48,13 @@ static inline int f2fs_test_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
 	return f2fs_test_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->sit_area_bitmap);
+}
+
+int f2fs_set_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->sit_area_bitmap);
 }
 
 static int add_into_hard_link_list(struct f2fs_sb_info *sbi,
@@ -500,7 +507,9 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		goto err;
 
 	if (ntype == TYPE_INODE) {
+		struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 		fsck_chk_inode_blk(sbi, nid, ftype, node_blk, blk_cnt, &ni);
+		quota_add_inode_usage(fsck->qctx, nid, &node_blk->i);
 	} else {
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
@@ -622,7 +631,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
 			f2fs_set_main_bitmap(sbi, ni->blk_addr,
 							CURSEG_WARM_NODE);
-			if (i_links > 1 && ftype != F2FS_FT_ORPHAN) {
+			if (i_links > 1 && ftype != F2FS_FT_ORPHAN &&
+					!is_qf_ino(F2FS_RAW_SUPER(sbi), nid)) {
 				/* First time. Create new hard link node */
 				add_into_hard_link_list(sbi, nid, i_links);
 				fsck->chk.multi_hard_link_files++;
@@ -804,6 +814,11 @@ skip_blkcnt_fix:
 	en[namelen] = '\0';
 	if (ftype == F2FS_FT_ORPHAN)
 		DBG(1, "Orphan Inode: 0x%x [%s] i_blocks: %u\n\n",
+				le32_to_cpu(node_blk->footer.ino),
+				en, (u32)i_blocks);
+
+	if (is_qf_ino(F2FS_RAW_SUPER(sbi), nid))
+		DBG(1, "Quota Inode: 0x%x [%s] i_blocks: %u\n\n",
 				le32_to_cpu(node_blk->footer.ino),
 				en, (u32)i_blocks);
 
@@ -1558,6 +1573,82 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	enum quota_type qtype;
+	int ret = 0;
+	u32 blk_cnt = 0;
+
+	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
+		if (sb->qf_ino[qtype] == 0)
+			continue;
+		nid_t ino = QUOTA_INO(sb, qtype);
+		struct node_info ni;
+
+		DBG(1, "[%3d] ino [0x%x]\n", qtype, ino);
+		blk_cnt = 1;
+
+		if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
+			get_node_info(sbi, ino, &ni);
+			if (!IS_VALID_NID(sbi, ino) ||
+					!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+				return -EINVAL;
+		}
+		ret = fsck_chk_node_blk(sbi, NULL, ino,
+				F2FS_FT_REG_FILE, TYPE_INODE, &blk_cnt, NULL);
+		if (ret)
+			ASSERT_MSG("[0x%x] wrong orphan inode", ino);
+	}
+	return ret;
+}
+
+int fsck_chk_quota_files(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	enum quota_type qtype;
+	f2fs_ino_t ino;
+	int ret = 0;
+	int needs_writeout;
+
+	/* Return if quota feature is disabled */
+	if (!fsck->qctx)
+		return 0;
+
+	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
+		ino = sb->qf_ino[qtype];
+		if (!ino)
+			continue;
+
+	        DBG(1, "Checking Quota file ([%3d] ino [0x%x])\n", qtype, ino);
+		needs_writeout = 0;
+		ret = quota_compare_and_update(sbi, qtype, &needs_writeout);
+		if (ret == 0 && needs_writeout == 0) {
+			DBG(1, "OK\n");
+			continue;
+		}
+
+		/* Something is wrong */
+		if (c.fix_on) {
+			DBG(0, "Fixing Quota file ([%3d] ino [0x%x])\n",
+							qtype, ino);
+			f2fs_filesize_update(sbi, ino, 0);
+			ret = quota_write_inode(sbi, qtype);
+			if (!ret) {
+				c.bug_on = 1;
+				DBG(1, "OK\n");
+			} else {
+				ASSERT_MSG("Unable to write quota file");
+			}
+		} else {
+			ASSERT_MSG("Quota file is missing or invalid"
+					" quota file content found.");
+		}
+	}
+	return ret;
+}
+
 int fsck_chk_meta(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -1616,6 +1707,10 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 
 	/* 4. check orphan inode simply */
 	if (fsck_chk_orphan_node(sbi))
+		return -EINVAL;
+
+	/* 5. check quota inode simply */
+	if (fsck_chk_quota_node(sbi))
 		return -EINVAL;
 
 	if (fsck->nat_valid_inode_cnt != le32_to_cpu(cp->valid_inode_count)) {
@@ -2042,6 +2137,10 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 void fsck_free(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+	if (fsck->qctx)
+		quota_release_context(&fsck->qctx);
+
 	if (fsck->main_area_bitmap)
 		free(fsck->main_area_bitmap);
 

@@ -18,6 +18,7 @@
 #include "fsck.h"
 #include <libgen.h>
 #include <ctype.h>
+#include "quotaio.h"
 
 struct f2fs_fsck gfsck;
 
@@ -407,6 +408,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 	u32 blk_cnt;
+	errcode_t ret;
 
 	fsck_init(sbi);
 
@@ -429,8 +431,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 				c.fix_on = 1;
 			break;
 		}
-	} else {
-		/*
+	} else { /*
 		 * we can hit this in 3 situations:
 		 *  1. fsck -f, fix_on has already been set to 1 when
 		 *     parsing options;
@@ -443,12 +444,23 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 		c.fix_on = 1;
 	}
 
-	fsck_chk_orphan_node(sbi);
+	fsck_chk_quota_node(sbi);
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
+		ret = quota_init_context(sbi);
+		if (ret) {
+			ASSERT_MSG("quota_init_context failure: %d", ret);
+			return;
+		}
+	}
+	fsck_chk_orphan_node(sbi);
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, NULL);
+	fsck_chk_quota_files(sbi);
+
 	fsck_verify(sbi);
 	fsck_free(sbi);
 }

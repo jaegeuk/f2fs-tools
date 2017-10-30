@@ -314,7 +314,7 @@ static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 	nid_t pino = le32_to_cpu(inode->i.i_pino);
 	struct f2fs_summary sum;
 	struct node_info ni;
-	block_t blkaddr;
+	block_t blkaddr = NULL_ADDR;
 	int ret;
 
 	get_node_info(sbi, ino, &ni);
@@ -354,7 +354,7 @@ static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 	struct f2fs_summary sum;
 	struct node_info ni;
 	char *data_blk;
-	block_t blkaddr;
+	block_t blkaddr = NULL_ADDR;
 	int ret;
 
 	get_node_info(sbi, ino, &ni);
@@ -553,7 +553,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	struct f2fs_node *parent, *child;
 	struct node_info ni;
 	struct f2fs_summary sum;
-	block_t blkaddr;
+	block_t blkaddr = NULL_ADDR;
 	int ret;
 
 	/* Find if there is a */

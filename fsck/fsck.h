@@ -13,6 +13,8 @@
 
 #include "f2fs.h"
 
+struct quota_ctx;
+
 #define FSCK_UNMATCHED_EXTENT		0x00000001
 
 enum {
@@ -85,6 +87,8 @@ struct f2fs_fsck {
 	u32 dentry_depth;
 	struct f2fs_nat_entry *entries;
 	u32 nat_valid_inode_cnt;
+
+	struct quota_ctx *qctx;
 };
 
 #define BLOCK_SZ		4096
@@ -118,6 +122,8 @@ enum seg_type {
 struct selabel_handle;
 
 extern int fsck_chk_orphan_node(struct f2fs_sb_info *);
+extern int fsck_chk_quota_node(struct f2fs_sb_info *);
+extern int fsck_chk_quota_files(struct f2fs_sb_info *);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		enum FILE_TYPE, enum NODE_TYPE, u32 *,
 		struct child_info *);
@@ -154,6 +160,8 @@ extern void nullify_nat_entry(struct f2fs_sb_info *, u32);
 extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern void build_sit_area_bitmap(struct f2fs_sb_info *);
+extern int f2fs_set_main_bitmap(struct f2fs_sb_info *, u32, int);
+extern int f2fs_set_sit_bitmap(struct f2fs_sb_info *, u32);
 extern void fsck_init(struct f2fs_sb_info *);
 extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
@@ -210,6 +218,8 @@ int f2fs_resize(struct f2fs_sb_info *);
 /* sload.c */
 int f2fs_sload(struct f2fs_sb_info *, const char *, const char *,
 		const char *, struct selabel_handle *);
+
+/* segment.c */
 void reserve_new_block(struct f2fs_sb_info *, block_t *,
 					struct f2fs_summary *, int);
 void new_data_block(struct f2fs_sb_info *, void *,

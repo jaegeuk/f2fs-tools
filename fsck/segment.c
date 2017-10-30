@@ -27,9 +27,10 @@ static void write_inode(u64 blkaddr, struct f2fs_node *inode)
 void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 			struct f2fs_summary *sum, int type)
 {
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct seg_entry *se;
-	u64 blkaddr;
-	u64 offset;
+	u64 blkaddr, offset;
+	u64 old_blkaddr = *to;
 
 	blkaddr = SM_I(sbi)->main_blkaddr;
 
@@ -43,7 +44,16 @@ void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	se->type = type;
 	se->valid_blocks++;
 	f2fs_set_bit(offset, (char *)se->cur_valid_map);
-	sbi->total_valid_block_count++;
+	if (c.func == FSCK) {
+		f2fs_set_main_bitmap(sbi, blkaddr, type);
+		f2fs_set_sit_bitmap(sbi, blkaddr);
+	}
+
+	if (old_blkaddr == NULL_ADDR) {
+		sbi->total_valid_block_count++;
+		if (c.func == FSCK)
+			fsck->chk.valid_blk_cnt++;
+	}
 	se->dirty = 1;
 
 	/* read/write SSA */
@@ -56,6 +66,7 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 {
 	struct f2fs_summary sum;
 	struct node_info ni;
+	int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 
 	ASSERT(dn->node_blk);
 	memset(block, 0, BLOCK_SZ);
@@ -64,7 +75,10 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
 	reserve_new_block(sbi, &dn->data_blkaddr, &sum, type);
 
-	inc_inode_blocks(dn);
+	if (blkaddr == NULL_ADDR)
+		inc_inode_blocks(dn);
+	else if (blkaddr == NEW_ADDR)
+		dn->idirty = 1;
 	set_data_blkaddr(dn);
 }
 
