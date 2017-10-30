@@ -219,6 +219,12 @@ void f2fs_alloc_nid(struct f2fs_sb_info *, nid_t *, int);
 void set_data_blkaddr(struct dnode_of_data *);
 block_t new_node_block(struct f2fs_sb_info *,
 					struct dnode_of_data *, unsigned int);
+
+/* segment.c */
+u64 f2fs_read(struct f2fs_sb_info *, nid_t, void *, u64, pgoff_t);
+u64 f2fs_write(struct f2fs_sb_info *, nid_t, void *, u64, pgoff_t);
+void f2fs_filesize_update(struct f2fs_sb_info *, nid_t, u64);
+
 void get_dnode_of_data(struct f2fs_sb_info *, struct dnode_of_data *,
 					pgoff_t, int);
 void make_dentry_ptr(struct f2fs_dentry_ptr *, struct f2fs_node *, void *, int);

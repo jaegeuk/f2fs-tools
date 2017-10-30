@@ -68,111 +68,193 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 	set_data_blkaddr(dn);
 }
 
-static void f2fs_write_block(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
+u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 					u64 count, pgoff_t offset)
 {
-	u64 start = F2FS_BYTES_TO_BLK(offset);
-	u64 len = F2FS_BYTES_TO_BLK(count);
-	u64 end_offset;
-	u64 off_in_block, len_in_block, len_already;
-	struct dnode_of_data dn = {0};
-	void *data_blk;
+	struct dnode_of_data dn;
 	struct node_info ni;
 	struct f2fs_node *inode;
-	int idirty = 0;
-	int ret = -1;
+	char *blk_buffer;
+	u64 filesize;
+	u64 off_in_blk;
+	u64 len_in_blk;
+	u64 read_count;
+	u64 remained_blkentries;
+	block_t blkaddr;
+	void *index_node = NULL;
 
+	memset(&dn, 0, sizeof(dn));
+
+	/* Memory allocation for block buffer and inode. */
+	blk_buffer = calloc(BLOCK_SZ, 2);
+	ASSERT(blk_buffer);
+	inode = (struct f2fs_node*)(blk_buffer + BLOCK_SZ);
+
+	/* Read inode */
 	get_node_info(sbi, ino, &ni);
-	inode = calloc(BLOCK_SZ, 1);
-	ASSERT(inode);
+	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
+	ASSERT(!S_ISDIR(le16_to_cpu(inode->i.i_mode)));
+	ASSERT(!S_ISLNK(le16_to_cpu(inode->i.i_mode)));
 
-	ret = dev_read_block(inode, ni.blk_addr);
-	ASSERT(ret >= 0);
+	/* Adjust count with file length. */
+	filesize = le64_to_cpu(inode->i.i_size);
+	if (offset > filesize)
+		count = 0;
+	else if (count + offset > filesize)
+		count = filesize - offset;
 
-	if (S_ISDIR(le16_to_cpu(inode->i.i_mode)) ||
-			S_ISLNK(le16_to_cpu(inode->i.i_mode)))
-		ASSERT(0);
-
-	off_in_block = offset & ((1 << F2FS_BLKSIZE_BITS) - 1);
-	len_in_block = (1 << F2FS_BLKSIZE_BITS) - off_in_block;
-	if (len_in_block > count)
-		len_in_block = count;
-	len_already = 0;
-
-	/*
-	 * When calculate how many blocks this 'count' stride accross,
-	 * We should take offset in a block in account.
-	 */
-	len = F2FS_BYTES_TO_BLK(count + off_in_block
-			+ ((1 << F2FS_BLKSIZE_BITS) - 1));
-
-	data_blk = calloc(BLOCK_SZ, 1);
-	ASSERT(data_blk);
-
-	set_new_dnode(&dn, inode, NULL, ino);
-
-	while (len) {
-		if (dn.node_blk != dn.inode_blk)
-			free(dn.node_blk);
-
-		set_new_dnode(&dn, inode, NULL, ino);
-		get_dnode_of_data(sbi, &dn, start, ALLOC_NODE);
-
-		end_offset = ADDRS_PER_PAGE(dn.node_blk);
-
-		while (dn.ofs_in_node < end_offset && len) {
-			block_t blkaddr;
-
-			blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
-
-			/* A new page from WARM_DATA */
-			if (blkaddr == NULL_ADDR) {
-				new_data_block(sbi, data_blk, &dn,
-							CURSEG_WARM_DATA);
-				blkaddr = dn.data_blkaddr;
-				idirty |= dn.idirty;
-			}
-
-			/* Copy data from buffer to file */
-			ret = dev_read_block(data_blk, blkaddr);
-			ASSERT(ret >= 0);
-
-			memcpy(data_blk + off_in_block, buffer, len_in_block);
-
-			ret = dev_write_block(data_blk, blkaddr);
-			ASSERT(ret >= 0);
-
-			off_in_block = 0;
-			len_already += len_in_block;
-			if ((count - len_already) > (1 << F2FS_BLKSIZE_BITS))
-				len_in_block = 1 << F2FS_BLKSIZE_BITS;
-			else
-				len_in_block = count - len_already;
-			len--;
-			start++;
-			dn.ofs_in_node++;
+	/* Main loop for file blocks */
+	read_count = remained_blkentries = 0;
+	while (count > 0) {
+		if (remained_blkentries == 0) {
+			set_new_dnode(&dn, inode, NULL, ino);
+			get_dnode_of_data(sbi, &dn, F2FS_BYTES_TO_BLK(offset),
+					LOOKUP_NODE);
+			if (index_node)
+				free(index_node);
+			index_node = (dn.node_blk == dn.inode_blk) ?
+							NULL : dn.node_blk;
+			remained_blkentries = ADDRS_PER_PAGE(dn.node_blk);
 		}
-		/* Update the direct node */
-		if (dn.ndirty) {
-			ret = dev_write_block(dn.node_blk, dn.node_blkaddr);
-			ASSERT(ret >= 0);
+		ASSERT(remained_blkentries > 0);
+
+		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
+		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR)
+			break;
+
+		off_in_blk = offset % BLOCK_SZ;
+		len_in_blk = BLOCK_SZ - off_in_blk;
+		if (len_in_blk > count)
+			len_in_blk = count;
+
+		/* Read data from single block. */
+		if (len_in_blk < BLOCK_SZ) {
+			ASSERT(dev_read_block(blk_buffer, blkaddr) >= 0);
+			memcpy(buffer, blk_buffer + off_in_blk, len_in_blk);
+		} else {
+			/* Direct read */
+			ASSERT(dev_read_block(buffer, blkaddr) >= 0);
 		}
+
+		offset += len_in_blk;
+		count -= len_in_blk;
+		buffer += len_in_blk;
+		read_count += len_in_blk;
+
+		dn.ofs_in_node++;
+		remained_blkentries--;
 	}
+	if (index_node)
+		free(index_node);
+	free(blk_buffer);
 
-	/* Update the inode info */
-	if (le64_to_cpu(inode->i.i_size) < offset + count) {
-		inode->i.i_size = cpu_to_le64(offset + count);
+	return read_count;
+}
+
+u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
+					u64 count, pgoff_t offset)
+{
+	struct dnode_of_data dn;
+	struct node_info ni;
+	struct f2fs_node *inode;
+	char *blk_buffer;
+	u64 off_in_blk;
+	u64 len_in_blk;
+	u64 written_count;
+	u64 remained_blkentries;
+	block_t blkaddr;
+	void* index_node = NULL;
+	int idirty = 0;
+
+	/* Memory allocation for block buffer and inode. */
+	blk_buffer = calloc(BLOCK_SZ, 2);
+	ASSERT(blk_buffer);
+	inode = (struct f2fs_node*)(blk_buffer + BLOCK_SZ);
+
+	/* Read inode */
+	get_node_info(sbi, ino, &ni);
+	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
+	ASSERT(!S_ISDIR(le16_to_cpu(inode->i.i_mode)));
+	ASSERT(!S_ISLNK(le16_to_cpu(inode->i.i_mode)));
+
+	/* Main loop for file blocks */
+	written_count = remained_blkentries = 0;
+	while (count > 0) {
+		if (remained_blkentries == 0) {
+			set_new_dnode(&dn, inode, NULL, ino);
+			get_dnode_of_data(sbi, &dn, F2FS_BYTES_TO_BLK(offset),
+					ALLOC_NODE);
+			idirty |= dn.idirty;
+			if (index_node)
+				free(index_node);
+			index_node = (dn.node_blk == dn.inode_blk) ?
+							NULL : dn.node_blk;
+			remained_blkentries = ADDRS_PER_PAGE(dn.node_blk);
+		}
+		ASSERT(remained_blkentries > 0);
+
+		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
+		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR) {
+			new_data_block(sbi, blk_buffer, &dn, CURSEG_WARM_DATA);
+			blkaddr = dn.data_blkaddr;
+		}
+
+		off_in_blk = offset % BLOCK_SZ;
+		len_in_blk = BLOCK_SZ - off_in_blk;
+		if (len_in_blk > count)
+			len_in_blk = count;
+
+		/* Write data to single block. */
+		if (len_in_blk < BLOCK_SZ) {
+			ASSERT(dev_read_block(blk_buffer, blkaddr) >= 0);
+			memcpy(blk_buffer + off_in_blk, buffer, len_in_blk);
+			ASSERT(dev_write_block(blk_buffer, blkaddr) >= 0);
+		} else {
+			/* Direct write */
+			ASSERT(dev_write_block(buffer, blkaddr) >= 0);
+		}
+
+		offset += len_in_blk;
+		count -= len_in_blk;
+		buffer += len_in_blk;
+		written_count += len_in_blk;
+
+		dn.ofs_in_node++;
+		if ((--remained_blkentries == 0 || count == 0) && (dn.ndirty))
+			ASSERT(dev_write_block(dn.node_blk, dn.node_blkaddr) >= 0);
+	}
+	if (offset > le64_to_cpu(inode->i.i_size)) {
+		inode->i.i_size = cpu_to_le64(offset);
 		idirty = 1;
 	}
-
 	if (idirty) {
 		ASSERT(inode == dn.inode_blk);
 		write_inode(ni.blk_addr, inode);
 	}
+	if (index_node)
+		free(index_node);
+	free(blk_buffer);
 
-	if (dn.node_blk && dn.node_blk != dn.inode_blk)
-		free(dn.node_blk);
-	free(data_blk);
+	return written_count;
+}
+
+/* This function updates only inode->i.i_size */
+void f2fs_filesize_update(struct f2fs_sb_info *sbi, nid_t ino, u64 filesize)
+{
+	struct node_info ni;
+	struct f2fs_node *inode;
+
+	inode = calloc(BLOCK_SZ, 1);
+	ASSERT(inode);
+	get_node_info(sbi, ino, &ni);
+
+	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
+	ASSERT(!S_ISDIR(le16_to_cpu(inode->i.i_mode)));
+	ASSERT(!S_ISLNK(le16_to_cpu(inode->i.i_mode)));
+
+	inode->i.i_size = cpu_to_le64(filesize);
+
+	write_inode(ni.blk_addr, inode);
 	free(inode);
 }
 
@@ -221,7 +303,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		free(node_blk);
 	} else {
 		while ((n = read(fd, buffer, BLOCK_SZ)) > 0) {
-			f2fs_write_block(sbi, de->ino, buffer, n, off);
+			f2fs_write(sbi, de->ino, buffer, n, off);
 			off += n;
 		}
 	}
