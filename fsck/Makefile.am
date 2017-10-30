@@ -5,7 +5,8 @@ AM_CFLAGS = -Wall
 sbin_PROGRAMS = fsck.f2fs
 fsck_f2fs_SOURCES = main.c fsck.c dump.c mount.c defrag.c f2fs.h fsck.h $(top_srcdir)/include/f2fs_fs.h	\
 		resize.c										\
-		node.c segment.c dir.c sload.c xattr.c
+		node.c segment.c dir.c sload.c xattr.c \
+		dict.c mkquota.c quotaio.c quotaio_tree.c quotaio_v2.c
 fsck_f2fs_LDADD = ${libselinux_LIBS} ${libuuid_LIBS} $(top_builddir)/lib/libf2fs.la
 
 install-data-hook:

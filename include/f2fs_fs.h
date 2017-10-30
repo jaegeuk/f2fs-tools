@@ -1058,8 +1058,7 @@ static inline int get_inline_xattr_addrs(struct f2fs_inode *inode)
 {
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
 		return le16_to_cpu(inode->i_inline_xattr_size);
-	else if (inode->i_inline & F2FS_INLINE_XATTR ||
-			inode->i_inline & F2FS_INLINE_DENTRY)
+	else if (inode->i_inline & F2FS_INLINE_XATTR || S_ISDIR(inode->i_mode))
 		return DEFAULT_INLINE_XATTR_ADDRS;
 	else
 		return 0;
@@ -1178,6 +1177,16 @@ static inline __le64 get_cp_crc(struct f2fs_checkpoint *cp)
 
 	cp_ver |= ((u_int64_t)crc << 32);
 	return cpu_to_le64(cp_ver);
+}
+
+static inline int exist_qf_ino(struct f2fs_super_block *sb)
+{
+	int i;
+
+	for (i = 0; i < F2FS_MAX_QUOTAS; i++)
+		if (sb->qf_ino[i])
+			return 1;
+	return 0;
 }
 
 static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)

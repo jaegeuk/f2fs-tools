@@ -395,9 +395,13 @@ static int f2fs_prepare_super_block(void)
 			quotatype_bits |= QUOTA_PRJ_BIT;
 	}
 
-	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++)
-		sb->qf_ino[qtype] =
-			((1 << qtype) & quotatype_bits) ? next_ino++ : 0;
+	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
+		if (!((1 << qtype) & quotatype_bits))
+			continue;
+		sb->qf_ino[qtype] = cpu_to_le32(next_ino++);
+		MSG(0, "Info: add quota type = %u => %u\n",
+					qtype, next_ino - 1);
+	}
 
 	if (total_zones <= 6) {
 		MSG(1, "\tError: %d zones: Need more zones "
