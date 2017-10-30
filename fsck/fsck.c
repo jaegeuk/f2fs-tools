@@ -13,8 +13,7 @@
 char *tree_mark;
 uint32_t tree_mark_size = 256;
 
-static inline int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk,
-								int type)
+int f2fs_set_main_bitmap(struct f2fs_sb_info *sbi, u32 blk, int type)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct seg_entry *se;
@@ -48,6 +47,13 @@ static inline int f2fs_test_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
 	return f2fs_test_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->sit_area_bitmap);
+}
+
+int f2fs_set_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->sit_area_bitmap);
 }
 
 static int add_into_hard_link_list(struct f2fs_sb_info *sbi,
