@@ -244,4 +244,7 @@ int f2fs_symlink(struct f2fs_sb_info *, struct dentry *);
 int inode_set_selinux(struct f2fs_sb_info *, u32, const char *);
 int f2fs_find_path(struct f2fs_sb_info *, char *, nid_t *);
 
+/* xattr.c */
+void *read_all_xattrs(struct f2fs_sb_info *, struct f2fs_node *);
+
 #endif /* _FSCK_H_ */

@@ -11,6 +11,13 @@
 #include <inttypes.h>
 
 #include "fsck.h"
+#include "xattr.h"
+#ifdef HAVE_ATTR_XATTR_H
+#include <attr/xattr.h>
+#endif
+#ifdef HAVE_LINUX_XATTR_H
+#include <linux/xattr.h>
+#endif
 #include <locale.h>
 
 #define BUF_SZ	80
@@ -310,15 +317,75 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 	free(node_blk);
 }
 
+#ifdef HAVE_FSETXATTR
+static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
+{
+	void *xattr;
+	struct f2fs_xattr_entry *ent;
+	char xattr_name[F2FS_NAME_LEN] = {0};
+	int ret;
+
+	xattr = read_all_xattrs(sbi, node_blk);
+
+	list_for_each_xattr(ent, xattr) {
+		char *name = strndup(ent->e_name, ent->e_name_len);
+		void *value = ent->e_name + ent->e_name_len;
+
+		if (!name)
+			continue;
+
+		switch (ent->e_name_index) {
+		case F2FS_XATTR_INDEX_USER:
+			ret = snprintf(xattr_name, F2FS_NAME_LEN, "%s%s",
+				       XATTR_USER_PREFIX, name);
+			break;
+
+		case F2FS_XATTR_INDEX_SECURITY:
+			ret = snprintf(xattr_name, F2FS_NAME_LEN, "%s%s",
+				       XATTR_SECURITY_PREFIX, name);
+			break;
+		case F2FS_XATTR_INDEX_TRUSTED:
+			ret = snprintf(xattr_name, F2FS_NAME_LEN, "%s%s",
+				       XATTR_TRUSTED_PREFIX, name);
+			break;
+		default:
+			MSG(0, "Unknown xattr index 0x%x\n", ent->e_name_index);
+			free(name);
+			continue;
+		}
+		if (ret >= F2FS_NAME_LEN) {
+			MSG(0, "XATTR index 0x%x name too long\n", ent->e_name_index);
+			free(name);
+			continue;
+		}
+
+		DBG(1, "fd %d xattr_name %s\n", c.dump_fd, xattr_name);
+		ret = fsetxattr(c.dump_fd, xattr_name, value,
+				le16_to_cpu(ent->e_value_size), 0);
+		if (ret)
+			MSG(0, "XATTR index 0x%x set xattr failed error %d\n",
+			    ent->e_name_index, errno);
+
+		free(name);
+	}
+
+	free(xattr);
+}
+#else
+static void dump_xattr(struct f2fs_sb_info *UNUSED(sbi),
+				struct f2fs_node *UNUSED(node_blk))
+{
+	MSG(0, "XATTR does not support\n");
+}
+#endif
+
 static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					struct f2fs_node *node_blk)
 {
 	u32 i = 0;
 	u64 ofs = 0;
 
-	/* TODO: need to dump xattr */
-
-	if((node_blk->i.i_inline & F2FS_INLINE_DATA)){
+	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		/* recover from inline data */
 		dev_write_dump(((unsigned char *)node_blk) + INLINE_DATA_OFFSET,
@@ -345,6 +412,8 @@ static void dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		else
 			ASSERT(0);
 	}
+
+	dump_xattr(sbi, node_blk);
 }
 
 static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,

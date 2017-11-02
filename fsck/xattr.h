@@ -34,7 +34,14 @@ struct f2fs_xattr_entry {
 #define XATTR_ROUND	(3)
 
 #define XATTR_SELINUX_SUFFIX "selinux"
-#define F2FS_XATTR_INDEX_SECURITY	6
+#define F2FS_XATTR_INDEX_USER			1
+#define F2FS_XATTR_INDEX_POSIX_ACL_ACCESS	2
+#define F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT	3
+#define F2FS_XATTR_INDEX_TRUSTED		4
+#define F2FS_XATTR_INDEX_LUSTRE			5
+#define F2FS_XATTR_INDEX_SECURITY		6
+#define F2FS_XATTR_INDEX_ENCRYPTION		9
+
 #define IS_XATTR_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
 
 #define XATTR_HDR(ptr)		((struct f2fs_xattr_header *)(ptr))

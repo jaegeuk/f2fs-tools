@@ -20,7 +20,7 @@
 #define XATTR_CREATE 0x1
 #define XATTR_REPLACE 0x2
 
-static void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
+void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 {
 	struct f2fs_xattr_header *header;
 	void *txattr_addr;
