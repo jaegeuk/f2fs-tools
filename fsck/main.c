@@ -18,6 +18,7 @@
 #include "fsck.h"
 #include <libgen.h>
 #include <ctype.h>
+#include <getopt.h>
 #include "quotaio.h"
 
 struct f2fs_fsck gfsck;
@@ -31,6 +32,7 @@ void fsck_usage()
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -t show directory tree\n");
+	MSG(0, "  --dry-run do not really fix corruptions\n");
 	exit(1);
 }
 
@@ -118,10 +120,20 @@ void f2fs_parse_options(int argc, char *argv[])
 
 	if (!strcmp("fsck.f2fs", prog)) {
 		const char *option_string = ":ad:fp:t";
+		int opt = 0;
+		struct option long_opt[] = {
+			{"dry-run", no_argument, 0, 1},
+			{0, 0, 0, 0}
+		};
 
 		c.func = FSCK;
-		while ((option = getopt(argc, argv, option_string)) != EOF) {
+		while ((option = getopt_long(argc, argv, option_string,
+						long_opt, &opt)) != EOF) {
 			switch (option) {
+			case 1:
+				c.dry_run = 1;
+				MSG(0, "Info: Dry run\n");
+				break;
 			case 'a':
 				c.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption.\n");

@@ -309,6 +309,7 @@ struct f2fs_configuration {
 	int trimmed;
 	int func;
 	void *private;
+	int dry_run;
 	int fix_on;
 	int bug_on;
 	int auto_fix;

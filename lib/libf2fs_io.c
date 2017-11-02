@@ -129,6 +129,9 @@ int dev_write(void *buf, __u64 offset, size_t len)
 {
 	int fd;
 
+	if (c.dry_run)
+		return 0;
+
 	if (c.sparse_mode)
 		return dev_write_sparse(buf, offset, len);
 

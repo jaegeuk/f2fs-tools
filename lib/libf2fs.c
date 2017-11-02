@@ -598,6 +598,7 @@ void f2fs_init_configuration(void)
 	c.trimmed = 0;
 	c.ro = 0;
 	c.kd = -1;
+	c.dry_run = 0;
 }
 
 static int is_mounted(const char *mpt, const char *device)
