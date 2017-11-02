@@ -2034,7 +2034,6 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 				 */
 				ASSERT_MSG("Invalid nat entry[0]: "
 					"blk_addr[0x%x]\n", ni.blk_addr);
-				c.fix_on = 1;
 				fsck->chk.valid_nat_entry_cnt--;
 			}
 

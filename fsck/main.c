@@ -431,7 +431,8 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 				c.fix_on = 1;
 			break;
 		}
-	} else { /*
+	} else if (c.preen_mode) {
+		/*
 		 * we can hit this in 3 situations:
 		 *  1. fsck -f, fix_on has already been set to 1 when
 		 *     parsing options;
