@@ -66,7 +66,7 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 {
 	struct f2fs_summary sum;
 	struct node_info ni;
-	int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
+	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 
 	ASSERT(dn->node_blk);
 	memset(block, 0, BLOCK_SZ);
@@ -82,7 +82,7 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 	set_data_blkaddr(dn);
 }
 
-u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
+u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 					u64 count, pgoff_t offset)
 {
 	struct dnode_of_data dn;
@@ -165,7 +165,7 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
 	return read_count;
 }
 
-u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, void *buffer,
+u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 					u64 count, pgoff_t offset)
 {
 	struct dnode_of_data dn;
@@ -276,7 +276,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 {
 	int fd, n;
 	pgoff_t off = 0;
-	char buffer[BLOCK_SZ];
+	u8 buffer[BLOCK_SZ];
 
 	if (de->ino == 0)
 		return -1;
@@ -310,7 +310,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
 		}
 		n = read(fd, buffer, BLOCK_SZ);
-		ASSERT(n == de->size);
+		ASSERT((unsigned long)n == de->size);
 		memcpy(inline_data_addr(node_blk), buffer, de->size);
 		node_blk->i.i_size = cpu_to_le64(de->size);
 		write_inode(ni.blk_addr, node_blk);
