@@ -1880,8 +1880,14 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
 
-	memset(&nat_block->entries[entry_off], 0,
+	if (nid == F2FS_NODE_INO(sbi) || nid == F2FS_META_INO(sbi)) {
+		FIX_MSG("nid [0x%x] block_addr= 0x%x -> 0x1", nid,
+			le32_to_cpu(nat_block->entries[entry_off].block_addr));
+		nat_block->entries[entry_off].block_addr = cpu_to_le32(0x1);
+	} else {
+		memset(&nat_block->entries[entry_off], 0,
 					sizeof(struct f2fs_nat_entry));
+	}
 
 	ret = dev_write_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -2003,13 +2009,14 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 
 			if ((nid + i) == F2FS_NODE_INO(sbi) ||
 					(nid + i) == F2FS_META_INO(sbi)) {
-				/* block_addr of node/meta inode should be 0x1 */
+				/*
+				 * block_addr of node/meta inode should be 0x1.
+				 * Set this bit, and fsck_verify will fix it.
+				 */
 				if (le32_to_cpu(nat_block->entries[i].block_addr) != 0x1) {
-					FIX_MSG("ino: 0x%x node/meta inode, block_addr= 0x%x -> 0x1",
+					ASSERT_MSG("\tError: ino[0x%x] block_addr[0x%x] is invalid\n",
 							nid + i, le32_to_cpu(nat_block->entries[i].block_addr));
-					nat_block->entries[i].block_addr = cpu_to_le32(0x1);
-					ret = dev_write_block(nat_block, block_addr);
-					ASSERT(ret >= 0);
+					f2fs_set_bit(nid + i, fsck->nat_area_bitmap);
 				}
 				continue;
 			}
