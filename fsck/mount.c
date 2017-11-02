@@ -1867,7 +1867,7 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 		if (le32_to_cpu(nid_in_journal(journal, i)) == nid) {
 			memset(&nat_in_journal(journal, i), 0,
 					sizeof(struct f2fs_nat_entry));
-			FIX_MSG("Remove nid [0x%x] in nat journal\n", nid);
+			FIX_MSG("Remove nid [0x%x] in nat journal", nid);
 			return;
 		}
 	}
@@ -1887,6 +1887,7 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	} else {
 		memset(&nat_block->entries[entry_off], 0,
 					sizeof(struct f2fs_nat_entry));
+		FIX_MSG("Remove nid [0x%x] in NAT", nid);
 	}
 
 	ret = dev_write_block(nat_block, block_addr);
