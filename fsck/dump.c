@@ -422,11 +422,16 @@ static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 	struct f2fs_inode *inode = &node_blk->i;
 	u32 imode = le32_to_cpu(inode->i_mode);
 	u32 namelen = le32_to_cpu(inode->i_namelen);
-	unsigned char name[F2FS_NAME_LEN + 1] = {0};
+	char name[F2FS_NAME_LEN + 1] = {0};
 	char path[1024] = {0};
 	char ans[255] = {0};
-	int enc_name = file_enc_name(inode);
+	int is_encrypted = file_is_encrypt(inode);
 	int ret;
+
+	if (is_encrypted) {
+		MSG(force, "File is encrypted\n");
+		return;
+	}
 
 	if (!S_ISREG(imode) || namelen == 0 || namelen > F2FS_NAME_LEN) {
 		MSG(force, "Not a regular file or wrong name info\n\n");
@@ -445,8 +450,7 @@ dump:
 		ASSERT(ret >= 0);
 
 		/* make a file */
-		namelen = convert_encrypted_name(inode->i_name, namelen,
-							name, enc_name);
+		strncpy(name, (const char *)inode->i_name, namelen);
 		name[namelen] = 0;
 		sprintf(path, "./lost_found/%s", name);
 
