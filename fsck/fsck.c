@@ -632,6 +632,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
+	int ofs = get_extra_isize(node_blk);
 	unsigned char en[F2FS_NAME_LEN + 1];
 	int namelen;
 	unsigned int idx = 0;
@@ -692,9 +693,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
 
-	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
-		int ofs = get_extra_isize(node_blk);
-
+	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
 			/* should fix this bug all the time */
 			FIX_MSG("inline_data has wrong 0'th block = %x",
@@ -717,8 +716,18 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		goto check;
 	}
-	if((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
+
+	if ((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
 		DBG(3, "ino[0x%x] has inline dentry!\n", nid);
+		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
+			/* should fix this bug all the time */
+			FIX_MSG("inline_dentry has wrong 0'th block = %x",
+					le32_to_cpu(node_blk->i.i_addr[ofs]));
+			node_blk->i.i_addr[ofs] = 0;
+			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+			need_fix = 1;
+		}
+
 		ret = fsck_chk_inline_dentries(sbi, node_blk, &child);
 		if (ret < 0) {
 			/* should fix this bug all the time */
@@ -747,7 +756,6 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i);
 						idx++, child.pgofs++) {
-		int ofs = get_extra_isize(node_blk);
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs + idx]);
 
 		/* check extent info */
