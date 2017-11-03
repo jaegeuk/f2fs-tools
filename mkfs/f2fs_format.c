@@ -62,6 +62,7 @@ const char *media_ext_lists[] = {
 	"jpeg",
 	"video",
 	"apk",	/* for android system */
+	"so",	/* for android system */
 	NULL
 };
 
