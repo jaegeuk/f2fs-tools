@@ -492,17 +492,17 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 	if (le32_to_cpu(node_blk->footer.ino) == ni.ino &&
 			le32_to_cpu(node_blk->footer.nid) == ni.nid &&
 			ni.ino == ni.nid) {
-		print_node_info(node_blk, force);
+		print_node_info(sbi, node_blk, force);
 		dump_file(sbi, &ni, node_blk, force);
 	} else {
-		print_node_info(node_blk, force);
+		print_node_info(sbi, node_blk, force);
 		MSG(force, "Invalid (i)node block\n\n");
 	}
 
 	free(node_blk);
 }
 
-static void dump_node_from_blkaddr(u32 blk_addr)
+static void dump_node_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 {
 	struct f2fs_node *node_blk;
 	int ret;
@@ -514,9 +514,9 @@ static void dump_node_from_blkaddr(u32 blk_addr)
 	ASSERT(ret >= 0);
 
 	if (c.dbg_lv > 0)
-		print_node_info(node_blk, 0);
+		print_node_info(sbi, node_blk, 0);
 	else
-		print_inode_info(&node_blk->i, 1);
+		print_inode_info(sbi, node_blk, 1);
 
 	free(node_blk);
 }
@@ -640,7 +640,7 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 
 	/* print inode */
 	if (c.dbg_lv > 0)
-		dump_node_from_blkaddr(ino_ni.blk_addr);
+		dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
 
 	if (type == SEG_TYPE_CUR_DATA || type == SEG_TYPE_DATA) {
 		MSG(0, "FS Userdata Area: Data block from 0x%x\n", blk_addr);
@@ -648,7 +648,7 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 					nid, ni.blk_addr);
 		MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
 					ni.ino, ino_ni.blk_addr);
-		dump_node_from_blkaddr(ino_ni.blk_addr);
+		dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
 		dump_data_offset(ni.blk_addr,
 			le16_to_cpu(sum_entry.ofs_in_node));
 	} else {
@@ -656,13 +656,13 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 		if (ni.ino == ni.nid) {
 			MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
 					ni.ino, ino_ni.blk_addr);
-			dump_node_from_blkaddr(ino_ni.blk_addr);
+			dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
 		} else {
 			MSG(0, " - Node block        : id = 0x%x from 0x%x\n",
 					nid, ni.blk_addr);
 			MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
 					ni.ino, ino_ni.blk_addr);
-			dump_node_from_blkaddr(ino_ni.blk_addr);
+			dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
 			dump_node_offset(ni.blk_addr);
 		}
 	}

@@ -31,6 +31,51 @@ struct f2fs_xattr_entry {
 	char e_name[0];		/* attribute name */
 };
 
+#define FS_KEY_DESCRIPTOR_SIZE 8
+#define FS_KEY_DERIVATION_NONCE_SIZE 16
+
+struct fscrypt_context {
+	u8 format;
+	u8 contents_encryption_mode;
+	u8 filenames_encryption_mode;
+	u8 flags;
+	u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+	u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
+} __attribute__((packed));
+
+#define F2FS_ACL_VERSION	0x0001
+
+struct f2fs_acl_entry {
+	__le16 e_tag;
+	__le16 e_perm;
+	__le32 e_id;
+};
+
+struct f2fs_acl_entry_short {
+	__le16 e_tag;
+	__le16 e_perm;
+};
+
+struct f2fs_acl_header {
+	__le32 a_version;
+};
+
+static inline int f2fs_acl_count(int size)
+{
+	ssize_t s;
+	size -= sizeof(struct f2fs_acl_header);
+	s = size - 4 * sizeof(struct f2fs_acl_entry_short);
+	if (s < 0) {
+		if (size % sizeof(struct f2fs_acl_entry_short))
+			return -1;
+		return size / sizeof(struct f2fs_acl_entry_short);
+	} else {
+		if (s % sizeof(struct f2fs_acl_entry))
+			return -1;
+		return s / sizeof(struct f2fs_acl_entry) + 4;
+	}
+}
+
 #define XATTR_ROUND	(3)
 
 #define XATTR_SELINUX_SUFFIX "selinux"

@@ -147,8 +147,8 @@ int convert_encrypted_name(unsigned char *, int, unsigned char *, int);
 
 extern void update_free_segments(struct f2fs_sb_info *);
 void print_cp_state(u32);
-extern void print_node_info(struct f2fs_node *, int);
-extern void print_inode_info(struct f2fs_inode *, int);
+extern void print_node_info(struct f2fs_sb_info *, struct f2fs_node *, int);
+extern void print_inode_info(struct f2fs_sb_info *, struct f2fs_node *, int);
 extern struct seg_entry *get_seg_entry(struct f2fs_sb_info *, unsigned int);
 extern struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *,
 				unsigned int, int *);

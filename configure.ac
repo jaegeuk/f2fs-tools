@@ -93,7 +93,7 @@ AS_IF([test "x$have_blkid" = "xyes"],
 # Checks for header files.
 AC_CHECK_HEADERS([linux/fs.h linux/blkzoned.h fcntl.h mntent.h stdlib.h string.h \
 		sys/ioctl.h sys/mount.h unistd.h linux/falloc.h byteswap.h \
-		attr/xattr.h linux/xattr.h])
+		attr/xattr.h linux/xattr.h linux/posix_acl.h sys/acl.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
