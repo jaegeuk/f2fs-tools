@@ -355,7 +355,8 @@ static int scan_dquots_callback(struct dquot *dquot, void *cb_data)
  * set to 1 if the supplied and on-disk quota usage values are not identical.
  */
 errcode_t quota_compare_and_update(struct f2fs_sb_info *sbi,
-		enum quota_type qtype, int *usage_inconsistent)
+		enum quota_type qtype, int *usage_inconsistent,
+		int preserve_limits)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	quota_ctx_t qctx = fsck->qctx;
@@ -376,7 +377,7 @@ errcode_t quota_compare_and_update(struct f2fs_sb_info *sbi,
 	}
 
 	scan_data.quota_dict = qctx->quota_dict[qtype];
-	scan_data.update_limits = 1;
+	scan_data.update_limits = preserve_limits;
 	scan_data.update_usage = 0;
 	scan_data.usage_is_inconsistent = 0;
 	err = qh.qh_ops->scan_dquots(&qh, scan_dquots_callback, &scan_data);

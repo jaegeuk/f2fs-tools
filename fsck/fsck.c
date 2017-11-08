@@ -1653,7 +1653,8 @@ int fsck_chk_quota_files(struct f2fs_sb_info *sbi)
 
 	        DBG(1, "Checking Quota file ([%3d] ino [0x%x])\n", qtype, ino);
 		needs_writeout = 0;
-		ret = quota_compare_and_update(sbi, qtype, &needs_writeout);
+		ret = quota_compare_and_update(sbi, qtype, &needs_writeout,
+						c.preserve_limits);
 		if (ret == 0 && needs_writeout == 0) {
 			DBG(1, "OK\n");
 			continue;

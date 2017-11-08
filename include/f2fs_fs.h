@@ -315,6 +315,7 @@ struct f2fs_configuration {
 	int auto_fix;
 	int preen_mode;
 	int ro;
+	int preserve_limits;		/* preserve quota limits */
 	__le32 feature;			/* defined features */
 
 	/* defragmentation parameters */

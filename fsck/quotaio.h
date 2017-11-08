@@ -216,7 +216,8 @@ void quota_add_inode_usage(quota_ctx_t qctx, f2fs_ino_t ino,
 		struct f2fs_inode* inode);
 void quota_release_context(quota_ctx_t *qctx);
 errcode_t quota_compare_and_update(struct f2fs_sb_info *sbi,
-		enum quota_type qtype, int *usage_inconsistent);
+		enum quota_type qtype, int *usage_inconsistent,
+		int preserve_limits);
 
 static inline errcode_t quota_get_mem(unsigned long size, void *ptr)
 {

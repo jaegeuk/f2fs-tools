@@ -577,6 +577,11 @@ void f2fs_init_configuration(void)
 	c.zoned_mode = 0;
 	c.zoned_model = 0;
 	c.zone_blocks = 0;
+#ifdef WITH_ANDROID
+	c.preserve_limits = 0;
+#else
+	c.preserve_limits = 1;
+#endif
 
 	for (i = 0; i < MAX_DEVICES; i++) {
 		memset(&c.devices[i], 0, sizeof(struct device_info));

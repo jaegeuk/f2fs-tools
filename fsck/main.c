@@ -32,6 +32,7 @@ void fsck_usage()
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -t show directory tree\n");
+	MSG(0, "  -q preserve quota limits\n");
 	MSG(0, "  --dry-run do not really fix corruptions\n");
 	exit(1);
 }
@@ -119,7 +120,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fp:t";
+		const char *option_string = ":ad:fp:q:t";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -176,11 +177,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.fix_on = 1;
 				MSG(0, "Info: Force to fix corruption\n");
 				break;
+			case 'q':
+				c.preserve_limits = atoi(optarg);
+				MSG(0, "Info: Preserve quota limits = %d\n",
+					c.preserve_limits);
+				break;
 			case 't':
 				c.show_dentry = 1;
 				break;
-
-
 			case ':':
 				if (optopt == 'p') {
 					MSG(0, "Info: Use default preen mode\n");
