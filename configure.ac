@@ -35,16 +35,6 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign tar-pax dist-xz])
 
-AC_CHECK_HEADERS_ONCE([
-	fcntl.h
-	mntent.h
-	stdlib.h
-	string.h
-	unistd.h
-	sys/ioctl.h
-	sys/mount.h
-])
-
 # Test configure options.
 AC_ARG_WITH([selinux],
 	AS_HELP_STRING([--without-selinux],
@@ -91,9 +81,30 @@ AS_IF([test "x$have_blkid" = "xyes"],
 )
 
 # Checks for header files.
-AC_CHECK_HEADERS([linux/fs.h linux/blkzoned.h fcntl.h mntent.h stdlib.h string.h \
-		sys/ioctl.h sys/mount.h unistd.h linux/falloc.h byteswap.h \
-		attr/xattr.h linux/xattr.h linux/posix_acl.h sys/acl.h])
+AC_CHECK_HEADERS(m4_flatten([
+	attr/xattr.h
+	byteswap.h
+	fcntl.h
+	linux/blkzoned.h
+	linux/falloc.h
+	linux/fs.h
+	linux/hdreg.h
+	linux/limits.h
+	linux/posix_acl.h
+	linux/types.h
+	linux/xattr.h
+	mntent.h
+	scsi/sg.h
+	stdlib.h
+	string.h
+	sys/acl.h
+	sys/ioctl.h
+	sys/syscall.h
+	sys/mount.h
+	sys/sysmacros.h
+	sys/xattr.h
+	unistd.h
+]))
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -104,14 +115,74 @@ AC_TYPE_SIZE_T
 # Checks for library functions.
 AC_FUNC_GETMNTENT
 AC_CHECK_FUNCS_ONCE([
+	add_key
 	fallocate
-	getmntent
-	memset
 	fsetxattr
+	fstat
+	fstat64
+	getmntent
+	keyctl
+	llseek
+	lseek64
+	memset
+	setmntent
 ])
 
 AS_IF([test "$ac_cv_header_byteswap_h" = "yes"],
       [AC_CHECK_DECLS([bswap_64],,,[#include <byteswap.h>])])
+
+dnl
+dnl Check to see if llseek() is declared in unistd.h.  On some libc's
+dnl it is, and on others it isn't..... Thank you glibc developers....
+dnl
+AC_CHECK_DECL(llseek,[AC_DEFINE(HAVE_LLSEEK_PROTOTYPE, 1,
+			[Define to 1 if llseek declared in unistd.h])],,
+			[#include <unistd.h>])
+dnl
+dnl Check to see if lseek64() is declared in unistd.h.  Glibc's header files
+dnl are so convoluted that I can't tell whether it will always be defined,
+dnl and if it isn't defined while lseek64 is defined in the library,
+dnl disaster will strike.
+dnl
+dnl Warning!  Use of --enable-gcc-wall may throw off this test.
+dnl
+dnl
+AC_CHECK_DECL(lseek64,[AC_DEFINE(HAVE_LSEEK64_PROTOTYPE, 1,
+		[Define to 1 if lseek64 declared in unistd.h])],,
+		[#define _LARGEFILE_SOURCE
+		#define _LARGEFILE64_SOURCE
+		#include <unistd.h>])
+dnl
+dnl Word sizes...
+dnl
+
+# AC_CANONICAL_HOST is needed to access the 'host_os' variable
+AC_CANONICAL_HOST
+
+build_linux=no
+build_windows=no
+build_mac=no
+
+# Detect the target system
+case "${host_os}" in
+linux*)
+	build_linux=yes
+	;;
+cygwin*|mingw*)
+	build_windows=yes
+	;;
+darwin*)
+	build_mac=yes
+	;;
+*)
+	AC_MSG_ERROR(["OS $host_os is not supported"])
+	;;
+esac
+
+# Pass the conditionals to automake
+AM_CONDITIONAL([LINUX], [test "$build_linux" = "yes"])
+AM_CONDITIONAL([WINDOWS], [test "$build_windows" = "yes"])
+AM_CONDITIONAL([OSX], [test "$build_mac" = "yes"])
 
 # Install directories
 #AC_PREFIX_DEFAULT([/usr])

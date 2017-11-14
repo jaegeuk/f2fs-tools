@@ -14,12 +14,16 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/ioctl.h>
+#ifdef HAVE_LINUX_HDREG_H
 #include <linux/hdreg.h>
+#endif
 
 #include <f2fs_fs.h>
 
@@ -54,6 +58,15 @@ static int __get_device_fd(__u64 *offset)
 	return -1;
 }
 
+#ifndef HAVE_LSEEK64
+typedef off_t	off64_t;
+
+static inline off64_t lseek64(int fd, __u64 offset, int set)
+{
+	return lseek(fd, offset, set);
+}
+#endif
+
 /*
  * IO interfaces
  */
@@ -86,7 +99,11 @@ int dev_read(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+#ifdef POSIX_FADV_WILLNEED
 int dev_readahead(__u64 offset, size_t len)
+#else
+int dev_readahead(__u64 offset, size_t UNUSED(len))
+#endif
 {
 	int fd = __get_device_fd(&offset);
 

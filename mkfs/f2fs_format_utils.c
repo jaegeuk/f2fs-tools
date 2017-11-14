@@ -6,19 +6,23 @@
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  */
+#ifndef _LARGEFILE_SOURCE
 #define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
 #define _LARGEFILE64_SOURCE
+#endif
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+
+#include <f2fs_fs.h>
 
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#include "f2fs_fs.h"
 
 #ifdef HAVE_LINUX_FS_H
 #include <linux/fs.h>
@@ -68,7 +72,7 @@ static int trim_device(int i)
 			MSG(0, "Info: This device doesn't support BLKSECDISCARD\n");
 		} else {
 			MSG(0, "Info: Secure Discarded %lu MB\n",
-						stat_buf.st_size >> 20);
+					(unsigned long)stat_buf.st_size >> 20);
 			return 0;
 		}
 #endif

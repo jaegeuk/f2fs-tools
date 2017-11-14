@@ -8,25 +8,34 @@
  */
 #define _LARGEFILE64_SOURCE
 
+#include <f2fs_fs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/ioctl.h>
+#ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>
+#endif
 #ifndef WITH_ANDROID
+#ifdef HAVE_SCSI_SG_H
 #include <scsi/sg.h>
 #endif
+#endif
+#ifdef HAVE_LINUX_HDREG_H
 #include <linux/hdreg.h>
+#endif
+#ifdef HAVE_LINUX_LIMITS_H
 #include <linux/limits.h>
-
-#include <f2fs_fs.h>
+#endif
 
 #ifndef WITH_ANDROID
 /* SCSI command for standard inquiry*/
@@ -607,6 +616,7 @@ void f2fs_init_configuration(void)
 	c.dry_run = 0;
 }
 
+#ifdef HAVE_SETMNTENT
 static int is_mounted(const char *mpt, const char *device)
 {
 	FILE *file = NULL;
@@ -628,6 +638,7 @@ static int is_mounted(const char *mpt, const char *device)
 	endmntent(file);
 	return mnt ? 1 : 0;
 }
+#endif
 
 int f2fs_dev_is_umounted(char *path)
 {
@@ -642,29 +653,36 @@ int f2fs_dev_is_umounted(char *path)
 	 * try with /proc/mounts fist to detect RDONLY.
 	 * f2fs_stop_checkpoint makes RO in /proc/mounts while RW in /etc/mtab.
 	 */
+#ifdef __linux__
 	ret = is_mounted("/proc/mounts", path);
 	if (ret) {
 		MSG(0, "Info: Mounted device!\n");
 		return -1;
 	}
-
+#endif
+#if defined(MOUNTED) || defined(_PATH_MOUNTED)
+#ifndef MOUNTED
+#define MOUNTED _PATH_MOUNTED
+#endif
 	ret = is_mounted(MOUNTED, path);
 	if (ret) {
 		MSG(0, "Info: Mounted device!\n");
 		return -1;
 	}
-
+#endif
 	/*
 	 * If we are supposed to operate on the root device, then
 	 * also check the mounts for '/dev/root', which sometimes
 	 * functions as an alias for the root device.
 	 */
 	if (is_rootdev) {
+#ifdef __linux__
 		ret = is_mounted("/proc/mounts", "/dev/root");
 		if (ret) {
 			MSG(0, "Info: Mounted device!\n");
 			return -1;
 		}
+#endif
 	}
 
 	/*
@@ -681,7 +699,7 @@ int f2fs_dev_is_umounted(char *path)
 			return -1;
 		}
 	}
-	return 0;
+	return ret;
 }
 
 int f2fs_devs_are_umounted(void)
@@ -704,6 +722,25 @@ void get_kernel_version(__u8 *version)
 	memset(version + i, 0, VERSION_LEN + 1 - i);
 }
 
+
+#if defined(__linux__) && defined(_IO) && !defined(BLKGETSIZE)
+#define BLKGETSIZE	_IO(0x12,96)
+#endif
+
+#if defined(__linux__) && defined(_IOR) && !defined(BLKGETSIZE64)
+#define BLKGETSIZE64	_IOR(0x12,114, size_t)
+#endif
+
+#if defined(__linux__) && defined(_IO) && !defined(BLKSSZGET)
+#define BLKSSZGET	_IO(0x12,104)
+#endif
+
+#if defined(__APPLE__)
+#include <sys/disk.h>
+#define BLKGETSIZE	DKIOCGETBLOCKCOUNT
+#define BLKSSZGET	DKIOCGETBLOCKCOUNT
+#endif /* APPLE_DARWIN */
+
 int get_device_info(int i)
 {
 	int32_t fd = 0;
@@ -712,8 +749,10 @@ int get_device_info(int i)
 	uint32_t total_sectors;
 #endif
 	struct stat stat_buf;
+#ifdef HDIO_GETGIO
 	struct hd_geometry geom;
-#ifndef WITH_ANDROID
+#endif
+#if !defined(WITH_ANDROID) && defined(__linux__)
 	sg_io_hdr_t io_hdr;
 	unsigned char reply_buffer[96] = {0};
 	unsigned char model_inq[6] = {MODELINQUIRY};
@@ -750,10 +789,12 @@ int get_device_info(int i)
 	} else if (S_ISREG(stat_buf.st_mode)) {
 		dev->total_sectors = stat_buf.st_size / dev->sector_size;
 	} else if (S_ISBLK(stat_buf.st_mode)) {
+#ifdef BLKSSZGET
 		if (ioctl(fd, BLKSSZGET, &sector_size) < 0)
 			MSG(0, "\tError: Using the default sector size\n");
 		else if (dev->sector_size < sector_size)
 			dev->sector_size = sector_size;
+#endif
 #ifdef BLKGETSIZE64
 		if (ioctl(fd, BLKGETSIZE64, &dev->total_sectors) < 0) {
 			MSG(0, "\tError: Cannot get the device size\n");
@@ -769,13 +810,17 @@ int get_device_info(int i)
 		dev->total_sectors /= dev->sector_size;
 
 		if (i == 0) {
+#ifdef HDIO_GETGIO
 			if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
 				c.start_sector = 0;
 			else
 				c.start_sector = geom.start;
+#else
+			c.start_sector = 0;
+#endif
 		}
 
-#ifndef WITH_ANDROID
+#if !defined(WITH_ANDROID) && defined(__linux__)
 		/* Send INQUIRY command */
 		memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
 		io_hdr.interface_id = 'S';
@@ -809,7 +854,7 @@ int get_device_info(int i)
 		return -1;
 	}
 
-#ifndef WITH_ANDROID
+#if !defined(WITH_ANDROID) && defined(__linux__)
 	if (S_ISBLK(stat_buf.st_mode))
 		f2fs_get_zoned_model(i);
 

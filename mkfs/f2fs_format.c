@@ -254,7 +254,7 @@ static int f2fs_prepare_super_block(void)
 	set_sb(sit_blkaddr, get_sb(segment0_blkaddr) +
 			get_sb(segment_count_ckpt) * c.blks_per_seg);
 
-	blocks_for_sit = ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
+	blocks_for_sit = SIZE_ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
 
 	sit_segments = SEG_ALIGN(blocks_for_sit);
 
@@ -267,7 +267,7 @@ static int f2fs_prepare_super_block(void)
 			(get_sb(segment_count_ckpt) +
 			get_sb(segment_count_sit))) * c.blks_per_seg;
 
-	blocks_for_nat = ALIGN(total_valid_blks_available,
+	blocks_for_nat = SIZE_ALIGN(total_valid_blks_available,
 			NAT_ENTRY_PER_BLOCK);
 
 	set_sb(segment_count_nat, SEG_ALIGN(blocks_for_nat));

@@ -18,6 +18,16 @@
 #include <sys/acl.h>
 #endif
 
+#ifndef ACL_UNDEFINED_TAG
+#define ACL_UNDEFINED_TAG	(0x00)
+#define ACL_USER_OBJ		(0x01)
+#define ACL_USER		(0x02)
+#define ACL_GROUP_OBJ		(0x04)
+#define ACL_GROUP		(0x08)
+#define ACL_MASK		(0x10)
+#define ACL_OTHER		(0x20)
+#endif
+
 u32 get_free_segments(struct f2fs_sb_info *sbi)
 {
 	u32 i, free_segs = 0;

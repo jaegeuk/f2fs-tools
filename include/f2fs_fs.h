@@ -12,13 +12,19 @@
 #ifndef __F2FS_FS_H__
 #define __F2FS_FS_H__
 
-#include <inttypes.h>
-#include <linux/types.h>
-#include <sys/types.h>
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+
+#ifdef WITH_ANDROID
+#include <android_config.h>
+#endif
+
+#include <inttypes.h>
+#ifdef HAVE_LINUX_TYPES_H
+#include <linux/types.h>
+#endif
+#include <sys/types.h>
 
 #ifdef HAVE_LINUX_BLKZONED_H
 #include <linux/blkzoned.h>
@@ -39,9 +45,24 @@ typedef u_int16_t	u16;
 typedef u_int8_t	u8;
 typedef u32		block_t;
 typedef u32		nid_t;
+#ifndef bool
 typedef u8		bool;
+#endif
 typedef unsigned long	pgoff_t;
 typedef unsigned short	umode_t;
+
+#ifndef HAVE_LINUX_TYPES_H
+typedef u8	__u8;
+typedef u16	__u16;
+typedef u32	__u32;
+typedef u64	__u64;
+typedef u16	__le16;
+typedef u32	__le32;
+typedef u64	__le64;
+typedef u16	__be16;
+typedef u32	__be32;
+typedef u64	__be64;
+#endif
 
 #if HAVE_BYTESWAP_H
 #include <byteswap.h>
@@ -226,7 +247,9 @@ static inline uint64_t bswap_64(uint64_t val)
 		snprintf(buf, len, #member)
 
 /* these are defined in kernel */
+#ifndef PAGE_SIZE
 #define PAGE_SIZE		4096
+#endif
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
@@ -784,7 +807,7 @@ struct f2fs_nat_block {
  * disk is 16 TB and it equals to 16 * 1024 * 1024 / 2 segments.
  */
 #define F2FS_MAX_SEGMENT       ((16 * 1024 * 1024) / 2)
-#define MAX_SIT_BITMAP_SIZE    (SEG_ALIGN(ALIGN(F2FS_MAX_SEGMENT, \
+#define MAX_SIT_BITMAP_SIZE    (SEG_ALIGN(SIZE_ALIGN(F2FS_MAX_SEGMENT, \
 						SIT_ENTRY_PER_BLOCK)) * \
 						c.blks_per_seg / 8)
 
@@ -1146,9 +1169,9 @@ extern int f2fs_reset_zones(int);
 
 extern struct f2fs_configuration c;
 
-#define ALIGN(val, size)	((val) + (size) - 1) / (size)
-#define SEG_ALIGN(blks)		ALIGN(blks, c.blks_per_seg)
-#define ZONE_ALIGN(blks)	ALIGN(blks, c.blks_per_seg * \
+#define SIZE_ALIGN(val, size)	((val) + (size) - 1) / (size)
+#define SEG_ALIGN(blks)		SIZE_ALIGN(blks, c.blks_per_seg)
+#define ZONE_ALIGN(blks)	SIZE_ALIGN(blks, c.blks_per_seg * \
 					c.segs_per_zone)
 
 static inline double get_best_overprovision(struct f2fs_super_block *sb)

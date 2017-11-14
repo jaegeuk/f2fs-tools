@@ -15,7 +15,9 @@
 #include "fsck.h"
 #include <libgen.h>
 #include <dirent.h>
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 
 #ifdef HAVE_LIBSELINUX
 #include <selinux/selinux.h>

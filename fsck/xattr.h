@@ -17,6 +17,9 @@
 #define _XATTR_H_
 
 #include "f2fs.h"
+#ifdef HAVE_SYS_XATTR_H
+#include <sys/xattr.h>
+#endif
 
 struct f2fs_xattr_header {
 	__le32 h_magic;		/* magic number for identification */
@@ -75,6 +78,23 @@ static inline int f2fs_acl_count(int size)
 		return s / sizeof(struct f2fs_acl_entry) + 4;
 	}
 }
+
+#ifndef XATTR_USER_PREFIX
+#define XATTR_USER_PREFIX	"user."
+#endif
+#ifndef XATTR_SECURITY_PREFIX
+#define XATTR_SECURITY_PREFIX	"security."
+#endif
+#ifndef XATTR_TRUSTED_PREFIX
+#define XATTR_TRUSTED_PREFIX	"trusted."
+#endif
+
+#ifndef XATTR_CREATE
+#define XATTR_CREATE 0x1
+#endif
+#ifndef XATTR_REPLACE
+#define XATTR_REPLACE 0x2
+#endif
 
 #define XATTR_ROUND	(3)
 

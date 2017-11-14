@@ -36,7 +36,7 @@ static int get_new_sb(struct f2fs_super_block *sb)
 				zone_align_start_offset) / segment_size_bytes /
 				c.segs_per_sec * c.segs_per_sec);
 
-	blocks_for_sit = ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
+	blocks_for_sit = SIZE_ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
 	sit_segments = SEG_ALIGN(blocks_for_sit);
 	set_sb(segment_count_sit, sit_segments * 2);
 	set_sb(nat_blkaddr, get_sb(sit_blkaddr) +
@@ -45,7 +45,8 @@ static int get_new_sb(struct f2fs_super_block *sb)
 	total_valid_blks_available = (get_sb(segment_count) -
 			(get_sb(segment_count_ckpt) +
 			get_sb(segment_count_sit))) * blks_per_seg;
-	blocks_for_nat = ALIGN(total_valid_blks_available, NAT_ENTRY_PER_BLOCK);
+	blocks_for_nat = SIZE_ALIGN(total_valid_blks_available,
+					NAT_ENTRY_PER_BLOCK);
 	set_sb(segment_count_nat, SEG_ALIGN(blocks_for_nat));
 
 	sit_bitmap_size = ((get_sb(segment_count_sit) / 2) <<

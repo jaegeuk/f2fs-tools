@@ -360,8 +360,14 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 		}
 
 		DBG(1, "fd %d xattr_name %s\n", c.dump_fd, xattr_name);
+#if defined(__linux__)
 		ret = fsetxattr(c.dump_fd, xattr_name, value,
 				le16_to_cpu(ent->e_value_size), 0);
+#elif defined(__APPLE__)
+		ret = fsetxattr(c.dump_fd, xattr_name, value,
+				le16_to_cpu(ent->e_value_size), 0,
+				XATTR_CREATE);
+#endif
 		if (ret)
 			MSG(0, "XATTR index 0x%x set xattr failed error %d\n",
 			    ent->e_name_index, errno);

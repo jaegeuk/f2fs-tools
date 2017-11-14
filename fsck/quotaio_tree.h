@@ -6,8 +6,12 @@
 #define _LINUX_QUOTA_TREE_H
 
 #include <inttypes.h>
+#ifdef HAVE_LINUX_TYPES_H
 #include <linux/types.h>
+#endif
 #include <sys/types.h>
+
+#include <f2fs_fs.h>
 
 typedef __u32 qid_t;        /* Type in which we store ids in memory */
 

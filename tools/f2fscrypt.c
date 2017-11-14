@@ -30,7 +30,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_MNTENT_H
 #include <mntent.h>
+#endif
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -38,7 +40,9 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#ifdef __KERNEL__
 #include <linux/fs.h>
+#endif
 #include <uuid/uuid.h>
 
 #if !defined(HAVE_ADD_KEY) || !defined(HAVE_KEYCTL)
@@ -47,6 +51,7 @@
 #ifdef HAVE_SYS_KEY_H
 #include <sys/key.h>
 #endif
+#include <f2fs_fs.h>
 
 #define F2FS_MAX_KEY_SIZE		64
 #define F2FS_MAX_PASSPHRASE_SIZE	1024
@@ -121,7 +126,7 @@ int options;
 extern void f2fs_sha512(const unsigned char *in, unsigned long in_size,
 						unsigned char *out);
 
-#ifndef HAVE_KEYCTL
+#if !defined(HAVE_KEYCTL)
 static long keyctl(int cmd, ...)
 {
 	va_list va;
@@ -137,7 +142,7 @@ static long keyctl(int cmd, ...)
 }
 #endif
 
-#ifndef HAVE_ADD_KEY
+#if !defined(HAVE_ADD_KEY)
 static key_serial_t add_key(const char *type, const char *description,
 			    const void *payload, size_t plen,
 			    key_serial_t keyring)
