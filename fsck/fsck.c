@@ -633,7 +633,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	int ofs = get_extra_isize(node_blk);
-	unsigned char en[F2FS_NAME_LEN + 1];
+	unsigned char *en;
 	int namelen;
 	unsigned int idx = 0;
 	int need_fix = 0;
@@ -838,6 +838,9 @@ check:
 		}
 	}
 skip_blkcnt_fix:
+	en = malloc(F2FS_NAME_LEN + 1);
+	ASSERT(en);
+
 	namelen = convert_encrypted_name(node_blk->i.i_name,
 					le32_to_cpu(node_blk->i.i_namelen),
 					en, file_enc_name(&node_blk->i));
@@ -879,6 +882,9 @@ skip_blkcnt_fix:
 			}
 		}
 	}
+
+	free(en);
+
 	if (ftype == F2FS_FT_SYMLINK && i_blocks && i_size == 0) {
 		DBG(1, "ino: 0x%x i_blocks: %lu with zero i_size",
 						nid, (unsigned long)i_blocks);
