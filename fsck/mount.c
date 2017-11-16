@@ -429,22 +429,22 @@ void print_sb_state(struct f2fs_super_block *sb)
 		MSG(0, "%s", " encrypt");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_BLKZONED)) {
-		MSG(0, "%s", " zoned block device");
+		MSG(0, "%s", " blkzoned");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
-		MSG(0, "%s", " extra attribute");
+		MSG(0, "%s", " extra_attr");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
-		MSG(0, "%s", " project quota");
+		MSG(0, "%s", " project_quota");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
-		MSG(0, "%s", " inode checksum");
+		MSG(0, "%s", " inode_checksum");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
-		MSG(0, "%s", " flexible inline xattr");
+		MSG(0, "%s", " flexible_inline_xattr");
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
-		MSG(0, "%s", " quota ino");
+		MSG(0, "%s", " quota_ino");
 	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
