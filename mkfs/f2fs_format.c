@@ -1042,6 +1042,7 @@ static int f2fs_write_root_inode(void)
 			c.blks_per_seg, main_area_node_seg_blk_offset);
 	if (dev_write_block(raw_node, main_area_node_seg_blk_offset)) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
+		free(raw_node);
 		return -1;
 	}
 
@@ -1052,9 +1053,11 @@ static int f2fs_write_root_inode(void)
 
 #ifndef WITH_ANDROID
 	if (discard_obsolete_dnode(raw_node, main_area_node_seg_blk_offset)) {
+		free(raw_node);
 		return -1;
 	}
 #endif
+	free(raw_node);
 	return 0;
 }
 
