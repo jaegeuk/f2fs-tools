@@ -16,6 +16,10 @@
 #include <config.h>
 #endif
 
+#ifdef __ANDROID__
+#define WITH_ANDROID
+#endif
+
 #ifdef WITH_ANDROID
 #include <android_config.h>
 #endif
