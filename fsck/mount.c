@@ -222,10 +222,15 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 			le32_to_cpu(inode->i_ext.blk_addr),
 			le32_to_cpu(inode->i_ext.len));
 
-	DISP_u16(inode, i_extra_isize);
-	DISP_u16(inode, i_inline_xattr_size);
-	DISP_u32(inode, i_projid);
-	DISP_u32(inode, i_inode_checksum);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+		DISP_u16(inode, i_extra_isize);
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+			DISP_u16(inode, i_inline_xattr_size);
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
+			DISP_u32(inode, i_projid);
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+			DISP_u32(inode, i_inode_checksum);
+	}
 
 	DISP_u32(inode, i_addr[ofs]);		/* Pointers to data blocks */
 	DISP_u32(inode, i_addr[ofs + 1]);	/* Pointers to data blocks */
