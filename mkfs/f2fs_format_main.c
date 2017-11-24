@@ -333,7 +333,8 @@ int main(int argc, char *argv[])
 	if (f2fs_format_device() < 0)
 		return -1;
 
-	f2fs_finalize_device();
+	if (f2fs_finalize_device() < 0)
+		return -1;
 
 	MSG(0, "Info: format successful\n");
 

@@ -213,19 +213,24 @@ int dev_reada_block(__u64 blk_addr)
 	return dev_readahead(blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
 }
 
-void f2fs_fsync_device(void)
+int f2fs_fsync_device(void)
 {
 	int i;
 
 	for (i = 0; i < c.ndevs; i++) {
-		if (fsync(c.devices[i].fd) < 0)
+		if (fsync(c.devices[i].fd) < 0) {
 			MSG(0, "\tError: Could not conduct fsync!!!\n");
+			return -1;
+		}
 	}
+
+	return 0;
 }
 
-void f2fs_finalize_device(void)
+int f2fs_finalize_device(void)
 {
 	int i;
+	int ret = 0;
 
 #ifdef WITH_ANDROID
 	if (c.sparse_mode) {
@@ -246,11 +251,19 @@ void f2fs_finalize_device(void)
 	 * in the block device page cache.
 	 */
 	for (i = 0; i < c.ndevs; i++) {
-		if (fsync(c.devices[i].fd) < 0)
+		ret = fsync(c.devices[i].fd);
+		if (ret < 0) {
 			MSG(0, "\tError: Could not conduct fsync!!!\n");
+			break;
+		}
 
-		if (close(c.devices[i].fd) < 0)
+		ret = close(c.devices[i].fd);
+		if (ret < 0) {
 			MSG(0, "\tError: Failed to close device file!!!\n");
+			break;
+		}
 	}
 	close(c.kd);
+
+	return ret;
 }

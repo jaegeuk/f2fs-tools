@@ -676,7 +676,9 @@ retry:
 				goto fsck_again;
 		}
 	}
-	f2fs_finalize_device();
+	ret = f2fs_finalize_device();
+	if (ret < 0)
+		return ret;
 
 	printf("\nDone.\n");
 	return 0;
