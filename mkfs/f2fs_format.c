@@ -1118,7 +1118,8 @@ static int f2fs_write_default_quota(int qtype, unsigned int blkaddr)
 		free(filebuf);
 		return -1;
 	}
-
+	DBG(1, "\tWriting quota data, at offset %08x, %08x\n",
+					blkaddr, blkaddr + 1);
 	free(filebuf);
 	return 0;
 }
