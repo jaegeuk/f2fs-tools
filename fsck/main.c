@@ -637,23 +637,32 @@ fsck_again:
 	case FSCK:
 		do_fsck(sbi);
 		break;
+#ifdef WITH_DUMP
 	case DUMP:
 		do_dump(sbi);
 		break;
-#ifndef WITH_ANDROID
+#endif
+#ifdef WITH_DEFRAG
 	case DEFRAG:
 		ret = do_defrag(sbi);
 		if (ret)
 			goto out_err;
 		break;
+#endif
+#ifdef WITH_RESIZE
 	case RESIZE:
 		if (do_resize(sbi))
 			goto out_err;
 		break;
+#endif
+#ifdef WITH_SLOAD
 	case SLOAD:
 		do_sload(sbi);
 		break;
 #endif
+	default:
+		ERR_MSG("Wrong program name\n");
+		ASSERT(0);
 	}
 
 	f2fs_do_umount(sbi);

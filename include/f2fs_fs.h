@@ -22,6 +22,11 @@
 
 #ifdef WITH_ANDROID
 #include <android_config.h>
+#else
+#define WITH_DUMP
+#define WITH_DEFRAG
+#define WITH_RESIZE
+#define WITH_SLOAD
 #endif
 
 #include <inttypes.h>
