@@ -28,6 +28,10 @@
 #define HAVE_LSEEK64 1
 #define HAVE_MEMSET 1
 #define HAVE_SETMNTENT 1
+
+#ifdef WITH_SLOAD
+#define HAVE_LIBSELINUX 1
+#endif
 #endif
 
 #if defined(__APPLE__)
@@ -51,4 +55,8 @@
 #define HAVE_KEYCTL 1
 #define HAVE_LLSEEK 1
 #define HAVE_MEMSET 1
+
+#ifdef WITH_SLOAD
+#define HAVE_LIBSELINUX 1
+#endif
 #endif

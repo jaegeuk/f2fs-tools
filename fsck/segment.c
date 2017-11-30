@@ -328,6 +328,11 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 
 	update_free_segments(sbi);
 
-	MSG(1, "Info: built a file %s, size=%lu\n", de->full_path, de->size);
+	MSG(1, "Info: Create %s -> %s\n"
+		"  -- ino=%x, type=%x, mode=%x, uid=%x, "
+		"gid=%x, cap=%"PRIx64", size=%lu, pino=%x\n",
+		de->full_path, de->path,
+		de->ino, de->file_type, de->mode,
+		de->uid, de->gid, de->capabilities, de->size, de->pino);
 	return 0;
 }

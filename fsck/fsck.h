@@ -216,8 +216,7 @@ int f2fs_defragment(struct f2fs_sb_info *, u64, u64, u64, int);
 int f2fs_resize(struct f2fs_sb_info *);
 
 /* sload.c */
-int f2fs_sload(struct f2fs_sb_info *, const char *, const char *,
-		const char *, struct selabel_handle *);
+int f2fs_sload(struct f2fs_sb_info *);
 
 /* segment.c */
 void reserve_new_block(struct f2fs_sb_info *, block_t *,

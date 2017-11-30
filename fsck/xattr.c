@@ -77,7 +77,6 @@ static void write_all_xattrs(struct f2fs_sb_info *sbi,
 	u64 inline_size = inline_xattr_size(&inode->i);
 	int ret;
 
-	ASSERT(inode->i.i_inline & F2FS_INLINE_XATTR);
 	memcpy(inline_xattr_addr(&inode->i), txattr_addr, inline_size);
 
 	if (hsize <= inline_size)

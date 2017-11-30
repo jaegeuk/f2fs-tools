@@ -23,6 +23,24 @@
 
 struct f2fs_fsck gfsck;
 
+static char *absolute_path(const char *file)
+{
+	char *ret;
+	char cwd[PATH_MAX];
+
+	if (file[0] != '/') {
+		if (getcwd(cwd, PATH_MAX) == NULL) {
+			fprintf(stderr, "Failed to getcwd\n");
+			exit(EXIT_FAILURE);
+		}
+		ret = malloc(strlen(cwd) + 1 + strlen(file) + 1);
+		if (ret)
+			sprintf(ret, "%s/%s", cwd, file);
+	} else
+		ret = strdup(file);
+	return ret;
+}
+
 void fsck_usage()
 {
 	MSG(0, "\nUsage: fsck.f2fs [options] device\n");
@@ -76,8 +94,12 @@ void sload_usage()
 {
 	MSG(0, "\nUsage: sload.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
+	MSG(0, "  -C fs_config\n");
 	MSG(0, "  -f source directory [path of the source directory]\n");
+	MSG(0, "  -p product out directory\n");
+	MSG(0, "  -s file_contexts\n");
 	MSG(0, "  -t mount point [prefix of target fs path, default:/]\n");
+	MSG(0, "  -T timestamp\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	exit(1);
 }
@@ -367,11 +389,20 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("sload.f2fs", prog)) {
-		const char *option_string = "d:f:t:";
+		const char *option_string = "C:d:f:p:s:t:T:";
+#ifdef HAVE_LIBSELINUX
+		int max_nr_opt = (int)sizeof(c.seopt_file) /
+			sizeof(c.seopt_file[0]);
+		char *token;
+#endif
+		char *p;
 
 		c.func = SLOAD;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
 			switch (option) {
+			case 'C':
+				c.fs_config_file = absolute_path(optarg);
+				break;
 			case 'd':
 				if (!is_digits(optarg)) {
 					err = EWRONG_OPT;
@@ -382,10 +413,36 @@ void f2fs_parse_options(int argc, char *argv[])
 						c.dbg_lv);
 				break;
 			case 'f':
-				c.from_dir = (char *)optarg;
+				c.from_dir = absolute_path(optarg);
+				break;
+			case 'p':
+				c.target_out_dir = absolute_path(optarg);
+				break;
+			case 's':
+#ifdef HAVE_LIBSELINUX
+				token = strtok(optarg, ",");
+				while (token) {
+					if (c.nr_opt == max_nr_opt) {
+						MSG(0, "\tError: Expected at most %d selinux opts\n",
+										max_nr_opt);
+						error_out(prog);
+					}
+					c.seopt_file[c.nr_opt].type =
+								SELABEL_OPT_PATH;
+					c.seopt_file[c.nr_opt].value =
+								absolute_path(token);
+					c.nr_opt++;
+					token = strtok(NULL, ",");
+				}
+#else
+				MSG(0, "Info: Not support selinux opts\n");
+#endif
 				break;
 			case 't':
 				c.mount_point = (char *)optarg;
+				break;
+			case 'T':
+				c.fixed_time = strtoul(optarg, &p, 0);
 				break;
 			default:
 				err = EUNKNOWN_OPT;
@@ -591,14 +648,13 @@ static int do_resize(struct f2fs_sb_info *sbi)
 static int do_sload(struct f2fs_sb_info *sbi)
 {
 	if (!c.from_dir) {
-		MSG(0, "\tError: Need source directory\n");
-		sload_usage();
-		return -1;
+		MSG(0, "Info: No source directory, but it's okay.\n");
+		return 0;
 	}
 	if (!c.mount_point)
 		c.mount_point = "/";
 
-	return f2fs_sload(sbi, c.from_dir, c.mount_point, NULL, NULL);
+	return f2fs_sload(sbi);
 }
 
 int main(int argc, char **argv)
@@ -665,8 +721,15 @@ fsck_again:
 #endif
 #ifdef WITH_SLOAD
 	case SLOAD:
-		do_sload(sbi);
-		break;
+		if (do_sload(sbi))
+			goto out_err;
+
+		f2fs_do_umount(sbi);
+
+		/* fsck to fix missing quota */
+		c.func = FSCK;
+		c.fix_on = 1;
+		goto fsck_again;
 #endif
 	default:
 		ERR_MSG("Wrong program name\n");

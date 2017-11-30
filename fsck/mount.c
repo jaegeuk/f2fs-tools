@@ -47,6 +47,9 @@ void update_free_segments(struct f2fs_sb_info *sbi)
 	char *progress = "-*|*-";
 	static int i = 0;
 
+	if (c.dbg_lv)
+		return;
+
 	MSG(0, "\r [ %c ] Free segments: 0x%x", progress[i % 5], get_free_segments(sbi));
 	fflush(stdout);
 	i++;

@@ -614,6 +614,7 @@ void f2fs_init_configuration(void)
 	c.ro = 0;
 	c.kd = -1;
 	c.dry_run = 0;
+	c.fixed_time = -1;
 }
 
 #ifdef HAVE_SETMNTENT
