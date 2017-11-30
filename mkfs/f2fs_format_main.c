@@ -291,6 +291,8 @@ int main(int argc, char *argv[])
 
 	f2fs_show_info();
 
+	c.func = MKFS;
+
 	if (!force_overwrite && f2fs_check_overwrite()) {
 		MSG(0, "\tUse the -f option to force overwrite.\n");
 		return -1;
@@ -320,14 +322,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (c.sparse_mode) {
-#ifndef WITH_ANDROID
-		MSG(0, "\tError: Sparse mode is only supported for android\n");
-		return -1;
-#else
-		if (f2fs_sparse_file)
-			sparse_file_destroy(f2fs_sparse_file);
-		f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE, c.device_size);
-#endif
+		if (f2fs_init_sparse_file())
+			return -1;
 	}
 
 	if (f2fs_format_device() < 0)

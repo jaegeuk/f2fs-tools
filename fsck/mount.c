@@ -590,6 +590,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 int validate_super_block(struct f2fs_sb_info *sbi, int block)
 {
 	u64 offset;
+	char buf[F2FS_BLKSIZE];
 
 	sbi->raw_super = malloc(sizeof(struct f2fs_super_block));
 
@@ -598,8 +599,11 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 	else
 		offset = F2FS_BLKSIZE + F2FS_SUPER_OFFSET;
 
-	if (dev_read(sbi->raw_super, offset, sizeof(struct f2fs_super_block)))
+	if (dev_read_block(buf, block))
 		return -1;
+
+	memcpy(sbi->raw_super, buf + F2FS_SUPER_OFFSET,
+					sizeof(struct f2fs_super_block));
 
 	if (!sanity_check_raw_super(sbi->raw_super, offset)) {
 		/* get kernel version */

@@ -32,14 +32,8 @@ struct f2fs_configuration c;
 #ifdef WITH_ANDROID
 #include <sparse/sparse.h>
 struct sparse_file *f2fs_sparse_file;
-
-struct buf_item {
-	void *buf;
-	size_t len;
-	struct buf_item *next;
-};
-
-struct buf_item *buf_list;
+static char **blocks;
+u_int64_t blocks_count;
 #endif
 
 static int __get_device_fd(__u64 *offset)
@@ -81,12 +75,89 @@ int dev_read_version(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+#ifdef WITH_ANDROID
+static int sparse_read_blk(__u64 block, int count, void *buf)
+{
+	int i;
+	char *out = buf;
+	__u64 cur_block;
+
+	for (i = 0; i < count; ++i) {
+		cur_block = block + i;
+		if (blocks[cur_block])
+			memcpy(out + (i * F2FS_BLKSIZE),
+					blocks[cur_block], F2FS_BLKSIZE);
+		else if (blocks)
+			memset(out + (i * F2FS_BLKSIZE), 0, F2FS_BLKSIZE);
+	}
+	return 0;
+}
+
+static int sparse_write_blk(__u64 block, int count, const void *buf)
+{
+	int i;
+	__u64 cur_block;
+	const char *in = buf;
+
+	for (i = 0; i < count; ++i) {
+		cur_block = block + i;
+		if (!blocks[cur_block]) {
+			blocks[cur_block] = calloc(1, F2FS_BLKSIZE);
+			if (!blocks[cur_block])
+				return -ENOMEM;
+		}
+		memcpy(blocks[cur_block], in + (i * F2FS_BLKSIZE),
+				F2FS_BLKSIZE);
+	}
+	return 0;
+}
+
+static int sparse_import_segment(void *UNUSED(priv), const void *data, int len,
+		unsigned int block, unsigned int nr_blocks)
+{
+	/* Ignore chunk headers, only write the data */
+	if (!nr_blocks || len % F2FS_BLKSIZE)
+		return 0;
+
+	return sparse_write_blk(block, nr_blocks, data);
+}
+
+static int sparse_merge_blocks(uint64_t start, uint64_t num)
+{
+	char *buf;
+	uint64_t i;
+
+	buf = calloc(num, F2FS_BLKSIZE);
+	if (!buf) {
+		fprintf(stderr, "failed to alloc %llu\n",
+			(unsigned long long)num * F2FS_BLKSIZE);
+		return -ENOMEM;
+	}
+
+	for (i = 0; i < num; i++) {
+		memcpy(buf + i * F2FS_BLKSIZE, blocks[start + i], F2FS_BLKSIZE);
+		free(blocks[start + i]);
+		blocks[start + i] = NULL;
+	}
+
+	/* free_sparse_blocks will release this buf. */
+	blocks[start] = buf;
+
+	return sparse_file_add_data(f2fs_sparse_file, blocks[start],
+					F2FS_BLKSIZE * num, start);
+}
+#else
+static int sparse_read_blk(__u64 block, int count, void *buf) { return 0; }
+static int sparse_write_blk(__u64 block, int count, const void *buf) { return 0; }
+#endif
+
 int dev_read(void *buf, __u64 offset, size_t len)
 {
 	int fd;
 
 	if (c.sparse_mode)
-		return 0;
+		return sparse_read_blk(offset / F2FS_BLKSIZE,
+					len / F2FS_BLKSIZE, buf);
 
 	fd = __get_device_fd(&offset);
 	if (fd < 0)
@@ -116,32 +187,6 @@ int dev_readahead(__u64 offset, size_t UNUSED(len))
 #endif
 }
 
-#ifdef WITH_ANDROID
-static int dev_write_sparse(void *buf, __u64 byte_offset, size_t byte_len)
-{
-	struct buf_item *bi = calloc(1, sizeof(struct buf_item));
-
-	if (bi == NULL) {
-		return -1;
-	}
-	bi->buf = malloc(byte_len);
-	if (bi->buf == NULL) {
-		free(bi);
-		return -1;
-	}
-
-	bi->len = byte_len;
-	memcpy(bi->buf, buf, byte_len);
-	bi->next = buf_list;
-	buf_list = bi;
-
-	sparse_file_add_data(f2fs_sparse_file, bi->buf, byte_len, byte_offset/F2FS_BLKSIZE);
-	return 0;
-}
-#else
-static int dev_write_sparse(void *buf, __u64 byte_offset, size_t byte_len) { return 0; }
-#endif
-
 int dev_write(void *buf, __u64 offset, size_t len)
 {
 	int fd;
@@ -150,7 +195,8 @@ int dev_write(void *buf, __u64 offset, size_t len)
 		return 0;
 
 	if (c.sparse_mode)
-		return dev_write_sparse(buf, offset, len);
+		return sparse_write_blk(offset / F2FS_BLKSIZE,
+					len / F2FS_BLKSIZE, buf);
 
 	fd = __get_device_fd(&offset);
 	if (fd < 0)
@@ -227,6 +273,36 @@ int f2fs_fsync_device(void)
 	return 0;
 }
 
+int f2fs_init_sparse_file(void)
+{
+#ifdef WITH_ANDROID
+	if (c.func == MKFS) {
+		f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE, c.device_size);
+	} else {
+		f2fs_sparse_file = sparse_file_import(c.devices[0].fd,
+							true, false);
+		if (!f2fs_sparse_file)
+			return -1;
+
+		c.device_size = sparse_file_len(f2fs_sparse_file, 0, 0);
+		c.device_size &= (~((u_int64_t)(F2FS_BLKSIZE - 1)));
+	}
+
+	if (sparse_file_block_size(f2fs_sparse_file) != F2FS_BLKSIZE) {
+		MSG(0, "\tError: Corrupted sparse file\n");
+		return -1;
+	}
+	blocks_count = c.device_size / F2FS_BLKSIZE;
+	blocks = calloc(blocks_count, sizeof(char *));
+
+	return sparse_file_foreach_chunk(f2fs_sparse_file, true, false,
+				sparse_import_segment, NULL);
+#else
+	MSG(0, "\tError: Sparse mode is only supported for android\n");
+	return -1;
+#endif
+}
+
 int f2fs_finalize_device(void)
 {
 	int i;
@@ -234,18 +310,45 @@ int f2fs_finalize_device(void)
 
 #ifdef WITH_ANDROID
 	if (c.sparse_mode) {
-		sparse_file_write(f2fs_sparse_file, c.devices[0].fd, /*gzip*/0, /*sparse*/1, /*crc*/0);
-		sparse_file_destroy(f2fs_sparse_file);
-		while (buf_list) {
-			struct buf_item *bi = buf_list;
-			buf_list = buf_list->next;
-			free(bi->buf);
-			free(bi);
+		int64_t chunk_start = (blocks[0] == NULL) ? -1 : 0;
+		uint64_t j;
+
+		if (c.func != MKFS) {
+			sparse_file_destroy(f2fs_sparse_file);
+			ret = ftruncate(c.devices[0].fd, 0);
+			ASSERT(!ret);
+			lseek(c.devices[0].fd, 0, SEEK_SET);
+			f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE,
+							c.device_size);
 		}
+
+		for (j = 0; j < blocks_count; ++j) {
+			if (!blocks[j] && chunk_start != -1) {
+				ret = sparse_merge_blocks(chunk_start,
+							j - chunk_start);
+				chunk_start = -1;
+			} else if (blocks[j] && chunk_start == -1) {
+				chunk_start = j;
+			}
+			ASSERT(!ret);
+		}
+		if (chunk_start != -1) {
+			ret = sparse_merge_blocks(chunk_start,
+						blocks_count - chunk_start);
+			ASSERT(!ret);
+		}
+
+		sparse_file_write(f2fs_sparse_file, c.devices[0].fd,
+				/*gzip*/0, /*sparse*/1, /*crc*/0);
+
+		sparse_file_destroy(f2fs_sparse_file);
+		for (j = 0; j < blocks_count; j++)
+			free(blocks[j]);
+		free(blocks);
+		blocks = NULL;
 		f2fs_sparse_file = NULL;
 	}
 #endif
-
 	/*
 	 * We should call fsync() to flush out all the dirty pages
 	 * in the block device page cache.

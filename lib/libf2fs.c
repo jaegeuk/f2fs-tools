@@ -761,7 +761,7 @@ int get_device_info(int i)
 	struct device_info *dev = c.devices + i;
 
 	if (c.sparse_mode) {
-		fd = open((char *)dev->path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
+		fd = open((char *)dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
 	} else {
 		fd = open((char *)dev->path, O_RDWR);
 	}
@@ -771,6 +771,11 @@ int get_device_info(int i)
 	}
 
 	dev->fd = fd;
+
+	if (c.sparse_mode) {
+		if (f2fs_init_sparse_file())
+			return -1;
+	}
 
 	if (c.kd == -1) {
 		c.kd = open("/proc/version", O_RDONLY);

@@ -23,6 +23,11 @@
 
 struct f2fs_fsck gfsck;
 
+#ifdef WITH_ANDROID
+#include <sparse/sparse.h>
+extern struct sparse_file *f2fs_sparse_file;
+#endif
+
 static char *absolute_path(const char *file)
 {
 	char *ret;
@@ -49,6 +54,7 @@ void fsck_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
+	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
 	MSG(0, "  -q preserve quota limits\n");
 	MSG(0, "  --dry-run do not really fix corruptions\n");
@@ -63,6 +69,7 @@ void dump_usage()
 	MSG(0, "  -i inode no (hex)\n");
 	MSG(0, "  -n [NAT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
+	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -b blk_addr (in 4KB)\n");
 
@@ -75,6 +82,7 @@ void defrag_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -s start block address [default: main_blkaddr]\n");
+	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -l length [default:512 (2MB)]\n");
 	MSG(0, "  -t target block address [default: main_blkaddr + 2MB]\n");
 	MSG(0, "  -i set direction as shrink [default: expand]\n");
@@ -98,6 +106,7 @@ void sload_usage()
 	MSG(0, "  -f source directory [path of the source directory]\n");
 	MSG(0, "  -p product out directory\n");
 	MSG(0, "  -s file_contexts\n");
+	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t mount point [prefix of target fs path, default:/]\n");
 	MSG(0, "  -T timestamp\n");
 	MSG(0, "  -d debug level [default:0]\n");
@@ -150,7 +159,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fp:q:t";
+		const char *option_string = ":ad:fp:q:St";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -212,6 +221,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				MSG(0, "Info: Preserve quota limits = %d\n",
 					c.preserve_limits);
 				break;
+			case 'S':
+				c.sparse_mode = 1;
+				break;
 			case 't':
 				c.show_dentry = 1;
 				break;
@@ -236,7 +248,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
-		const char *option_string = "d:i:n:s:a:b:";
+		const char *option_string = "d:i:n:s:Sa:b:";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -280,6 +292,9 @@ void f2fs_parse_options(int argc, char *argv[])
 							&dump_opt.start_sit,
 							&dump_opt.end_sit);
 				break;
+			case 'S':
+				c.sparse_mode = 1;
+				break;
 			case 'a':
 				ret = sscanf(optarg, "%d~%d",
 							&dump_opt.start_ssa,
@@ -304,7 +319,7 @@ void f2fs_parse_options(int argc, char *argv[])
 
 		c.private = &dump_opt;
 	} else if (!strcmp("defrag.f2fs", prog)) {
-		const char *option_string = "d:s:l:t:i";
+		const char *option_string = "d:s:Sl:t:i";
 
 		c.func = DEFRAG;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -327,6 +342,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				else
 					ret = sscanf(optarg, "%"PRIx64"",
 							&c.defrag_start);
+				break;
+			case 'S':
+				c.sparse_mode = 1;
 				break;
 			case 'l':
 				if (strncmp(optarg, "0x", 2))
@@ -389,7 +407,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("sload.f2fs", prog)) {
-		const char *option_string = "C:d:f:p:s:t:T:";
+		const char *option_string = "C:d:f:p:s:St:T:";
 #ifdef HAVE_LIBSELINUX
 		int max_nr_opt = (int)sizeof(c.seopt_file) /
 			sizeof(c.seopt_file[0]);
@@ -437,6 +455,9 @@ void f2fs_parse_options(int argc, char *argv[])
 #else
 				MSG(0, "Info: Not support selinux opts\n");
 #endif
+				break;
+			case 'S':
+				c.sparse_mode = 1;
 				break;
 			case 't':
 				c.mount_point = (char *)optarg;
@@ -683,6 +704,7 @@ int main(int argc, char **argv)
 	/* Get device */
 	if (f2fs_get_device_info() < 0)
 		return -1;
+
 fsck_again:
 	memset(&gfsck, 0, sizeof(gfsck));
 	gfsck.sbi.fsck = &gfsck;

@@ -284,6 +284,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define VERSION_LEN	256
 
 enum f2fs_config_func {
+	MKFS,
 	FSCK,
 	DUMP,
 	DEFRAG,
@@ -1077,6 +1078,7 @@ extern int f2fs_devs_are_umounted(void);
 extern int f2fs_dev_is_umounted(char *);
 extern int f2fs_get_device_info(void);
 extern int get_device_info(int);
+extern int f2fs_init_sparse_file(void);
 extern int f2fs_finalize_device(void);
 extern int f2fs_fsync_device(void);
 
