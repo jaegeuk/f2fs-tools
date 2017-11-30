@@ -113,7 +113,15 @@ void f2fs_parse_options(int argc, char *argv[])
 	int option = 0;
 	char *prog = basename(argv[0]);
 	int err = NOERROR;
+#ifdef WITH_ANDROID
+	int i;
 
+	/* Allow prog names (e.g, sload_f2fs, fsck_f2fs, etc) */
+	for (i = 0; i < strlen(prog); i++) {
+		if (prog[i] == '_')
+			prog[i] = '.';
+	}
+#endif
 	if (argc < 2) {
 		MSG(0, "\tError: Device not specified\n");
 		error_out(prog);
