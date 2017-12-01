@@ -18,9 +18,11 @@
 #include <mntent.h>
 #endif
 #include <time.h>
+#ifndef ANDROID_WINDOWS_HOST
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/ioctl.h>
+#endif
 #ifdef HAVE_LINUX_HDREG_H
 #include <linux/hdreg.h>
 #endif
@@ -261,6 +263,7 @@ int dev_reada_block(__u64 blk_addr)
 
 int f2fs_fsync_device(void)
 {
+#ifndef ANDROID_WINDOWS_HOST
 	int i;
 
 	for (i = 0; i < c.ndevs; i++) {
@@ -269,7 +272,7 @@ int f2fs_fsync_device(void)
 			return -1;
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -354,12 +357,13 @@ int f2fs_finalize_device(void)
 	 * in the block device page cache.
 	 */
 	for (i = 0; i < c.ndevs; i++) {
+#ifndef ANDROID_WINDOWS_HOST
 		ret = fsync(c.devices[i].fd);
 		if (ret < 0) {
 			MSG(0, "\tError: Could not conduct fsync!!!\n");
 			break;
 		}
-
+#endif
 		ret = close(c.devices[i].fd);
 		if (ret < 0) {
 			MSG(0, "\tError: Failed to close device file!!!\n");

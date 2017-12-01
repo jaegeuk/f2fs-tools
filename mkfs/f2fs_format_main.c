@@ -14,7 +14,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#ifndef ANDROID_WINDOWS_HOST
 #include <sys/mount.h>
+#endif
 #include <time.h>
 #include <uuid/uuid.h>
 #include <errno.h>

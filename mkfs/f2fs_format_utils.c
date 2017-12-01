@@ -20,7 +20,9 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#ifndef ANDROID_WINDOWS_HOST
 #include <sys/ioctl.h>
+#endif
 #include <sys/stat.h>
 #include <fcntl.h>
 
@@ -40,6 +42,7 @@
 
 static int trim_device(int i)
 {
+#ifndef ANDROID_WINDOWS_HOST
 	unsigned long long range[2];
 	struct stat stat_buf;
 	struct device_info *dev = c.devices + i;
@@ -83,6 +86,8 @@ static int trim_device(int i)
 		}
 	} else
 		return -1;
+#endif
+
 #endif
 	return 0;
 }

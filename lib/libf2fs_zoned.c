@@ -15,7 +15,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#ifndef ANDROID_WINDOWS_HOST
 #include <sys/ioctl.h>
+#endif
 #include <libgen.h>
 
 #include <f2fs_fs.h>

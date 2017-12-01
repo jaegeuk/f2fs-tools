@@ -20,8 +20,10 @@
 #endif
 #include <time.h>
 #include <sys/stat.h>
+#ifndef ANDROID_WINDOWS_HOST
 #include <sys/mount.h>
 #include <sys/ioctl.h>
+#endif
 #ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>
 #endif
@@ -42,8 +44,11 @@
 #define MODELINQUIRY	0x12,0x00,0x00,0x00,0x4A,0x00
 #endif
 
-#ifndef _WIN32 /* O_BINARY is windows-specific flag */
+#ifndef ANDROID_WINDOWS_HOST /* O_BINARY is windows-specific flag */
 #define O_BINARY 0
+#else
+/* On Windows, wchar_t is 8 bit sized and it causes compilation errors. */
+#define wchar_t	int
 #endif
 
 /*
@@ -528,6 +533,9 @@ __u32 f2fs_inode_chksum(struct f2fs_node *node)
  */
 const char *get_rootdev()
 {
+#ifdef ANDROID_WINDOWS_HOST
+	return NULL;
+#else
 	struct stat sb;
 	int fd, ret;
 	char buf[32];
@@ -568,6 +576,7 @@ const char *get_rootdev()
 	snprintf(rootdev, PATH_MAX + 1, "/dev/%s", buf);
 
 	return rootdev;
+#endif
 }
 
 /*
@@ -643,6 +652,9 @@ static int is_mounted(const char *mpt, const char *device)
 
 int f2fs_dev_is_umounted(char *path)
 {
+#ifdef ANDROID_WINDOWS_HOST
+	return 0;
+#else
 	struct stat st_buf;
 	int is_rootdev = 0;
 	int ret = 0;
@@ -701,6 +713,7 @@ int f2fs_dev_is_umounted(char *path)
 		}
 	}
 	return ret;
+#endif
 }
 
 int f2fs_devs_are_umounted(void)
@@ -742,6 +755,7 @@ void get_kernel_version(__u8 *version)
 #define BLKSSZGET	DKIOCGETBLOCKCOUNT
 #endif /* APPLE_DARWIN */
 
+#ifndef ANDROID_WINDOWS_HOST
 int get_device_info(int i)
 {
 	int32_t fd = 0;
@@ -889,6 +903,102 @@ int get_device_info(int i)
 	c.total_sectors += dev->total_sectors;
 	return 0;
 }
+
+#else
+
+#include "windows.h"
+#include "winioctl.h"
+
+#if (_WIN32_WINNT >= 0x0500)
+#define HAVE_GET_FILE_SIZE_EX 1
+#endif
+
+static int win_get_device_size(const char *file, uint64_t *device_size)
+{
+	HANDLE dev;
+	PARTITION_INFORMATION pi;
+	DISK_GEOMETRY gi;
+	DWORD retbytes;
+#ifdef HAVE_GET_FILE_SIZE_EX
+	LARGE_INTEGER filesize;
+#else
+	DWORD filesize;
+#endif /* HAVE_GET_FILE_SIZE_EX */
+
+	dev = CreateFile(file, GENERIC_READ,
+			FILE_SHARE_READ | FILE_SHARE_WRITE ,
+			NULL,  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,  NULL);
+
+	if (dev == INVALID_HANDLE_VALUE)
+		return EBADF;
+	if (DeviceIoControl(dev, IOCTL_DISK_GET_PARTITION_INFO,
+				&pi, sizeof(PARTITION_INFORMATION),
+				&pi, sizeof(PARTITION_INFORMATION),
+				&retbytes, NULL)) {
+
+		*device_size = 	pi.PartitionLength.QuadPart;
+
+	} else if (DeviceIoControl(dev, IOCTL_DISK_GET_DRIVE_GEOMETRY,
+				&gi, sizeof(DISK_GEOMETRY),
+				&gi, sizeof(DISK_GEOMETRY),
+				&retbytes, NULL)) {
+
+		*device_size = gi.BytesPerSector *
+			gi.SectorsPerTrack *
+			gi.TracksPerCylinder *
+			gi.Cylinders.QuadPart;
+
+#ifdef HAVE_GET_FILE_SIZE_EX
+	} else if (GetFileSizeEx(dev, &filesize)) {
+		*device_size = filesize.QuadPart;
+	}
+#else
+	} else {
+		filesize = GetFileSize(dev, NULL);
+		if (INVALID_FILE_SIZE != filesize)
+			return -1;
+		*device_size = filesize;
+	}
+#endif /* HAVE_GET_FILE_SIZE_EX */
+
+	CloseHandle(dev);
+	return 0;
+}
+
+int get_device_info(int i)
+{
+	struct device_info *dev = c.devices + i;
+	uint64_t device_size = 0;
+	int32_t fd = 0;
+
+	/* Block device target is not supported on Windows. */
+	if (!c.sparse_mode) {
+		if (win_get_device_size(dev->path, &device_size)) {
+			MSG(0, "\tError: Failed to get device size!\n");
+			return -1;
+		}
+	} else {
+		device_size = c.device_size;
+	}
+	if (c.sparse_mode) {
+		fd = open((char *)dev->path, O_WRONLY | O_CREAT | O_TRUNC | O_BINARY, 0644);
+	} else {
+		fd = open((char *)dev->path, O_RDWR | O_BINARY);
+	}
+	if (fd < 0) {
+		MSG(0, "\tError: Failed to open the device!\n");
+		return -1;
+	}
+	dev->fd = fd;
+	dev->total_sectors = device_size / dev->sector_size;
+	c.start_sector = 0;
+	c.sector_size = dev->sector_size;
+	c.sectors_per_blk = F2FS_BLKSIZE / c.sector_size;
+	c.total_sectors += dev->total_sectors;
+
+	return 0;
+}
+#endif
 
 int f2fs_get_device_info(void)
 {

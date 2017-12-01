@@ -60,3 +60,7 @@
 #define HAVE_LIBSELINUX 1
 #endif
 #endif
+
+#if defined(_WIN32)
+#define HAVE_LSEEK64
+#endif
