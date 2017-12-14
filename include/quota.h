@@ -44,14 +44,18 @@ enum quota_type {
 
 #define QT_TREEOFF	1	/* Offset of tree in file in blocks */
 
+#ifdef ANDROID_WINDOWS_HOST
 #pragma pack(1)
+#endif
 struct v2_disk_dqheader {
 	u_int32_t dqh_magic;	/* Magic number identifying file */
 	u_int32_t dqh_version;	/* File version */
 } __attribute__ ((packed));
 
 /* Header with type and version specific information */
+#ifdef ANDROID_WINDOWS_HOST
 #pragma pack(1)
+#endif
 struct v2_disk_dqinfo {
 	u_int32_t dqi_bgrace;	/* Time before block soft limit becomes hard limit */
 	u_int32_t dqi_igrace;	/* Time before inode soft limit becomes hard limit */
@@ -61,7 +65,9 @@ struct v2_disk_dqinfo {
 	u_int32_t dqi_free_entry;	/* Number of block with at least one free entry */
 } __attribute__ ((packed));
 
+#ifdef ANDROID_WINDOWS_HOST
 #pragma pack(1)
+#endif
 struct v2r1_disk_dqblk {
 	__le32 dqb_id;  	/* id this quota applies to */
 	__le32 dqb_pad;
