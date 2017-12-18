@@ -740,7 +740,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	for (idx = 0; idx < 5; idx++) {
 		u32 nid = le32_to_cpu(node_blk->i.i_nid[idx]);
 
-		if (nid != 0) {
+		if (nid != 0 && IS_VALID_NID(sbi, nid)) {
 			struct node_info ni;
 
 			get_node_info(sbi, nid, &ni);
