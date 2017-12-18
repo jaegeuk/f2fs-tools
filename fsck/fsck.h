@@ -54,6 +54,7 @@ struct child_info {
 	u32 pp_ino;		/*parent parent ino*/
 	struct extent_info ei;
 	u32 last_blk;
+	u32 i_namelen;  /* dentry namelen */
 };
 
 struct f2fs_fsck {
@@ -128,7 +129,7 @@ extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		enum FILE_TYPE, enum NODE_TYPE, u32 *,
 		struct child_info *);
 extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
-		struct f2fs_node *, u32 *, struct node_info *);
+		struct f2fs_node *, u32 *, struct node_info *, struct child_info *);
 extern int fsck_chk_dnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		u32, enum FILE_TYPE, struct f2fs_node *, u32 *,
 		struct child_info *, struct node_info *);
