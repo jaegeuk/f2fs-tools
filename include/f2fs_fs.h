@@ -657,6 +657,9 @@ struct f2fs_checkpoint {
 	unsigned char sit_nat_version_bitmap[1];
 } __attribute__((packed));
 
+#define MAX_SIT_BITMAP_SIZE_IN_CKPT	\
+	(CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1 - 64)
+
 /*
  * For orphan inode management
  */

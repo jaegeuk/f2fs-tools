@@ -291,9 +291,7 @@ static int f2fs_prepare_super_block(void)
 	 * When sit is too large, we should expand cp area. It requires more
 	 * pages for cp.
 	 */
-	if (max_sit_bitmap_size >
-			(CHECKSUM_OFFSET -
-				sizeof(struct f2fs_checkpoint) + 1 - 64)) {
+	if (max_sit_bitmap_size > MAX_SIT_BITMAP_SIZE_IN_CKPT) {
 		max_nat_bitmap_size = CHECKSUM_OFFSET -
 				sizeof(struct f2fs_checkpoint) + 1;
 		set_sb(cp_payload, F2FS_BLK_ALIGN(max_sit_bitmap_size));
