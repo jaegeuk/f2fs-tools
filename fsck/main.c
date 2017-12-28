@@ -57,6 +57,7 @@ void fsck_usage()
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
 	MSG(0, "  -q preserve quota limits\n");
+	MSG(0, "  -y fix all the time\n");
 	MSG(0, "  --dry-run do not really fix corruptions\n");
 	exit(1);
 }
@@ -159,7 +160,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fp:q:St";
+		const char *option_string = ":ad:fp:q:Sty";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -213,6 +214,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				MSG(0, "Info: Debug level = %d\n", c.dbg_lv);
 				break;
 			case 'f':
+			case 'y':
 				c.fix_on = 1;
 				MSG(0, "Info: Force to fix corruption\n");
 				break;
