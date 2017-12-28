@@ -369,21 +369,12 @@ static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
 
 static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
 {
-	int i;
-
 	if (addr >= le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count) ||
 				addr < SM_I(sbi)->main_blkaddr) {
 		DBG(1, "block addr [0x%x]\n", addr);
 		return 0;
 	}
-
-	for (i = 0; i < NO_CHECK_TYPE; i++) {
-		struct curseg_info *curseg = CURSEG_I(sbi, i);
-
-		if (START_BLOCK(sbi, curseg->segno) +
-					curseg->next_blkoff == addr)
-			return 0;
-	}
+	/* next block offset will be checked at the end of fsck. */
 	return 1;
 }
 
