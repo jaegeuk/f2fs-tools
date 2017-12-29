@@ -1086,10 +1086,7 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	for (start = 0; start < TOTAL_SEGS(sbi); start++) {
 		sit_i->sentries[start].cur_valid_map
 			= calloc(SIT_VBLOCK_MAP_SIZE, 1);
-		sit_i->sentries[start].ckpt_valid_map
-			= calloc(SIT_VBLOCK_MAP_SIZE, 1);
-		if (!sit_i->sentries[start].cur_valid_map
-				|| !sit_i->sentries[start].ckpt_valid_map)
+		if (!sit_i->sentries[start].cur_valid_map)
 			return -ENOMEM;
 	}
 
@@ -1396,9 +1393,7 @@ void seg_info_from_raw_sit(struct seg_entry *se,
 		struct f2fs_sit_entry *raw_sit)
 {
 	se->valid_blocks = GET_SIT_VBLOCKS(raw_sit);
-	se->ckpt_valid_blocks = GET_SIT_VBLOCKS(raw_sit);
 	memcpy(se->cur_valid_map, raw_sit->valid_map, SIT_VBLOCK_MAP_SIZE);
-	memcpy(se->ckpt_valid_map, raw_sit->valid_map, SIT_VBLOCK_MAP_SIZE);
 	se->type = GET_SIT_TYPE(raw_sit);
 	se->orig_type = GET_SIT_TYPE(raw_sit);
 	se->mtime = le64_to_cpu(raw_sit->mtime);
@@ -2398,10 +2393,9 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	free(sbi->nm_info);
 
 	/* free sit_info */
-	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+	for (i = 0; i < TOTAL_SEGS(sbi); i++)
 		free(sit_i->sentries[i].cur_valid_map);
-		free(sit_i->sentries[i].ckpt_valid_map);
-	}
+
 	free(sit_i->sit_bitmap);
 	free(sm_i->sit_info);
 
