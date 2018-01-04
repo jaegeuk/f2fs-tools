@@ -586,6 +586,8 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	int type;
 	struct f2fs_summary sum_entry;
 	struct node_info ni, ino_ni;
+	struct seg_entry *se;
+	u32 offset;
 	int ret = 0;
 
 	MSG(0, "\n== Dump data from block address ==\n\n");
@@ -615,6 +617,13 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 			SM_I(sbi)->main_blkaddr,
 			__end_block_addr(sbi));
 		return ret;
+	}
+
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk_addr));
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
+
+	if (f2fs_test_bit(offset, (const char *)se->cur_valid_map) == 0) {
+		MSG(0, "\nblkaddr is not valid\n");
 	}
 
 	type = get_sum_entry(sbi, blk_addr, &sum_entry);
