@@ -552,6 +552,7 @@ enum {
 #define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
 #define F2FS_FEATURE_QUOTA_INO		0x0080
 #define F2FS_FEATURE_INODE_CRTIME	0x0100
+#define F2FS_FEATURE_VERITY		0x0400	/* reserved */
 
 #define MAX_VOLUME_NAME		512
 
@@ -730,10 +731,13 @@ struct f2fs_extent {
 /*
  * i_advise uses FADVISE_XXX_BIT. We can add additional hints later.
  */
-#define FADVISE_COLD_BIT       0x01
-#define FADVISE_LOST_PINO_BIT  0x02
-#define FADVISE_ENCRYPT_BIT    0x04
-#define FADVISE_ENC_NAME_BIT   0x08
+#define FADVISE_COLD_BIT	0x01
+#define FADVISE_LOST_PINO_BIT	0x02
+#define FADVISE_ENCRYPT_BIT	0x04
+#define FADVISE_ENC_NAME_BIT	0x08
+#define FADVISE_KEEP_SIZE_BIT	0x10
+#define FADVISE_HOT_BIT		0x20
+#define FADVISE_VERITY_BIT	0x40	/* reserved */
 
 #define file_is_encrypt(fi)      ((fi)->i_advise & FADVISE_ENCRYPT_BIT)
 #define file_enc_name(fi)        ((fi)->i_advise & FADVISE_ENC_NAME_BIT)

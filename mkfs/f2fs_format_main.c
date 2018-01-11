@@ -83,6 +83,8 @@ static void parse_feature(const char *features)
 		features++;
 	if (!strcmp(features, "encrypt")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+	} else if (!strcmp(features, "verity")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_VERITY);
 	} else if (!strcmp(features, "extra_attr")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
 	} else if (!strcmp(features, "project_quota")) {

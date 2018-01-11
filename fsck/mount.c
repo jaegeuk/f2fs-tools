@@ -439,6 +439,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	if (f & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
 		MSG(0, "%s", " encrypt");
 	}
+	if (f & cpu_to_le32(F2FS_FEATURE_VERITY)) {
+		MSG(0, "%s", " verity");
+	}
 	if (f & cpu_to_le32(F2FS_FEATURE_BLKZONED)) {
 		MSG(0, "%s", " blkzoned");
 	}
