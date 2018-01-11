@@ -766,7 +766,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					blkaddr,
 					&child, (i_blocks == *blk_cnt),
 					ftype, nid, idx, ni->version,
-					file_enc_name(&node_blk->i));
+					file_is_encrypt(&node_blk->i));
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
 			} else if (c.fix_on) {
@@ -974,7 +974,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			blkaddr, child,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version,
-			file_enc_name(inode));
+			file_is_encrypt(inode));
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
 		} else if (c.fix_on) {
@@ -1434,7 +1434,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 				test_and_clear_bit_le(i + j, bitmap);
 			FIX_MSG("Unlink [0x%x] - %s len[0x%x], type[0x%x]",
 					le32_to_cpu(dentry[i].ino),
-					name, name_len,
+					en, name_len,
 					dentry[i].file_type);
 			fixed = 1;
 		} else if (ret == 0) {
@@ -1466,7 +1466,7 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 	fsck->dentry_depth++;
 	dentries = __chk_dentries(sbi, child,
 			d.bitmap, d.dentry, d.filename, d.max, 1,
-			file_enc_name(&node_blk->i));
+			file_is_encrypt(&node_blk->i));
 	if (dentries < 0) {
 		DBG(1, "[%3d] Inline Dentry Block Fixed hash_codes\n\n",
 			fsck->dentry_depth);
