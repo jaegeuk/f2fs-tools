@@ -1936,6 +1936,7 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
 	flags = update_nat_bits_flags(sb, cp, flags);
+	flags |= CP_NOCRC_RECOVERY_FLAG;
 	set_cp(ckpt_flags, flags);
 
 	set_cp(free_segment_count, get_free_segments(sbi));
