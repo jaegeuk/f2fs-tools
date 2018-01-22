@@ -1591,8 +1591,14 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 void get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
 {
 	struct f2fs_nat_entry raw_nat;
-	get_nat_entry(sbi, nid, &raw_nat);
+
 	ni->nid = nid;
+	if (c.func == FSCK) {
+		node_info_from_raw_nat(ni, &(F2FS_FSCK(sbi)->entries[nid]));
+		return;
+	}
+
+	get_nat_entry(sbi, nid, &raw_nat);
 	node_info_from_raw_nat(ni, &raw_nat);
 }
 
