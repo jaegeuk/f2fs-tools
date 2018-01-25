@@ -550,6 +550,7 @@ enum {
 #define F2FS_FEATURE_INODE_CHKSUM	0x0020
 #define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
 #define F2FS_FEATURE_QUOTA_INO		0x0080
+#define F2FS_FEATURE_INODE_CRTIME	0x0100
 
 #define MAX_VOLUME_NAME		512
 
@@ -785,8 +786,10 @@ struct f2fs_inode {
 			__le16 i_inline_xattr_size;	/* inline xattr size, unit: 4 bytes */
 			__le32 i_projid;	/* project id */
 			__le32 i_inode_checksum;/* inode meta checksum */
+			__le64 i_crtime;	/* creation time */
+			__le32 i_crtime_nsec;	/* creation time in nano scale */
 			__le32 i_extra_end[0];	/* for attribute size calculation */
-		};
+		} __attribute__((packed));
 		__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
 	};
 	__le32 i_nid[5];		/* direct(2), indirect(2),

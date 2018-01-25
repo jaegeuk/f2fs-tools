@@ -1021,6 +1021,11 @@ static int f2fs_write_root_inode(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
 		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
 
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+		raw_node->i.i_crtime = cpu_to_le32(time(NULL));
+		raw_node->i.i_crtime_nsec = 0;
+	}
+
 	data_blk_nor = get_sb(main_blkaddr) +
 		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg;
 	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);

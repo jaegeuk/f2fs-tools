@@ -233,6 +233,10 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 			DISP_u32(inode, i_projid);
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
 			DISP_u32(inode, i_inode_checksum);
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+			DISP_u64(inode, i_crtime);
+			DISP_u32(inode, i_crtime_nsec);
+		}
 	}
 
 	DISP_u32(inode, i_addr[ofs]);		/* Pointers to data blocks */
@@ -452,6 +456,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	}
 	if (f & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
 		MSG(0, "%s", " quota_ino");
+	}
+	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+		MSG(0, "%s", " inode_crtime");
 	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",

@@ -92,6 +92,8 @@ static void parse_feature(const char *features)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR);
 	} else if (!strcmp(features, "quota")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+	} else if (!strcmp(features, "inode_crtime")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CRTIME);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
@@ -184,6 +186,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 		}
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
 			MSG(0, "\tInfo: flexible inline xattr feature should always been"
+				"enabled with extra attr feature\n");
+			exit(1);
+		}
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+			MSG(0, "\tInfo: inode crtime feature should always been"
 				"enabled with extra attr feature\n");
 			exit(1);
 		}
