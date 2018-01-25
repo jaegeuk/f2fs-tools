@@ -46,6 +46,7 @@ static void mkfs_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [extension list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -f force overwrite the exist filesystem\n");
+	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -m support zoned block device [default:0]\n");
 	MSG(0, "  -o overprovision ratio [default:5]\n");
@@ -105,7 +106,7 @@ static void parse_feature(const char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:l:mo:O:s:S:z:t:fw:";
+	static const char *option_string = "qa:c:d:e:il:mo:O:s:S:z:t:fw:";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -134,6 +135,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'e':
 			c.extension_list = strdup(optarg);
+			break;
+		case 'i':
+			c.large_nat_bitmap = 1;
 			break;
 		case 'l':		/*v: volume label */
 			if (strlen(optarg) > 512) {
