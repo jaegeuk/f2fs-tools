@@ -1344,17 +1344,14 @@ static inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
 	ASSERT(segno <= end_segno);
 }
 
-struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
-						unsigned int segno)
+void get_current_sit_page(struct f2fs_sb_info *sbi,
+			unsigned int segno, struct f2fs_sit_block *sit_blk)
 {
 	struct sit_info *sit_i = SIT_I(sbi);
 	unsigned int offset = SIT_BLOCK_OFFSET(sit_i, segno);
 	block_t blk_addr = sit_i->sit_base_addr + offset;
-	struct f2fs_sit_block *sit_blk;
 	int ret;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
-	ASSERT(sit_blk);
 	check_seg_range(sbi, segno);
 
 	/* calculate sit block address */
@@ -1363,8 +1360,6 @@ struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *sbi,
 
 	ret = dev_read_block(sit_blk, blk_addr);
 	ASSERT(ret >= 0);
-
-	return sit_blk;
 }
 
 void rewrite_current_sit_page(struct f2fs_sb_info *sbi,
@@ -1627,22 +1622,24 @@ void build_sit_entries(struct f2fs_sb_info *sbi)
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_sit_block *sit_blk;
 	struct seg_entry *se;
 	struct f2fs_sit_entry sit;
 	unsigned int i, segno;
 
+	sit_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(sit_blk);
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
 		se = &sit_i->sentries[segno];
-		struct f2fs_sit_block *sit_blk;
 
-		sit_blk = get_current_sit_page(sbi, segno);
+		get_current_sit_page(sbi, segno, sit_blk);
 		sit = sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
-		free(sit_blk);
 
 		check_block_count(sbi, segno, &sit);
 		seg_info_from_raw_sit(se, &sit);
 	}
 
+	free(sit_blk);
 	for (i = 0; i < sits_in_cursum(journal); i++) {
 		segno = le32_to_cpu(segno_in_journal(journal, i));
 		se = &sit_i->sentries[segno];
@@ -1734,24 +1731,26 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
 	struct sit_info *sit_i = SIT_I(sbi);
+	struct f2fs_sit_block *sit_blk;
 	unsigned int segno = 0;
 	struct f2fs_summary_block *sum = curseg->sum_blk;
 	char *ptr = NULL;
 
+	sit_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(sit_blk);
 	/* remove sit journal */
 	sum->journal.n_sits = 0;
 
 	ptr = fsck->main_area_bitmap;
 
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
-		struct f2fs_sit_block *sit_blk;
 		struct f2fs_sit_entry *sit;
 		struct seg_entry *se;
 		u16 valid_blocks = 0;
 		u16 type;
 		int i;
 
-		sit_blk = get_current_sit_page(sbi, segno);
+		get_current_sit_page(sbi, segno, sit_blk);
 		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
 		memcpy(sit->valid_map, ptr, SIT_VBLOCK_MAP_SIZE);
 
@@ -1771,10 +1770,11 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 		sit->vblocks = cpu_to_le16((type << SIT_VBLOCKS_SHIFT) |
 								valid_blocks);
 		rewrite_current_sit_page(sbi, segno, sit_blk);
-		free(sit_blk);
 
 		ptr += SIT_VBLOCK_MAP_SIZE;
 	}
+
+	free(sit_blk);
 }
 
 static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
@@ -1782,18 +1782,20 @@ static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
 	struct sit_info *sit_i = SIT_I(sbi);
+	struct f2fs_sit_block *sit_blk;
 	unsigned int segno;
 	int i;
 
+	sit_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(sit_blk);
 	for (i = 0; i < sits_in_cursum(journal); i++) {
-		struct f2fs_sit_block *sit_blk;
 		struct f2fs_sit_entry *sit;
 		struct seg_entry *se;
 
 		segno = segno_in_journal(journal, i);
 		se = get_seg_entry(sbi, segno);
 
-		sit_blk = get_current_sit_page(sbi, segno);
+		get_current_sit_page(sbi, segno, sit_blk);
 		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
 
 		memcpy(sit->valid_map, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
@@ -1802,9 +1804,9 @@ static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 		sit->mtime = cpu_to_le64(se->mtime);
 
 		rewrite_current_sit_page(sbi, segno, sit_blk);
-		free(sit_blk);
 	}
 
+	free(sit_blk);
 	journal->n_sits = 0;
 	return i;
 }
@@ -1859,12 +1861,14 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	struct sit_info *sit_i = SIT_I(sbi);
+	struct f2fs_sit_block *sit_blk;
 	unsigned int segno = 0;
 	u32 free_segs = 0;
 
+	sit_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(sit_blk);
 	/* update free segments */
 	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
-		struct f2fs_sit_block *sit_blk;
 		struct f2fs_sit_entry *sit;
 		struct seg_entry *se;
 
@@ -1873,19 +1877,19 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 		if (!se->dirty)
 			continue;
 
-		sit_blk = get_current_sit_page(sbi, segno);
+		get_current_sit_page(sbi, segno, sit_blk);
 		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
 		memcpy(sit->valid_map, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
 		sit->vblocks = cpu_to_le16((se->type << SIT_VBLOCKS_SHIFT) |
 							se->valid_blocks);
 		rewrite_current_sit_page(sbi, segno, sit_blk);
-		free(sit_blk);
 
 		if (se->valid_blocks == 0x0 &&
 				!IS_CUR_SEGNO(sbi, segno, NO_CHECK_TYPE))
 			free_segs++;
 	}
 
+	free(sit_blk);
 	set_cp(free_segment_count, free_segs);
 }
 

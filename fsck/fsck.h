@@ -182,8 +182,8 @@ extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, nid_t, block_t);
 extern void print_raw_sb_info(struct f2fs_super_block *);
 
 extern u32 get_free_segments(struct f2fs_sb_info *);
-extern struct f2fs_sit_block *get_current_sit_page(struct f2fs_sb_info *,
-			unsigned int);
+extern void get_current_sit_page(struct f2fs_sb_info *,
+			unsigned int, struct f2fs_sit_block *);
 extern void rewrite_current_sit_page(struct f2fs_sb_info *, unsigned int,
 			struct f2fs_sit_block *);
 
