@@ -621,6 +621,29 @@ unmatched:
 	child->state |= FSCK_UNMATCHED_EXTENT;
 }
 
+void fsck_reada_node_block(struct f2fs_sb_info *sbi, u32 nid)
+{
+	struct node_info ni;
+
+	if (nid != 0 && IS_VALID_NID(sbi, nid)) {
+		get_node_info(sbi, nid, &ni);
+		if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+			dev_reada_block(ni.blk_addr);
+	}
+}
+
+void fsck_reada_all_direct_node_blocks(struct f2fs_sb_info *sbi,
+						struct f2fs_node *node_blk)
+{
+	int i;
+
+	for (i = 0; i < NIDS_PER_BLOCK; i++) {
+		u32 nid = le32_to_cpu(node_blk->in.nid[i]);
+
+		fsck_reada_node_block(sbi, nid);
+	}
+}
+
 /* start with valid nid and blkaddr */
 void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk,
@@ -680,6 +703,9 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		}
 	}
 
+	/* readahead xattr node block */
+	fsck_reada_node_block(sbi, le32_to_cpu(node_blk->i.i_xattr_nid));
+
 	if (fsck_chk_xattr_blk(sbi, nid,
 			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt) &&
 			c.fix_on) {
@@ -736,19 +762,6 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		goto check;
 	}
 
-	/* readahead node blocks */
-	for (idx = 0; idx < 5; idx++) {
-		u32 nid = le32_to_cpu(node_blk->i.i_nid[idx]);
-
-		if (nid != 0 && IS_VALID_NID(sbi, nid)) {
-			struct node_info ni;
-
-			get_node_info(sbi, nid, &ni);
-			if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
-				dev_reada_block(ni.blk_addr);
-		}
-	}
-
 	/* init extent info */
 	get_extent_info(&child.ei, &node_blk->i.i_ext);
 	child.last_blk = 0;
@@ -776,6 +789,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 							nid, ofs + idx);
 			}
 		}
+	}
+
+	/* readahead node blocks */
+	for (idx = 0; idx < 5; idx++) {
+		u32 nid = le32_to_cpu(node_blk->i.i_nid[idx]);
+		fsck_reada_node_block(sbi, nid);
 	}
 
 	/* check node blocks in inode */
@@ -997,6 +1016,8 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	int need_fix = 0, ret;
 	int i = 0;
 
+	fsck_reada_all_direct_node_blocks(sbi, node_blk);
+
 	for (i = 0; i < NIDS_PER_BLOCK; i++) {
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
 			goto skip;
@@ -1036,6 +1057,8 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 {
 	int i = 0;
 	int need_fix = 0, ret = 0;
+
+	fsck_reada_all_direct_node_blocks(sbi, node_blk);
 
 	for (i = 0; i < NIDS_PER_BLOCK; i++) {
 		if (le32_to_cpu(node_blk->in.nid[i]) == 0x0)
