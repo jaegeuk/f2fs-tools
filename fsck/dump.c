@@ -10,6 +10,7 @@
  */
 #include <inttypes.h>
 
+#include "node.h"
 #include "fsck.h"
 #include "xattr.h"
 #ifdef HAVE_ATTR_XATTR_H
@@ -580,6 +581,97 @@ static void dump_node_offset(u32 blk_addr)
 	free(node_blk);
 }
 
+static int has_dirent(u32 blk_addr, int is_inline, int *enc_name)
+{
+	struct f2fs_node *node_blk;
+	int ret, is_dentry = 0;
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	ret = dev_read_block(node_blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	if (IS_INODE(node_blk) && S_ISDIR(le16_to_cpu(node_blk->i.i_mode)))
+		is_dentry = 1;
+
+	if (is_inline && !(node_blk->i.i_inline & F2FS_INLINE_DENTRY))
+		is_dentry = 0;
+
+	*enc_name = file_is_encrypt(&node_blk->i);
+
+	free(node_blk);
+
+	return is_dentry;
+}
+
+static void dump_dirent(u32 blk_addr, int is_inline, int enc_name)
+{
+	struct f2fs_dentry_ptr d;
+	void *inline_dentry, *blk;
+	int ret, i = 0;
+
+	blk = calloc(BLOCK_SZ, 1);
+	ASSERT(blk);
+
+	ret = dev_read_block(blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	if (is_inline) {
+		inline_dentry = inline_data_addr((struct f2fs_node *)blk);
+		make_dentry_ptr(&d, blk, inline_dentry, 2);
+	} else {
+		make_dentry_ptr(&d, NULL, blk, 1);
+	}
+
+	DBG(1, "%sDentry block:\n", is_inline ? "Inline " : "");
+
+	while (i < d.max) {
+		struct f2fs_dir_entry *de;
+		unsigned char en[F2FS_NAME_LEN + 1];
+		u16 en_len, name_len;
+		int enc;
+
+		if (!test_bit_le(i, d.bitmap)) {
+			i++;
+			continue;
+		}
+
+		de = &d.dentry[i];
+
+		if (!de->name_len) {
+			i++;
+			continue;
+		}
+
+		name_len = le16_to_cpu(de->name_len);
+		enc = enc_name;
+
+		if (de->file_type == F2FS_FT_DIR) {
+			if ((d.filename[i][0] == '.' && name_len == 1) ||
+				(d.filename[i][0] == '.' &&
+				d.filename[i][1] == '.' && name_len == 2)) {
+				enc = 0;
+			}
+		}
+
+		en_len = convert_encrypted_name(d.filename[i],
+				le16_to_cpu(de->name_len), en, enc);
+		en[en_len] = '\0';
+
+		DBG(1, "bitmap pos[0x%x] name[%s] len[0x%x] hash[0x%x] ino[0x%x] type[0x%x]\n",
+				i, en,
+				le16_to_cpu(de->name_len),
+				le32_to_cpu(de->hash_code),
+				le32_to_cpu(de->ino),
+				de->file_type);
+
+		i += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
+	}
+
+	free(blk);
+}
+
 int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 {
 	nid_t nid;
@@ -588,6 +680,7 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	struct node_info ni, ino_ni;
 	struct seg_entry *se;
 	u32 offset;
+	int enc_name;
 	int ret = 0;
 
 	MSG(0, "\n== Dump data from block address ==\n\n");
@@ -666,12 +759,18 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 		dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
 		dump_data_offset(ni.blk_addr,
 			le16_to_cpu(sum_entry.ofs_in_node));
+
+		if (has_dirent(ino_ni.blk_addr, 0, &enc_name))
+			dump_dirent(blk_addr, 0, enc_name);
 	} else {
 		MSG(0, "FS Userdata Area: Node block from 0x%x\n", blk_addr);
 		if (ni.ino == ni.nid) {
 			MSG(0, " - Inode block       : id = 0x%x from 0x%x\n",
 					ni.ino, ino_ni.blk_addr);
 			dump_node_from_blkaddr(sbi, ino_ni.blk_addr);
+
+			if (has_dirent(ino_ni.blk_addr, 1, &enc_name))
+				dump_dirent(blk_addr, 1, enc_name);
 		} else {
 			MSG(0, " - Node block        : id = 0x%x from 0x%x\n",
 					nid, ni.blk_addr);
