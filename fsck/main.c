@@ -184,12 +184,12 @@ void f2fs_parse_options(int argc, char *argv[])
 				 *  0: default level, the same as -a
 				 *  1: check meta
 				 */
-				if (optarg[0] == '-') {
+				if (optarg[0] == '-' || !is_digits(optarg) ||
+							optind == argc) {
+					MSG(0, "Info: Use default preen mode\n");
 					c.preen_mode = PREEN_MODE_0;
+					c.auto_fix = 1;
 					optind--;
-					break;
-				} else if (!is_digits(optarg)) {
-					err = EWRONG_OPT;
 					break;
 				}
 				c.preen_mode = atoi(optarg);
