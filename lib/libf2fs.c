@@ -589,25 +589,18 @@ void f2fs_init_configuration(void)
 {
 	int i;
 
+	memset(&c, 0, sizeof(struct f2fs_configuration));
 	c.ndevs = 1;
-	c.total_sectors = 0;
-	c.sector_size = 0;
 	c.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
 	c.rootdev_name = get_rootdev();
 	c.wanted_total_sectors = -1;
 	c.wanted_sector_size = -1;
-	c.zoned_mode = 0;
-	c.zoned_model = 0;
-	c.zone_blocks = 0;
-#ifdef WITH_ANDROID
-	c.preserve_limits = 0;
-#else
+#ifndef WITH_ANDROID
 	c.preserve_limits = 1;
 #endif
 
 	for (i = 0; i < MAX_DEVICES; i++) {
-		memset(&c.devices[i], 0, sizeof(struct device_info));
 		c.devices[i].fd = -1;
 		c.devices[i].sector_size = DEFAULT_SECTOR_SIZE;
 		c.devices[i].end_blkaddr = -1;
@@ -615,19 +608,12 @@ void f2fs_init_configuration(void)
 	}
 
 	/* calculated by overprovision ratio */
-	c.reserved_segments = 0;
-	c.overprovision = 0;
 	c.segs_per_sec = 1;
 	c.secs_per_zone = 1;
 	c.segs_per_zone = 1;
-	c.heap = 0;
 	c.vol_label = "";
 	c.trim = 1;
-	c.trimmed = 0;
-	c.ro = 0;
 	c.kd = -1;
-	c.dry_run = 0;
-	c.large_nat_bitmap = 0;
 	c.fixed_time = -1;
 }
 
