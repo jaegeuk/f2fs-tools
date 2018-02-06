@@ -195,7 +195,7 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 {
 	struct f2fs_summary_block *sum_blk;
 	char buf[BUF_SZ];
-	int segno, i, ret;
+	int segno, type, i, ret;
 	int fd;
 
 	fd = open("dump_ssa", O_CREAT|O_WRONLY|O_TRUNC, 0666);
@@ -208,10 +208,10 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 	ASSERT(ret >= 0);
 
 	for (segno = start_ssa; segno < end_ssa; segno++) {
-		sum_blk = get_sum_block(sbi, segno, &ret);
+		sum_blk = get_sum_block(sbi, segno, &type);
 
 		memset(buf, 0, BUF_SZ);
-		switch (ret) {
+		switch (type) {
 		case SEG_TYPE_CUR_NODE:
 			snprintf(buf, BUF_SZ, "\n\nsegno: %x, Current Node\n", segno);
 			break;
@@ -240,8 +240,8 @@ void ssa_dump(struct f2fs_sb_info *sbi, int start_ssa, int end_ssa)
 			ret = write(fd, buf, strlen(buf));
 			ASSERT(ret >= 0);
 		}
-		if (ret == SEG_TYPE_NODE || ret == SEG_TYPE_DATA ||
-					ret == SEG_TYPE_MAX)
+		if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+					type == SEG_TYPE_MAX)
 			free(sum_blk);
 	}
 	close(fd);
