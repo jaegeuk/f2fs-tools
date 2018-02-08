@@ -2021,7 +2021,7 @@ int check_curseg_offset(struct f2fs_sb_info *sbi)
 			return -EINVAL;
 		}
 		if (curseg->alloc_type == SSR)
-			return 0;
+			continue;
 
 		nblocks = sbi->blocks_per_seg;
 		for (j = curseg->next_blkoff + 1; j < nblocks; j++) {
