@@ -784,7 +784,7 @@ static int f2fs_write_check_point_pack(void)
 
 		for (j = 0; j < QUOTA_DATA(qtype); j++) {
 			(sum_entry + off + j)->nid = sb->qf_ino[qtype];
-			(sum_entry + off + j)->ofs_in_node = j;
+			(sum_entry + off + j)->ofs_in_node = cpu_to_le16(j);
 		}
 		off += QUOTA_DATA(qtype);
 	}
