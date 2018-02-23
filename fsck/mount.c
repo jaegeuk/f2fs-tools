@@ -1610,7 +1610,9 @@ void get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
 	ni->nid = nid;
 	if (c.func == FSCK) {
 		node_info_from_raw_nat(ni, &(F2FS_FSCK(sbi)->entries[nid]));
-		return;
+		if (ni->blk_addr)
+			return;
+		/* nat entry is not cached, read it */
 	}
 
 	get_nat_entry(sbi, nid, &raw_nat);
