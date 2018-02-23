@@ -334,6 +334,15 @@ static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u32 mode)
 {
 	if (ftype >= F2FS_FT_MAX)
 		return 0;
+	/* f2fs_iget will return -EIO if mode is not valid file type */
+	if (!S_ISLNK(mode) && !S_ISREG(mode) && !S_ISDIR(mode) &&
+	    !S_ISCHR(mode) && !S_ISBLK(mode) && !S_ISFIFO(mode) &&
+	    !S_ISSOCK(mode)) {
+		ASSERT_MSG("inode [0x%x] unknown file type i_mode [0x%x]",
+			   nid, mode);
+		return -1;
+	}
+
 	if (S_ISLNK(mode) && ftype != F2FS_FT_SYMLINK)
 		goto err;
 	if (S_ISREG(mode) && ftype != F2FS_FT_REG_FILE)
@@ -350,7 +359,8 @@ static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u32 mode)
 		goto err;
 	return 0;
 err:
-	ASSERT_MSG("mismatch i_mode [0x%x] [0x%x vs. 0x%x]", nid, ftype, mode);
+	ASSERT_MSG("inode [0x%x] mismatch i_mode [0x%x vs. 0x%x]",
+		   nid, ftype, mode);
 	return -1;
 }
 
@@ -465,25 +475,6 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	return 0;
 }
 
-static int sanity_check_inode(struct f2fs_sb_info *sbi, struct f2fs_node *node)
-{
-	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	struct f2fs_inode *fi = &node->i;
-
-	if (!(le16_to_cpu(fi->i_mode) & S_IFMT)) {
-		ASSERT_MSG("i_mode is not valid. [0x%x]", le16_to_cpu(fi->i_mode));
-		goto remove_node;
-	}
-
-	return 0;
-
-remove_node:
-	f2fs_set_bit(le32_to_cpu(node->footer.ino), fsck->nat_area_bitmap);
-	fsck->chk.valid_blk_cnt--;
-	fsck->chk.valid_node_cnt--;
-	return -EINVAL;
-}
-
 static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 					u32 x_nid, u32 *blk_cnt)
 {
@@ -528,8 +519,6 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	if (ntype == TYPE_INODE) {
 		struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
-		if (sanity_check_inode(sbi, node_blk))
-			goto err;
 		fsck_chk_inode_blk(sbi, nid, ftype, node_blk, blk_cnt, &ni, child);
 		quota_add_inode_usage(fsck->qctx, nid, &node_blk->i);
 	} else {
