@@ -366,6 +366,11 @@ struct f2fs_configuration {
 	int large_nat_bitmap;
 	__le32 feature;			/* defined features */
 
+	/* mkfs parameters */
+	u_int32_t next_free_nid;
+	u_int32_t quota_inum;
+	u_int32_t quota_dnum;
+
 	/* defragmentation parameters */
 	int defrag_shrink;
 	u_int64_t defrag_start;
