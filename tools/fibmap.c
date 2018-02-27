@@ -15,6 +15,7 @@
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
 #endif
+#include <f2fs_fs.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
@@ -38,7 +39,6 @@
 #include <linux/fs.h>
 #endif
 #include <inttypes.h>
-#include <f2fs_fs.h>
 
 #ifndef FIBMAP
 #define FIBMAP          _IO(0x00, 1)    /* bmap access */
