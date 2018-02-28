@@ -69,6 +69,7 @@ const char *media_ext_lists[] = {
 };
 
 const char *hot_ext_lists[] = {
+	"db",
 	NULL
 };
 
