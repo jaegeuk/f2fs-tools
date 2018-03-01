@@ -68,6 +68,15 @@ const char *media_ext_lists[] = {
 	NULL
 };
 
+const char *hot_ext_lists[] = {
+	NULL
+};
+
+const char **default_ext_list[] = {
+	media_ext_lists,
+	hot_ext_lists
+};
+
 static bool is_extension_exist(const char *name)
 {
 	int i;
@@ -83,44 +92,55 @@ static bool is_extension_exist(const char *name)
 
 static void cure_extension_list(void)
 {
-	const char **extlist = media_ext_lists;
-	char *ext_str = c.extension_list;
+	const char **extlist;
+	char *ext_str;
 	char *ue;
 	int name_len;
-	int i = 0;
+	int i, pos = 0;
 
 	set_sb(extension_count, 0);
 	memset(sb->extension_list, 0, sizeof(sb->extension_list));
 
-	while (*extlist) {
-		name_len = strlen(*extlist);
-		memcpy(sb->extension_list[i++], *extlist, name_len);
-		extlist++;
-	}
-	set_sb(extension_count, i);
+	for (i = 0; i < 2; i++) {
+		ext_str = c.extension_list[i];
+		extlist = default_ext_list[i];
 
-	if (!ext_str)
-		return;
-
-	/* add user ext list */
-	ue = strtok(ext_str, ", ");
-	while (ue != NULL) {
-		name_len = strlen(ue);
-		if (name_len >= 8) {
-			MSG(0, "\tWarn: Extension name (%s) is too long\n", ue);
-			goto next;
+		while (*extlist) {
+			name_len = strlen(*extlist);
+			memcpy(sb->extension_list[pos++], *extlist, name_len);
+			extlist++;
 		}
-		if (!is_extension_exist(ue))
-			memcpy(sb->extension_list[i++], ue, name_len);
+		if (i == 0)
+			set_sb(extension_count, pos);
+		else
+			sb->hot_ext_count = pos - get_sb(extension_count);;
+
+		if (!ext_str)
+			continue;
+
+		/* add user ext list */
+		ue = strtok(ext_str, ", ");
+		while (ue != NULL) {
+			name_len = strlen(ue);
+			if (name_len >= 8) {
+				MSG(0, "\tWarn: Extension name (%s) is too long\n", ue);
+				goto next;
+			}
+			if (!is_extension_exist(ue))
+				memcpy(sb->extension_list[pos++], ue, name_len);
 next:
-		ue = strtok(NULL, ", ");
-		if (i >= F2FS_MAX_EXTENSION)
-			break;
+			ue = strtok(NULL, ", ");
+			if (pos >= F2FS_MAX_EXTENSION)
+				break;
+		}
+
+		if (i == 0)
+			set_sb(extension_count, pos);
+		else
+			sb->hot_ext_count = pos - get_sb(extension_count);
+
+		free(c.extension_list[i]);
 	}
-
-	set_sb(extension_count, i);
-
-	free(c.extension_list);
 }
 
 static void verify_cur_segs(void)
