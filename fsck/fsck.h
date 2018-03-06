@@ -243,6 +243,9 @@ int f2fs_mkdir(struct f2fs_sb_info *, struct dentry *);
 int f2fs_symlink(struct f2fs_sb_info *, struct dentry *);
 int inode_set_selinux(struct f2fs_sb_info *, u32, const char *);
 int f2fs_find_path(struct f2fs_sb_info *, char *, nid_t *);
+nid_t f2fs_lookup(struct f2fs_sb_info *, struct f2fs_node *, u8 *, int);
+int f2fs_add_link(struct f2fs_sb_info *, struct f2fs_node *,
+		const unsigned char *, int, nid_t, int, block_t, int);
 
 /* xattr.c */
 void *read_all_xattrs(struct f2fs_sb_info *, struct f2fs_node *);

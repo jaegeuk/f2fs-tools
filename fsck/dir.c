@@ -176,6 +176,23 @@ static int f2fs_find_entry(struct f2fs_sb_info *sbi,
 	return 0;
 }
 
+/* return ino if file exists, otherwise return 0 */
+nid_t f2fs_lookup(struct f2fs_sb_info *sbi, struct f2fs_node *dir,
+				u8 *name, int len)
+{
+	int err;
+	struct dentry de = {
+		.name = name,
+		.len = len,
+	};
+
+	err = f2fs_find_entry(sbi, dir, &de);
+	if (err == 1)
+		return de.ino;
+	else
+		return 0;
+}
+
 static void f2fs_update_dentry(nid_t ino, int file_type,
 		struct f2fs_dentry_ptr *d,
 		const unsigned char *name, int len, f2fs_hash_t name_hash,
@@ -199,7 +216,7 @@ static void f2fs_update_dentry(nid_t ino, int file_type,
 /*
  * f2fs_add_link - Add a new file(dir) to parent dir.
  */
-static int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
+int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 			const unsigned char *name, int name_len, nid_t ino,
 			int file_type, block_t p_blkaddr, int inc_link)
 {

@@ -1600,6 +1600,8 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 	if (ino)
 		nat_block->entries[entry_off].ino = cpu_to_le32(ino);
 	nat_block->entries[entry_off].block_addr = cpu_to_le32(newaddr);
+	if (c.func == FSCK)
+		F2FS_FSCK(sbi)->entries[nid] = nat_block->entries[entry_off];
 
 	ret = dev_write_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
