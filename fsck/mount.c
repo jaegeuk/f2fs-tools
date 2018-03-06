@@ -463,6 +463,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
 		MSG(0, "%s", " inode_crtime");
 	}
+	if (f & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
+		MSG(0, "%s", " lost_found");
+	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
 					sb->encryption_level);

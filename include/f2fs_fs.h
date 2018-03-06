@@ -291,6 +291,8 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #define VERSION_LEN	256
 
+#define LPF "lost+found"
+
 enum f2fs_config_func {
 	MKFS,
 	FSCK,
@@ -370,6 +372,9 @@ struct f2fs_configuration {
 	u_int32_t next_free_nid;
 	u_int32_t quota_inum;
 	u_int32_t quota_dnum;
+	u_int32_t lpf_inum;
+	u_int32_t lpf_dnum;
+	u_int32_t lpf_ino;
 
 	/* defragmentation parameters */
 	int defrag_shrink;
@@ -558,6 +563,7 @@ enum {
 #define F2FS_FEATURE_FLEXIBLE_INLINE_XATTR	0x0040
 #define F2FS_FEATURE_QUOTA_INO		0x0080
 #define F2FS_FEATURE_INODE_CRTIME	0x0100
+#define F2FS_FEATURE_LOST_FOUND		0x0200
 #define F2FS_FEATURE_VERITY		0x0400	/* reserved */
 
 #define MAX_VOLUME_NAME		512

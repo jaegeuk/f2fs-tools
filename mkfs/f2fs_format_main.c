@@ -101,6 +101,8 @@ static void parse_feature(const char *features)
 		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
 	} else if (!strcmp(features, "inode_crtime")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CRTIME);
+	} else if (!strcmp(features, "lost_found")) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_LOST_FOUND);
 	} else {
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
