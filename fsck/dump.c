@@ -475,6 +475,18 @@ dump:
 	}
 }
 
+static bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr)
+{
+	struct seg_entry *se;
+	u32 offset;
+
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk_addr));
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
+
+	return f2fs_test_bit(offset,
+			(const char *)se->cur_valid_map) != 0;
+}
+
 void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 {
 	struct node_info ni;
@@ -492,15 +504,18 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 
 	if (ni.blk_addr == 0x0)
 		MSG(force, "Invalid nat entry\n\n");
+	else if (!is_sit_bitmap_set(sbi, ni.blk_addr))
+		MSG(force, "Invalid node blk addr\n\n");
 
 	DBG(1, "node_blk.footer.ino [0x%x]\n", le32_to_cpu(node_blk->footer.ino));
 	DBG(1, "node_blk.footer.nid [0x%x]\n", le32_to_cpu(node_blk->footer.nid));
 
 	if (le32_to_cpu(node_blk->footer.ino) == ni.ino &&
-			le32_to_cpu(node_blk->footer.nid) == ni.nid &&
-			ni.ino == ni.nid) {
+			le32_to_cpu(node_blk->footer.nid) == ni.nid) {
 		print_node_info(sbi, node_blk, force);
-		dump_file(sbi, &ni, node_blk, force);
+
+		if (ni.ino == ni.nid)
+			dump_file(sbi, &ni, node_blk, force);
 	} else {
 		print_node_info(sbi, node_blk, force);
 		MSG(force, "Invalid (i)node block\n\n");
@@ -678,8 +693,6 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	int type;
 	struct f2fs_summary sum_entry;
 	struct node_info ni, ino_ni;
-	struct seg_entry *se;
-	u32 offset;
 	int enc_name;
 	int ret = 0;
 
@@ -712,12 +725,8 @@ int dump_info_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 		return ret;
 	}
 
-	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk_addr));
-	offset = OFFSET_IN_SEG(sbi, blk_addr);
-
-	if (f2fs_test_bit(offset, (const char *)se->cur_valid_map) == 0) {
+	if (!is_sit_bitmap_set(sbi, blk_addr))
 		MSG(0, "\nblkaddr is not valid\n");
-	}
 
 	type = get_sum_entry(sbi, blk_addr, &sum_entry);
 	nid = le32_to_cpu(sum_entry.nid);
