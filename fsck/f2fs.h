@@ -50,6 +50,7 @@ struct node_info {
 
 struct f2fs_nm_info {
 	block_t nat_blkaddr;
+	block_t nat_blocks;
 	nid_t max_nid;
 	nid_t init_scan_nid;
 	nid_t next_scan_nid;

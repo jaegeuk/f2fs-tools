@@ -995,7 +995,12 @@ void write_nat_bits(struct f2fs_sb_info *sbi,
 				(seg_off << get_sb(log_blocks_per_seg) << 1) +
 				(i & ((1 << get_sb(log_blocks_per_seg)) - 1)));
 
-		if (f2fs_test_bit(i, nm_i->nat_bitmap))
+		/*
+		 * Should consider new nat_blocks is larger than old
+		 * nm_i->nat_blocks, since nm_i->nat_bitmap is based on
+		 * old one.
+		 */
+		if (i < nm_i->nat_blocks && f2fs_test_bit(i, nm_i->nat_bitmap))
 			blkaddr += (1 << get_sb(log_blocks_per_seg));
 
 		ret = dev_read_block(nat_block, blkaddr);
@@ -1034,14 +1039,14 @@ int init_node_manager(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	unsigned char *version_bitmap;
-	unsigned int nat_segs, nat_blocks;
+	unsigned int nat_segs;
 
 	nm_i->nat_blkaddr = get_sb(nat_blkaddr);
 
 	/* segment_count_nat includes pair segment so divide to 2. */
 	nat_segs = get_sb(segment_count_nat) >> 1;
-	nat_blocks = nat_segs << get_sb(log_blocks_per_seg);
-	nm_i->max_nid = NAT_ENTRY_PER_BLOCK * nat_blocks;
+	nm_i->nat_blocks = nat_segs << get_sb(log_blocks_per_seg);
+	nm_i->max_nid = NAT_ENTRY_PER_BLOCK * nm_i->nat_blocks;
 	nm_i->fcnt = 0;
 	nm_i->nat_cnt = 0;
 	nm_i->init_scan_nid = get_cp(next_free_nid);
