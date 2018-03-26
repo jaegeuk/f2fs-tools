@@ -1671,6 +1671,7 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 			if (!IS_VALID_NID(sbi, ino) ||
 					!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
 				return -EINVAL;
+			continue;
 		}
 		ret = fsck_chk_node_blk(sbi, NULL, ino,
 				F2FS_FT_REG_FILE, TYPE_INODE, &blk_cnt, NULL);
