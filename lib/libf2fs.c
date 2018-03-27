@@ -593,6 +593,7 @@ void f2fs_init_configuration(void)
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
 	c.rootdev_name = get_rootdev();
 	c.wanted_total_sectors = -1;
+	c.wanted_sector_size = -1;
 	c.zoned_mode = 0;
 	c.zoned_model = 0;
 	c.zone_blocks = 0;
@@ -900,6 +901,18 @@ int get_device_info(int i)
 				dev->zone_blocks);
 	}
 #endif
+	/* adjust wanted_total_sectors */
+	if (c.wanted_total_sectors != -1) {
+		MSG(0, "Info: wanted sectors = %"PRIu64" (in %"PRIu64" bytes)\n",
+				c.wanted_total_sectors, c.wanted_sector_size);
+		if (c.wanted_sector_size == -1) {
+			c.wanted_sector_size = dev->sector_size;
+		} else if (dev->sector_size != c.wanted_sector_size) {
+			c.wanted_total_sectors *= c.wanted_sector_size;
+			c.wanted_total_sectors /= dev->sector_size;
+		}
+	}
+
 	c.total_sectors += dev->total_sectors;
 	return 0;
 }

@@ -53,6 +53,10 @@ mkfs.f2fs \- create an F2FS file system
 .I nodiscard/discard
 ]
 [
+.B \-w
+.I specific sector_size for target sectors
+]
+[
 .B \-z
 .I #-of-sections-per-zone
 ]
@@ -124,6 +128,10 @@ The default number is 1, which means one segment is assigned to a section.
 Specify 1 or 0 to enable/disable discard policy.
 If the value is equal to 1, discard policy is enabled, otherwise is disable.
 The default value is 1.
+.TP
+.BI \-w "sector-size"
+Specify the sector size in bytes along with given target sectors.
+Without it, the sectors will be calculated by device sector size.
 .TP
 .BI \-z " #-of-sections-per-zone"
 Specify the number of sections per zone. A zone consists of multiple sections.

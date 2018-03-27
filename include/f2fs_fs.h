@@ -335,6 +335,7 @@ struct f2fs_configuration {
 	u_int64_t device_size;
 	u_int64_t total_sectors;
 	u_int64_t wanted_total_sectors;
+	u_int64_t wanted_sector_size;
 	u_int64_t target_sectors;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
