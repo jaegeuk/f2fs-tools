@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #ifndef ANDROID_WINDOWS_HOST
 #include <sys/ioctl.h>
 #endif
@@ -44,13 +45,15 @@ static int trim_device(int i)
 {
 #ifndef ANDROID_WINDOWS_HOST
 	unsigned long long range[2];
-	struct stat stat_buf;
+	struct stat *stat_buf;
 	struct device_info *dev = c.devices + i;
 	u_int64_t bytes = dev->total_sectors * dev->sector_size;
 	int fd = dev->fd;
 
-	if (fstat(fd, &stat_buf) < 0 ) {
+	stat_buf = malloc(sizeof(struct stat));
+	if (fstat(fd, stat_buf) < 0 ) {
 		MSG(1, "\tError: Failed to get the device stat!!!\n");
+		free(stat_buf);
 		return -1;
 	}
 
@@ -59,23 +62,27 @@ static int trim_device(int i)
 
 #if defined(WITH_BLKDISCARD) && defined(BLKDISCARD)
 	MSG(0, "Info: [%s] Discarding device\n", dev->path);
-	if (S_ISREG(stat_buf.st_mode)) {
+	if (S_ISREG(stat_buf->st_mode)) {
 #if defined(HAVE_FALLOCATE) && defined(FALLOC_FL_PUNCH_HOLE)
 		if (fallocate(fd, FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
 				range[0], range[1]) < 0) {
 			MSG(0, "Info: fallocate(PUNCH_HOLE|KEEP_SIZE) is failed\n");
 		}
 #endif
+		free(stat_buf);
 		return 0;
-	} else if (S_ISBLK(stat_buf.st_mode)) {
-		if (dev->zoned_model != F2FS_ZONED_NONE)
+	} else if (S_ISBLK(stat_buf->st_mode)) {
+		if (dev->zoned_model != F2FS_ZONED_NONE) {
+			free(stat_buf);
 			return f2fs_reset_zones(i);
+		}
 #ifdef BLKSECDISCARD
 		if (ioctl(fd, BLKSECDISCARD, &range) < 0) {
 			MSG(0, "Info: This device doesn't support BLKSECDISCARD\n");
 		} else {
 			MSG(0, "Info: Secure Discarded %lu MB\n",
-					(unsigned long)stat_buf.st_size >> 20);
+					(unsigned long)stat_buf->st_size >> 20);
+			free(stat_buf);
 			return 0;
 		}
 #endif
@@ -84,10 +91,12 @@ static int trim_device(int i)
 		} else {
 			MSG(0, "Info: Discarded %llu MB\n", range[1] >> 20);
 		}
-	} else
+	} else {
+		free(stat_buf);
 		return -1;
+	}
 #endif
-
+	free(stat_buf);
 #endif
 	return 0;
 }
