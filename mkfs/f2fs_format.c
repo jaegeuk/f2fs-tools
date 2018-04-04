@@ -471,7 +471,7 @@ static int f2fs_prepare_super_block(void)
 		c.cur_seg[CURSEG_HOT_DATA] = next_zone(CURSEG_COLD_NODE);
 		c.cur_seg[CURSEG_COLD_DATA] =
 				max(last_zone((total_zones >> 2)),
-					next_zone(CURSEG_COLD_NODE));
+					next_zone(CURSEG_HOT_DATA));
 		c.cur_seg[CURSEG_WARM_DATA] =
 				max(last_zone((total_zones >> 1)),
 					next_zone(CURSEG_COLD_DATA));
