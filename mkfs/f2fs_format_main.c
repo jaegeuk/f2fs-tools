@@ -51,7 +51,7 @@ static void mkfs_usage()
 	MSG(0, "  -l label\n");
 	MSG(0, "  -m support zoned block device [default:0]\n");
 	MSG(0, "  -o overprovision ratio [default:5]\n");
-	MSG(0, "  -O [feature list] e.g. \"encrypt\"\n");
+	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -S sparse mode\n");
@@ -81,10 +81,8 @@ static void f2fs_show_info()
 	MSG(0, "Info: Trim is %s\n", c.trim ? "enabled": "disabled");
 }
 
-static void parse_feature(const char *features)
+static void set_feature_bits(char *features)
 {
-	while (*features == ' ')
-		features++;
 	if (!strcmp(features, "encrypt")) {
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
 	} else if (!strcmp(features, "verity")) {
@@ -107,6 +105,33 @@ static void parse_feature(const char *features)
 		MSG(0, "Error: Wrong features\n");
 		mkfs_usage();
 	}
+}
+
+static void parse_feature(const char *features)
+{
+	char *buf, *sub, *next;
+
+	buf = calloc(strlen(features) + 1, sizeof(char));
+	ASSERT(buf);
+	strncpy(buf, features, strlen(features) + 1);
+
+	for (sub = buf; sub && *sub; sub = next ? next + 1 : NULL) {
+		/* Skip the beginning blanks */
+		while (*sub && *sub == ' ')
+			sub++;
+		next = sub;
+		/* Skip a feature word */
+		while (*next && *next != ' ' && *next != ',')
+			next++;
+
+		if (*next == 0)
+			next = NULL;
+		else
+			*next = 0;
+
+		set_feature_bits(sub);
+	}
+	free(buf);
 }
 
 static void f2fs_parse_options(int argc, char *argv[])
