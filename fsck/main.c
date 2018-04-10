@@ -58,6 +58,7 @@ void fsck_usage()
 	MSG(0, "  -t show directory tree\n");
 	MSG(0, "  -q preserve quota limits\n");
 	MSG(0, "  -y fix all the time\n");
+	MSG(0, "  -V print the version number and exit\n");
 	MSG(0, "  --dry-run do not really fix corruptions\n");
 	exit(1);
 }
@@ -73,6 +74,7 @@ void dump_usage()
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -b blk_addr (in 4KB)\n");
+	MSG(0, "  -V print the version number and exit\n");
 
 	exit(1);
 }
@@ -87,6 +89,7 @@ void defrag_usage()
 	MSG(0, "  -l length [default:512 (2MB)]\n");
 	MSG(0, "  -t target block address [default: main_blkaddr + 2MB]\n");
 	MSG(0, "  -i set direction as shrink [default: expand]\n");
+	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
 }
 
@@ -96,6 +99,7 @@ void resize_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -t target sectors [default: device size]\n");
+	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
 }
 
@@ -111,6 +115,7 @@ void sload_usage()
 	MSG(0, "  -t mount point [prefix of target fs path, default:/]\n");
 	MSG(0, "  -T timestamp\n");
 	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
 }
 
@@ -160,7 +165,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fp:q:Sty";
+		const char *option_string = ":ad:fp:q:StyV";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -240,6 +245,9 @@ void f2fs_parse_options(int argc, char *argv[])
 					break;
 				}
 				break;
+			case 'V':
+				show_version(prog);
+				exit(0);
 			case '?':
 				option = optopt;
 			default:
@@ -250,7 +258,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
-		const char *option_string = "d:i:n:s:Sa:b:";
+		const char *option_string = "d:i:n:s:Sa:b:V";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -310,6 +318,9 @@ void f2fs_parse_options(int argc, char *argv[])
 					ret = sscanf(optarg, "%x",
 							&dump_opt.blk_addr);
 				break;
+			case 'V':
+				show_version(prog);
+				exit(0);
 			default:
 				err = EUNKNOWN_OPT;
 				break;
@@ -321,7 +332,7 @@ void f2fs_parse_options(int argc, char *argv[])
 
 		c.private = &dump_opt;
 	} else if (!strcmp("defrag.f2fs", prog)) {
-		const char *option_string = "d:s:Sl:t:i";
+		const char *option_string = "d:s:Sl:t:iV";
 
 		c.func = DEFRAG;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -367,6 +378,9 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'i':
 				c.defrag_shrink = 1;
 				break;
+			case 'V':
+				show_version(prog);
+				exit(0);
 			default:
 				err = EUNKNOWN_OPT;
 				break;
@@ -376,7 +390,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("resize.f2fs", prog)) {
-		const char *option_string = "d:t:";
+		const char *option_string = "d:t:V";
 
 		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -400,6 +414,9 @@ void f2fs_parse_options(int argc, char *argv[])
 					ret = sscanf(optarg, "%"PRIx64"",
 							&c.target_sectors);
 				break;
+			case 'V':
+				show_version(prog);
+				exit(0);
 			default:
 				err = EUNKNOWN_OPT;
 				break;
@@ -409,7 +426,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("sload.f2fs", prog)) {
-		const char *option_string = "C:d:f:p:s:St:T:";
+		const char *option_string = "C:d:f:p:s:St:T:V";
 #ifdef HAVE_LIBSELINUX
 		int max_nr_opt = (int)sizeof(c.seopt_file) /
 			sizeof(c.seopt_file[0]);
@@ -467,6 +484,9 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'T':
 				c.fixed_time = strtoul(optarg, &p, 0);
 				break;
+			case 'V':
+				show_version(prog);
+				exit(0);
 			default:
 				err = EUNKNOWN_OPT;
 				break;

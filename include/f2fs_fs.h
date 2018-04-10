@@ -12,6 +12,7 @@
 #ifndef __F2FS_FS_H__
 #define __F2FS_FS_H__
 
+#include <stdio.h>
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -1296,6 +1297,11 @@ static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)
 		if (sb->qf_ino[i] == ino)
 			return 1;
 	return 0;
+}
+
+static inline void show_version(const char *prog)
+{
+	MSG(0, "%s %s (%s)\n", prog, F2FS_TOOLS_VERSION, F2FS_TOOLS_DATE);
 }
 
 #endif	/*__F2FS_FS_H */

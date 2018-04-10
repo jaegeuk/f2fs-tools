@@ -58,6 +58,7 @@ static void mkfs_usage()
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
 	MSG(0, "  -w wanted sector size\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
+	MSG(0, "  -V print the version number and exit\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
 	exit(1);
 }
@@ -136,7 +137,7 @@ static void parse_feature(const char *features)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:E:il:mo:O:s:S:z:t:fw:";
+	static const char *option_string = "qa:c:d:e:E:il:mo:O:s:S:z:t:fw:V";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -209,6 +210,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'w':
 			c.wanted_sector_size = atoi(optarg);
 			break;
+		case 'V':
+			show_version("mkfs.f2fs");
+			exit(0);
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
 			mkfs_usage();
