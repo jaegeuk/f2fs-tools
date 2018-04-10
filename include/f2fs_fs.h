@@ -1233,8 +1233,6 @@ extern int f2fs_get_zone_blocks(int);
 extern int f2fs_check_zones(int);
 extern int f2fs_reset_zones(int);
 
-extern struct f2fs_configuration c;
-
 #define SIZE_ALIGN(val, size)	((val) + (size) - 1) / (size)
 #define SEG_ALIGN(blks)		SIZE_ALIGN(blks, c.blks_per_seg)
 #define ZONE_ALIGN(blks)	SIZE_ALIGN(blks, c.blks_per_seg * \
