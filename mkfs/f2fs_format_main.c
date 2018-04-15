@@ -37,6 +37,24 @@ extern struct sparse_file *f2fs_sparse_file;
 extern struct f2fs_configuration c;
 static int force_overwrite = 0;
 
+struct feature {
+	char *name;
+	u32  mask;
+};
+
+struct feature feature_table[] = {
+	{ "encrypt",			F2FS_FEATURE_ENCRYPT },
+	{ "extra_attr",			F2FS_FEATURE_EXTRA_ATTR },
+	{ "project_quota",		F2FS_FEATURE_PRJQUOTA },
+	{ "inode_checksum",		F2FS_FEATURE_INODE_CHKSUM },
+	{ "flexible_inline_xattr",	F2FS_FEATURE_FLEXIBLE_INLINE_XATTR },
+	{ "quota",			F2FS_FEATURE_QUOTA_INO },
+	{ "inode_crtime",		F2FS_FEATURE_INODE_CRTIME },
+	{ "lost_found",			F2FS_FEATURE_LOST_FOUND },
+	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */
+	{ NULL,				0x0},
+};
+
 static void mkfs_usage()
 {
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
@@ -82,28 +100,21 @@ static void f2fs_show_info()
 	MSG(0, "Info: Trim is %s\n", c.trim ? "enabled": "disabled");
 }
 
+static inline u32 feature_map(char *feature)
+{
+	struct feature *p;
+	for (p = feature_table; p->name && strcmp(p->name, feature); p++)
+		;
+	return p->mask;
+}
+
 static void set_feature_bits(char *features)
 {
-	if (!strcmp(features, "encrypt")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
-	} else if (!strcmp(features, "verity")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_VERITY);
-	} else if (!strcmp(features, "extra_attr")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
-	} else if (!strcmp(features, "project_quota")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
-	} else if (!strcmp(features, "inode_checksum")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM);
-	} else if (!strcmp(features, "flexible_inline_xattr")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR);
-	} else if (!strcmp(features, "quota")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
-	} else if (!strcmp(features, "inode_crtime")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_INODE_CRTIME);
-	} else if (!strcmp(features, "lost_found")) {
-		c.feature |= cpu_to_le32(F2FS_FEATURE_LOST_FOUND);
+	u32 mask = feature_map(features);
+	if (mask) {
+		c.feature |= cpu_to_le32(mask);
 	} else {
-		MSG(0, "Error: Wrong features\n");
+		MSG(0, "Error: Wrong features %s\n", features);
 		mkfs_usage();
 	}
 }
