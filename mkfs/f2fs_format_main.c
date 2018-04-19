@@ -65,6 +65,7 @@ static void mkfs_usage()
 	MSG(0, "  -e [cold file ext list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -E [hot file ext list] e.g. \"db\"\n");
 	MSG(0, "  -f force overwrite the exist filesystem\n");
+	MSG(0, "  -g add default options\n");
 	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -m support zoned block device [default:0]\n");
@@ -98,6 +99,9 @@ static void f2fs_show_info()
 	if (c.vol_label)
 		MSG(0, "Info: Label = %s\n", c.vol_label);
 	MSG(0, "Info: Trim is %s\n", c.trim ? "enabled": "disabled");
+
+	if (c.defset == CONF_ANDROID)
+		MSG(0, "Info: Set conf for android\n");
 }
 
 static inline u32 feature_map(char *feature)
@@ -146,9 +150,23 @@ static void parse_feature(const char *features)
 	free(buf);
 }
 
+static void add_default_options(void)
+{
+	switch (c.defset) {
+	case CONF_ANDROID:
+		/* -d1 -f -O encrypt -O quota -w 4096 */
+		c.dbg_lv = 1;
+		force_overwrite = 1;
+		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+		c.wanted_sector_size = 4096;
+		break;
+	}
+}
+
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:E:il:mo:O:s:S:z:t:fw:V";
+	static const char *option_string = "qa:c:d:e:E:g:il:mo:O:s:S:z:t:fw:V";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -180,6 +198,10 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'E':
 			c.extension_list[1] = strdup(optarg);
+			break;
+		case 'g':
+			if (!strcmp(optarg, "android"))
+				c.defset = CONF_ANDROID;
 			break;
 		case 'i':
 			c.large_nat_bitmap = 1;
@@ -230,6 +252,8 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		}
 	}
+
+	add_default_options();
 
 	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR))) {
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {

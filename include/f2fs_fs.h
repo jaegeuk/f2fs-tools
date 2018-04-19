@@ -303,6 +303,11 @@ enum f2fs_config_func {
 	SLOAD,
 };
 
+enum default_set {
+	CONF_NONE = 0,
+	CONF_ANDROID,
+};
+
 struct device_info {
 	char *path;
 	int32_t fd;
@@ -361,6 +366,7 @@ struct f2fs_configuration {
 	void *private;
 	int dry_run;
 	int fix_on;
+	int defset;
 	int bug_on;
 	int auto_fix;
 	int preen_mode;

@@ -53,6 +53,7 @@ void fsck_usage()
 	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
+	MSG(0, "  -g add default options\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
@@ -145,6 +146,20 @@ static void error_out(char *prog)
 		MSG(0, "\nWrong program.\n");
 }
 
+static void __add_fsck_options(void)
+{
+	/* -a */
+	c.auto_fix = 1;
+}
+
+static void add_default_options(void)
+{
+	switch (c.defset) {
+	case CONF_ANDROID:
+		__add_fsck_options();
+	}
+}
+
 void f2fs_parse_options(int argc, char *argv[])
 {
 	int option = 0;
@@ -165,7 +180,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fp:q:StyV";
+		const char *option_string = ":ad:fg:p:q:StyV";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -183,6 +198,10 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'a':
 				c.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption.\n");
+				break;
+			case 'g':
+				if (!strcmp(optarg, "android"))
+					c.defset = CONF_ANDROID;
 				break;
 			case 'p':
 				/* preen mode has different levels:
@@ -283,6 +302,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							c.dbg_lv);
+				break;
+			case 'g':
+				if (!strcmp(optarg, "android")) {
+					c.defset = CONF_ANDROID;
+					MSG(0, "Info: Set conf for android\n");
+					break;
+				}
+				err = EWRONG_OPT;
 				break;
 			case 'i':
 				if (strncmp(optarg, "0x", 2))
@@ -495,6 +522,8 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	}
+
+	add_default_options();
 
 	if (optind >= argc) {
 		MSG(0, "\tError: Device not specified\n");
