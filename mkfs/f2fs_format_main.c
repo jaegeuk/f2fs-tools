@@ -37,23 +37,7 @@ extern struct sparse_file *f2fs_sparse_file;
 extern struct f2fs_configuration c;
 static int force_overwrite = 0;
 
-struct feature {
-	char *name;
-	u32  mask;
-};
-
-struct feature feature_table[] = {
-	{ "encrypt",			F2FS_FEATURE_ENCRYPT },
-	{ "extra_attr",			F2FS_FEATURE_EXTRA_ATTR },
-	{ "project_quota",		F2FS_FEATURE_PRJQUOTA },
-	{ "inode_checksum",		F2FS_FEATURE_INODE_CHKSUM },
-	{ "flexible_inline_xattr",	F2FS_FEATURE_FLEXIBLE_INLINE_XATTR },
-	{ "quota",			F2FS_FEATURE_QUOTA_INO },
-	{ "inode_crtime",		F2FS_FEATURE_INODE_CRTIME },
-	{ "lost_found",			F2FS_FEATURE_LOST_FOUND },
-	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */
-	{ NULL,				0x0},
-};
+INIT_FEATURE_TABLE;
 
 static void mkfs_usage()
 {
@@ -102,52 +86,6 @@ static void f2fs_show_info()
 
 	if (c.defset == CONF_ANDROID)
 		MSG(0, "Info: Set conf for android\n");
-}
-
-static inline u32 feature_map(char *feature)
-{
-	struct feature *p;
-	for (p = feature_table; p->name && strcmp(p->name, feature); p++)
-		;
-	return p->mask;
-}
-
-static void set_feature_bits(char *features)
-{
-	u32 mask = feature_map(features);
-	if (mask) {
-		c.feature |= cpu_to_le32(mask);
-	} else {
-		MSG(0, "Error: Wrong features %s\n", features);
-		mkfs_usage();
-	}
-}
-
-static void parse_feature(const char *features)
-{
-	char *buf, *sub, *next;
-
-	buf = calloc(strlen(features) + 1, sizeof(char));
-	ASSERT(buf);
-	strncpy(buf, features, strlen(features) + 1);
-
-	for (sub = buf; sub && *sub; sub = next ? next + 1 : NULL) {
-		/* Skip the beginning blanks */
-		while (*sub && *sub == ' ')
-			sub++;
-		next = sub;
-		/* Skip a feature word */
-		while (*next && *next != ' ' && *next != ',')
-			next++;
-
-		if (*next == 0)
-			next = NULL;
-		else
-			*next = 0;
-
-		set_feature_bits(sub);
-	}
-	free(buf);
 }
 
 static void add_default_options(void)
@@ -221,7 +159,8 @@ static void f2fs_parse_options(int argc, char *argv[])
 			c.overprovision = atof(optarg);
 			break;
 		case 'O':
-			parse_feature(optarg);
+			if (parse_feature(feature_table, optarg))
+				mkfs_usage();
 			break;
 		case 's':
 			c.segs_per_sec = atoi(optarg);

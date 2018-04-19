@@ -40,6 +40,14 @@
 #include <linux/blkzoned.h>
 #endif
 
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+
 #ifdef HAVE_LIBSELINUX
 #include <selinux/selinux.h>
 #include <selinux/label.h>
@@ -1308,4 +1316,73 @@ static inline void show_version(const char *prog)
 	MSG(0, "%s %s (%s)\n", prog, F2FS_TOOLS_VERSION, F2FS_TOOLS_DATE);
 }
 
+struct feature {
+	char *name;
+	u32  mask;
+};
+
+#define INIT_FEATURE_TABLE						\
+struct feature feature_table[] = {					\
+	{ "encrypt",			F2FS_FEATURE_ENCRYPT },		\
+	{ "extra_attr",			F2FS_FEATURE_EXTRA_ATTR },	\
+	{ "project_quota",		F2FS_FEATURE_PRJQUOTA },	\
+	{ "inode_checksum",		F2FS_FEATURE_INODE_CHKSUM },	\
+	{ "flexible_inline_xattr",	F2FS_FEATURE_FLEXIBLE_INLINE_XATTR },\
+	{ "quota",			F2FS_FEATURE_QUOTA_INO },	\
+	{ "inode_crtime",		F2FS_FEATURE_INODE_CRTIME },	\
+	{ "lost_found",			F2FS_FEATURE_LOST_FOUND },	\
+	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */ \
+	{ NULL,				0x0},				\
+};
+
+static inline u32 feature_map(struct feature *table, char *feature)
+{
+	struct feature *p;
+	for (p = table; p->name && strcmp(p->name, feature); p++)
+		;
+	return p->mask;
+}
+
+static inline int set_feature_bits(struct feature *table, char *features)
+{
+	u32 mask = feature_map(table, features);
+	if (mask) {
+		c.feature |= cpu_to_le32(mask);
+	} else {
+		MSG(0, "Error: Wrong features %s\n", features);
+		return -1;
+	}
+	return 0;
+}
+
+static inline int parse_feature(struct feature *table, const char *features)
+{
+	char *buf, *sub, *next;
+
+	buf = calloc(strlen(features) + 1, sizeof(char));
+	ASSERT(buf);
+	strncpy(buf, features, strlen(features) + 1);
+
+	for (sub = buf; sub && *sub; sub = next ? next + 1 : NULL) {
+		/* Skip the beginning blanks */
+		while (*sub && *sub == ' ')
+			sub++;
+		next = sub;
+		/* Skip a feature word */
+		while (*next && *next != ' ' && *next != ',')
+			next++;
+
+		if (*next == 0)
+			next = NULL;
+		else
+			*next = 0;
+
+		if (set_feature_bits(table, sub)) {
+			free(buf);
+			return -1;
+		}
+	}
+	free(buf);
+	return 0;
+}
 #endif	/*__F2FS_FS_H */
