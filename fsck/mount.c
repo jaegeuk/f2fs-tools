@@ -2228,6 +2228,22 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 }
 
+void write_superblock(struct f2fs_super_block *new_sb)
+{
+	int index, ret;
+	u_int8_t *buf;
+
+	buf = calloc(BLOCK_SZ, 1);
+
+	memcpy(buf + F2FS_SUPER_OFFSET, new_sb, sizeof(*new_sb));
+	for (index = 0; index < 2; index++) {
+		ret = dev_write_block(buf, index);
+		ASSERT(ret >= 0);
+	}
+	free(buf);
+	DBG(0, "Info: Done to rebuild superblock\n");
+}
+
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
@@ -2398,6 +2414,26 @@ static int check_sector_size(struct f2fs_super_block *sb)
 	return 0;
 }
 
+static void tune_sb_features(struct f2fs_sb_info *sbi)
+{
+	int sb_changed = 0;
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) &&
+			c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
+		sb->feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+		MSG(0, "Info: Set Encryption feature\n");
+		sb_changed = 1;
+	}
+	/* TODO: quota needs to allocate inode numbers */
+
+	c.feature = sb->feature;
+	if (!sb_changed)
+		return;
+
+	write_superblock(sb);
+}
+
 int f2fs_do_mount(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = NULL;
@@ -2449,7 +2485,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 
 	c.bug_on = 0;
-	c.feature = sb->feature;
+
+	tune_sb_features(sbi);
 
 	/* precompute checksum seed for metadata */
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))

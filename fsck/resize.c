@@ -572,22 +572,6 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	DBG(0, "Info: Done to rebuild checkpoint blocks\n");
 }
 
-static void rebuild_superblock(struct f2fs_super_block *new_sb)
-{
-	int index, ret;
-	u_int8_t *buf;
-
-	buf = calloc(BLOCK_SZ, 1);
-
-	memcpy(buf + F2FS_SUPER_OFFSET, new_sb, sizeof(*new_sb));
-	for (index = 0; index < 2; index++) {
-		ret = dev_write_block(buf, index);
-		ASSERT(ret >= 0);
-	}
-	free(buf);
-	DBG(0, "Info: Done to rebuild superblock\n");
-}
-
 int f2fs_resize(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
@@ -639,6 +623,6 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	migrate_nat(sbi, new_sb);
 	migrate_sit(sbi, new_sb, offset_seg);
 	rebuild_checkpoint(sbi, new_sb, offset_seg);
-	rebuild_superblock(new_sb);
+	write_superblock(new_sb);
 	return 0;
 }

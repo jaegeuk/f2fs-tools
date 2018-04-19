@@ -28,6 +28,8 @@ struct f2fs_fsck gfsck;
 extern struct sparse_file *f2fs_sparse_file;
 #endif
 
+INIT_FEATURE_TABLE;
+
 static char *absolute_path(const char *file)
 {
 	char *ret;
@@ -54,6 +56,7 @@ void fsck_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -g add default options\n");
+	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
@@ -180,7 +183,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fg:p:q:StyV";
+		const char *option_string = ":ad:fg:O:p:q:StyV";
 		int opt = 0;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
@@ -202,6 +205,10 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'g':
 				if (!strcmp(optarg, "android"))
 					c.defset = CONF_ANDROID;
+				break;
+			case 'O':
+				if (parse_feature(feature_table, optarg))
+					fsck_usage();
 				break;
 			case 'p':
 				/* preen mode has different levels:
