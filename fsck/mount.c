@@ -904,7 +904,7 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_summary_block *sum = curseg->sum_blk;
 	struct f2fs_journal *journal = &sum->journal;
-	struct f2fs_nat_block nat_block;
+	struct f2fs_nat_block *nat_block;
 	block_t start_blk;
 	nid_t nid;
 	int i;
@@ -919,18 +919,22 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 	/* arbitrarily set 0 bit */
 	f2fs_set_bit(0, nm_i->nid_bitmap);
 
-	memset((void *)&nat_block, 0, sizeof(struct f2fs_nat_block));
+	nat_block = malloc(F2FS_BLKSIZE);
+	if (!nat_block) {
+		free(nm_i->nid_bitmap);
+		return -ENOMEM;
+	}
 
 	for (nid = 0; nid < nm_i->max_nid; nid++) {
 		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
 			int ret;
 
 			start_blk = current_nat_addr(sbi, nid);
-			ret = dev_read_block((void *)&nat_block, start_blk);
+			ret = dev_read_block(nat_block, start_blk);
 			ASSERT(ret >= 0);
 		}
 
-		if (nat_block.entries[nid % NAT_ENTRY_PER_BLOCK].block_addr)
+		if (nat_block->entries[nid % NAT_ENTRY_PER_BLOCK].block_addr)
 			f2fs_set_bit(nid, nm_i->nid_bitmap);
 	}
 
@@ -942,6 +946,7 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 		if (addr != NULL_ADDR)
 			f2fs_set_bit(nid, nm_i->nid_bitmap);
 	}
+	free(nat_block);
 	return 0;
 }
 
