@@ -2234,6 +2234,7 @@ void write_superblock(struct f2fs_super_block *new_sb)
 	u_int8_t *buf;
 
 	buf = calloc(BLOCK_SZ, 1);
+	ASSERT(buf);
 
 	memcpy(buf + F2FS_SUPER_OFFSET, new_sb, sizeof(*new_sb));
 	for (index = 0; index < 2; index++) {
