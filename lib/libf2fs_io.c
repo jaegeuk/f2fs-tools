@@ -114,8 +114,13 @@ static int sparse_write_blk(__u64 block, int count, const void *buf)
 	return 0;
 }
 
+#ifdef SPARSE_CALLBACK_USES_SIZE_T
+static int sparse_import_segment(void *UNUSED(priv), const void *data,
+		size_t len, unsigned int block, unsigned int nr_blocks)
+#else
 static int sparse_import_segment(void *UNUSED(priv), const void *data, int len,
 		unsigned int block, unsigned int nr_blocks)
+#endif
 {
 	/* Ignore chunk headers, only write the data */
 	if (!nr_blocks || len % F2FS_BLKSIZE)
