@@ -27,6 +27,9 @@
 #ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>
 #endif
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
 #ifndef WITH_ANDROID
 #ifdef HAVE_SCSI_SG_H
 #include <scsi/sg.h>
@@ -740,6 +743,21 @@ void get_kernel_version(__u8 *version)
 	memset(version + i, 0, VERSION_LEN + 1 - i);
 }
 
+void get_kernel_uname_version(__u8 *version)
+{
+#ifdef HAVE_SYS_UTSNAME_H
+	struct utsname buf;
+
+	memset(version, 0, VERSION_LEN);
+	if (uname(&buf))
+		return;
+
+	snprintf((char *)version,
+		VERSION_LEN, "%s %s", buf.release, buf.version);
+#else
+	memset(version, 0, VERSION_LEN);
+#endif
+}
 
 #if defined(__linux__) && defined(_IO) && !defined(BLKGETSIZE)
 #define BLKGETSIZE	_IO(0x12,96)
@@ -796,7 +814,9 @@ int get_device_info(int i)
 	}
 
 	if (c.kd == -1) {
+#if !defined(WITH_ANDROID) && defined(__linux__)
 		c.kd = open("/proc/version", O_RDONLY);
+#endif
 		if (c.kd < 0) {
 			MSG(0, "\tInfo: No support kernel version!\n");
 			c.kd = -2;

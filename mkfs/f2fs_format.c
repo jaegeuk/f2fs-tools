@@ -442,7 +442,7 @@ static int f2fs_prepare_super_block(void)
 		get_kernel_version(c.version);
 		MSG(0, "Info: format version with\n  \"%s\"\n", c.version);
 	} else {
-		memset(c.version, 0, VERSION_LEN);
+		get_kernel_uname_version(c.version);
 	}
 
 	memcpy(sb->version, c.version, VERSION_LEN);

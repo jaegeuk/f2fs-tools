@@ -625,7 +625,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 			dev_read_version(c.version, 0, VERSION_LEN);
 			get_kernel_version(c.version);
 		} else {
-			memset(c.version, 0, VERSION_LEN);
+			get_kernel_uname_version(c.version);
 		}
 
 		/* build sb version */

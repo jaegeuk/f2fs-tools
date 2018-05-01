@@ -102,6 +102,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	sys/syscall.h
 	sys/mount.h
 	sys/sysmacros.h
+	sys/utsname.h
 	sys/xattr.h
 	unistd.h
 ]))

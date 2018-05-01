@@ -13,6 +13,7 @@
 #define HAVE_SYS_IOCTL_H 1
 #define HAVE_SYS_SYSCALL_H 1
 #define HAVE_SYS_MOUNT_H 1
+#define HAVE_SYS_UTSNAME_H 1
 #define HAVE_SYS_SYSMACROS_H 1
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
@@ -43,6 +44,7 @@
 #define HAVE_SYS_IOCTL_H 1
 #define HAVE_SYS_SYSCALL_H 1
 #define HAVE_SYS_MOUNT_H 1
+#define HAVE_SYS_UTSNAME_H 1
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
 

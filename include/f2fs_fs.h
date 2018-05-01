@@ -1118,6 +1118,7 @@ extern int dev_reada_block(__u64);
 
 extern int dev_read_version(void *, __u64, size_t);
 extern void get_kernel_version(__u8 *);
+extern void get_kernel_uname_version(__u8 *);
 f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
 
 static inline bool f2fs_has_extra_isize(struct f2fs_inode *inode)
