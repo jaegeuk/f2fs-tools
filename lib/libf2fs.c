@@ -533,7 +533,7 @@ __u32 f2fs_inode_chksum(struct f2fs_node *node)
  */
 const char *get_rootdev()
 {
-#ifdef ANDROID_WINDOWS_HOST
+#if defined(ANDROID_WINDOWS_HOST) || defined(WITH_ANDROID)
 	return NULL;
 #else
 	struct stat sb;
