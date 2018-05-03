@@ -157,7 +157,7 @@ static void set_inode_metadata(struct dentry *de)
 
 	de->size = stat.st_size;
 	de->mode = stat.st_mode &
-			(S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
+			(S_IFMT|S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO);
 	if (c.fixed_time == -1 && c.from_dir)
 		de->mtime = stat.st_mtime;
 	else
