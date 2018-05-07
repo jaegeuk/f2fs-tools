@@ -106,7 +106,7 @@ static int set_perms_and_caps(struct dentry *de)
 
 	/* Permissions */
 	if (fs_config_func != NULL) {
-		fs_config_func(mnt_path, S_ISDIR(de->mode),
+		fs_config_func(mnt_path, de->file_type == F2FS_FT_DIR,
 				c.target_out_dir, &uid, &gid, &imode,
 				&capabilities);
 		de->uid = uid & 0xffff;
