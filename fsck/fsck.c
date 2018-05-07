@@ -1764,19 +1764,7 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 	if (fsck_chk_orphan_node(sbi))
 		return -EINVAL;
 
-	/* 5. check quota inode simply */
-	if (fsck_chk_quota_node(sbi))
-		return -EINVAL;
-
-	if (fsck->nat_valid_inode_cnt != le32_to_cpu(cp->valid_inode_count)) {
-		ASSERT_MSG("valid inode does not match: nat_valid_inode_cnt %u,"
-				" valid_inode_count %u",
-				fsck->nat_valid_inode_cnt,
-				le32_to_cpu(cp->valid_inode_count));
-		return -EINVAL;
-	}
-
-	/*check nat entry with sit_area_bitmap*/
+	/* 5. check nat entry -- must be done before quota check */
 	for (i = 0; i < fsck->nr_nat_entries; i++) {
 		u32 blk = le32_to_cpu(fsck->entries[i].block_addr);
 		nid_t ino = le32_to_cpu(fsck->entries[i].ino);
@@ -1814,6 +1802,18 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 				" nat_area_bitmap\n", ino);
 			return -EINVAL;
 		}
+	}
+
+	/* 6. check quota inode simply */
+	if (fsck_chk_quota_node(sbi))
+		return -EINVAL;
+
+	if (fsck->nat_valid_inode_cnt != le32_to_cpu(cp->valid_inode_count)) {
+		ASSERT_MSG("valid inode does not match: nat_valid_inode_cnt %u,"
+				" valid_inode_count %u",
+				fsck->nat_valid_inode_cnt,
+				le32_to_cpu(cp->valid_inode_count));
+		return -EINVAL;
 	}
 
 	return 0;
