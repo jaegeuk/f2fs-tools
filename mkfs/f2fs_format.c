@@ -212,18 +212,18 @@ static int f2fs_prepare_super_block(void)
 	set_sb(block_count, c.total_sectors >> log_sectors_per_block);
 
 	zone_align_start_offset =
-		(c.start_sector * c.sector_size +
+		(c.start_sector * DEFAULT_SECTOR_SIZE +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		c.start_sector * c.sector_size;
+		c.start_sector * DEFAULT_SECTOR_SIZE;
 
-	if (c.start_sector % c.sectors_per_blk) {
+	if (c.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
 		MSG(1, "\t%s: Align start sector number to the page unit\n",
 				c.zoned_mode ? "FAIL" : "WARN");
 		MSG(1, "\ti.e., start sector: %d, ofs:%d (sects/page: %d)\n",
 				c.start_sector,
-				c.start_sector % c.sectors_per_blk,
-				c.sectors_per_blk);
+				c.start_sector % DEFAULT_SECTORS_PER_BLOCK,
+				DEFAULT_SECTORS_PER_BLOCK);
 		if (c.zoned_mode)
 			return -1;
 	}
@@ -235,7 +235,7 @@ static int f2fs_prepare_super_block(void)
 					get_sb(segment0_blkaddr));
 
 	if (c.zoned_mode && (get_sb(segment0_blkaddr) + c.start_sector /
-					c.sectors_per_blk) % c.zone_blocks) {
+					DEFAULT_SECTORS_PER_BLOCK) % c.zone_blocks) {
 		MSG(1, "\tError: Unaligned segment0 block address %u\n",
 				get_sb(segment0_blkaddr));
 		return -1;
