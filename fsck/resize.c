@@ -37,6 +37,9 @@ static int get_new_sb(struct f2fs_super_block *sb)
 				zone_align_start_offset) / segment_size_bytes /
 				c.segs_per_sec * c.segs_per_sec);
 
+	if (c.safe_resize)
+		goto safe_resize;
+
 	blocks_for_sit = SIZE_ALIGN(get_sb(segment_count), SIT_ENTRY_PER_BLOCK);
 	sit_segments = SEG_ALIGN(blocks_for_sit);
 	set_sb(segment_count_sit, sit_segments * 2);
@@ -129,6 +132,7 @@ static int get_new_sb(struct f2fs_super_block *sb)
 	set_sb(main_blkaddr, get_sb(ssa_blkaddr) + get_sb(segment_count_ssa) *
 			 blks_per_seg);
 
+safe_resize:
 	set_sb(segment_count_main, get_sb(segment_count) -
 			(get_sb(segment_count_ckpt) +
 			 get_sb(segment_count_sit) +
@@ -573,7 +577,23 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	DBG(0, "Info: Done to rebuild checkpoint blocks\n");
 }
 
-int f2fs_resize(struct f2fs_sb_info *sbi)
+static void rebuild_superblock(struct f2fs_super_block *new_sb)
+{
+	int index, ret;
+	u_int8_t *buf;
+
+	buf = calloc(BLOCK_SZ, 1);
+
+	memcpy(buf + F2FS_SUPER_OFFSET, new_sb, sizeof(*new_sb));
+	for (index = 0; index < 2; index++) {
+		ret = dev_write_block(buf, index);
+		ASSERT(ret >= 0);
+	}
+	free(buf);
+	DBG(0, "Info: Done to rebuild superblock\n");
+}
+
+static int f2fs_resize_grow(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_super_block new_sb_raw;
@@ -626,4 +646,87 @@ int f2fs_resize(struct f2fs_sb_info *sbi)
 	rebuild_checkpoint(sbi, new_sb, offset_seg);
 	write_superblock(new_sb);
 	return 0;
+}
+
+static int f2fs_resize_shrink(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	struct f2fs_super_block new_sb_raw;
+	struct f2fs_super_block *new_sb = &new_sb_raw;
+	block_t old_end_blkaddr, old_main_blkaddr;
+	block_t new_end_blkaddr, new_main_blkaddr, tmp_end_blkaddr;
+	unsigned int offset;
+	int err = -1;
+
+	/* flush NAT/SIT journal entries */
+	flush_journal_entries(sbi);
+
+	memcpy(new_sb, F2FS_RAW_SUPER(sbi), sizeof(*new_sb));
+	if (get_new_sb(new_sb))
+		return -1;
+
+	/* check nat availability */
+	if (get_sb(segment_count_nat) > get_newsb(segment_count_nat)) {
+		err = shrink_nats(sbi, new_sb);
+		if (err) {
+			MSG(0, "\tError: Failed to shrink NATs\n");
+			return err;
+		}
+	}
+
+	print_raw_sb_info(sb);
+	print_raw_sb_info(new_sb);
+
+	old_main_blkaddr = get_sb(main_blkaddr);
+	new_main_blkaddr = get_newsb(main_blkaddr);
+	offset = old_main_blkaddr - new_main_blkaddr;
+	old_end_blkaddr = (get_sb(segment_count_main) <<
+			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
+	new_end_blkaddr = (get_newsb(segment_count_main) <<
+			get_newsb(log_blocks_per_seg)) + get_newsb(main_blkaddr);
+
+	tmp_end_blkaddr = new_end_blkaddr + offset;
+	err = f2fs_defragment(sbi, tmp_end_blkaddr,
+				old_end_blkaddr - tmp_end_blkaddr,
+				tmp_end_blkaddr, 1);
+	MSG(0, "Try to do defragement: %s\n", err ? "Insufficient Space": "Done");
+
+	if (err) {
+		return -ENOSPC;
+	}
+
+	rebuild_superblock(new_sb);
+	rebuild_checkpoint(sbi, new_sb, 0);
+	/*if (!c.safe_resize) {
+		migrate_sit(sbi, new_sb, offset_seg);
+		migrate_nat(sbi, new_sb);
+		migrate_ssa(sbi, new_sb, offset_seg);
+	}*/
+
+	/* move whole data region */
+	//if (err)
+	//	migrate_main(sbi, offset);
+	return 0;
+}
+
+int f2fs_resize(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	/* may different sector size */
+	if ((c.target_sectors * c.sector_size >>
+			get_sb(log_blocksize)) < get_sb(block_count))
+		if (!c.safe_resize) {
+			ASSERT_MSG("Nothing to resize, now only supports resizing with safe resize flag\n");
+			return -1;
+		} else {
+			return f2fs_resize_shrink(sbi);
+		}
+	else if ((c.target_sectors * c.sector_size >>
+			get_sb(log_blocksize)) > get_sb(block_count))
+		return f2fs_resize_grow(sbi);
+	else {
+		MSG(0, "Nothing to resize.\n");
+		return 0;
+	}
 }

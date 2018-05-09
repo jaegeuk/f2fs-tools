@@ -404,6 +404,9 @@ struct f2fs_configuration {
 	int nr_opt;
 #endif
 
+	/* resize parameters */
+	int safe_resize;
+
 	/* precomputed fs UUID checksum for seeding other checksums */
 	u_int32_t chksum_seed;
 };

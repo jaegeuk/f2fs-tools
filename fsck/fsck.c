@@ -2665,7 +2665,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
 			if (check_curseg_offset(sbi)) {
-				move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
+				move_curseg_info(sbi, SM_I(sbi)->main_blkaddr, 0);
 				write_curseg_info(sbi);
 				flush_curseg_sit_entries(sbi);
 			}

@@ -2056,6 +2056,8 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 	u64 end_blkaddr = (get_sb(segment_count_main) <<
 			get_sb(log_blocks_per_seg)) + get_sb(main_blkaddr);
 
+	if (*to > 0)
+		*to -= left;
 	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
 		not_enough = 1;
 
@@ -2100,7 +2102,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 	return -1;
 }
 
-void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
+void move_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left)
 {
 	int i, ret;
 
@@ -2117,7 +2119,7 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from)
 		ASSERT(ret >= 0);
 
 		to = from;
-		ret = find_next_free_block(sbi, &to, 0, i);
+		ret = find_next_free_block(sbi, &to, left, i);
 		ASSERT(ret == 0);
 
 		old_segno = curseg->segno;

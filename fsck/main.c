@@ -102,6 +102,7 @@ void resize_usage()
 	MSG(0, "\nUsage: resize.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -s safe resize (Does not resize metadata)");
 	MSG(0, "  -t target sectors [default: device size]\n");
 	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
@@ -424,7 +425,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 		}
 	} else if (!strcmp("resize.f2fs", prog)) {
-		const char *option_string = "d:t:V";
+		const char *option_string = "d:st:V";
 
 		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -439,6 +440,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							c.dbg_lv);
+				break;
+			case 's':
+				c.safe_resize = 1;
 				break;
 			case 't':
 				if (strncmp(optarg, "0x", 2))
@@ -706,8 +710,6 @@ out_range:
 
 static int do_resize(struct f2fs_sb_info *sbi)
 {
-	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
-
 	if (!c.target_sectors)
 		c.target_sectors = c.total_sectors;
 
@@ -717,12 +719,6 @@ static int do_resize(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
-	/* may different sector size */
-	if ((c.target_sectors * c.sector_size >>
-			get_sb(log_blocksize)) <= get_sb(block_count)) {
-		ASSERT_MSG("Nothing to resize, now only support resize to expand\n");
-		return -1;
-	}
 	return f2fs_resize(sbi);
 }
 

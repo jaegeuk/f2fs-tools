@@ -318,7 +318,7 @@ int f2fs_sload(struct f2fs_sb_info *sbi)
 	}
 
 	/* update curseg info; can update sit->types */
-	move_curseg_info(sbi, SM_I(sbi)->main_blkaddr);
+	move_curseg_info(sbi, SM_I(sbi)->main_blkaddr, 0);
 	zero_journal_entries(sbi);
 	write_curseg_info(sbi);
 
