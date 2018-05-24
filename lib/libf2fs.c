@@ -867,13 +867,8 @@ int get_device_info(int i)
 		io_hdr.timeout = 1000;
 
 		if (!ioctl(fd, SG_IO, &io_hdr)) {
-			int i = 16;
-
-			MSG(0, "Info: [%s] Disk Model: ",
-					dev->path);
-			while (reply_buffer[i] != '`' && i < 80)
-				printf("%c", reply_buffer[i++]);
-			printf("\n");
+			MSG(0, "Info: [%s] Disk Model: %.16s\n",
+					dev->path, reply_buffer+16);
 		}
 #endif
 	} else {
