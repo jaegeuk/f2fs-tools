@@ -408,17 +408,18 @@ static int f2fs_prepare_super_block(void)
 	if (c.overprovision == 0)
 		c.overprovision = get_best_overprovision(sb);
 
+	c.reserved_segments =
+			(2 * (100 / c.overprovision + 1) + NR_CURSEG_TYPE)
+			* c.segs_per_sec;
+
 	if (c.overprovision == 0 || c.total_segments < F2FS_MIN_SEGMENTS ||
 		(c.devices[0].total_sectors *
 			c.sector_size < zone_align_start_offset) ||
-		(get_sb(segment_count_main) - 2) < c.reserved_segments) {
+		(get_sb(segment_count_main) - NR_CURSEG_TYPE) <
+						c.reserved_segments) {
 		MSG(0, "\tError: Device size is not sufficient for F2FS volume\n");
 		return -1;
 	}
-
-	c.reserved_segments =
-			(2 * (100 / c.overprovision + 1) + 6)
-			* c.segs_per_sec;
 
 	uuid_generate(sb->uuid);
 
