@@ -212,10 +212,10 @@ static int f2fs_prepare_super_block(void)
 	set_sb(block_count, c.total_sectors >> log_sectors_per_block);
 
 	zone_align_start_offset =
-		(c.start_sector * DEFAULT_SECTOR_SIZE +
+		((u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		c.start_sector * DEFAULT_SECTOR_SIZE;
+		(u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
 
 	if (c.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
 		MSG(1, "\t%s: Align start sector number to the page unit\n",

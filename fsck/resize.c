@@ -11,7 +11,8 @@
 
 static int get_new_sb(struct f2fs_super_block *sb)
 {
-	u_int32_t zone_size_bytes, zone_align_start_offset;
+	u_int32_t zone_size_bytes;
+	u_int64_t zone_align_start_offset;
 	u_int32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
 	u_int32_t sit_segments, nat_segments, diff, total_meta_segments;
 	u_int32_t total_valid_blks_available;
@@ -27,10 +28,10 @@ static int get_new_sb(struct f2fs_super_block *sb)
 
 	zone_size_bytes = segment_size_bytes * segs_per_zone;
 	zone_align_start_offset =
-		(c.start_sector * DEFAULT_SECTOR_SIZE +
+		((u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		c.start_sector * DEFAULT_SECTOR_SIZE;
+		(u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
 
 	set_sb(segment_count, (c.target_sectors * c.sector_size -
 				zone_align_start_offset) / segment_size_bytes /
