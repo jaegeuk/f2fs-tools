@@ -1741,7 +1741,7 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 		se = get_seg_entry(sbi, i);
 		if (se->valid_blocks != 0)
 			sit_valid_segs++;
-		else if (IS_CUR_SEGNO(sbi, i, NO_CHECK_TYPE)) {
+		else if (IS_CUR_SEGNO(sbi, i)) {
 			/* curseg has not been written back to device */
 			MSG(1, "\tInfo: curseg %u is counted in valid segs\n", i);
 			sit_valid_segs++;

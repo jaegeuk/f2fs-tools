@@ -35,8 +35,7 @@ u32 get_free_segments(struct f2fs_sb_info *sbi)
 	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
 		struct seg_entry *se = get_seg_entry(sbi, i);
 
-		if (se->valid_blocks == 0x0 &&
-				!IS_CUR_SEGNO(sbi, i, NO_CHECK_TYPE))
+		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, i))
 			free_segs++;
 	}
 	return free_segs;
@@ -1970,8 +1969,7 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 							se->valid_blocks);
 		rewrite_current_sit_page(sbi, segno, sit_blk);
 
-		if (se->valid_blocks == 0x0 &&
-				!IS_CUR_SEGNO(sbi, segno, NO_CHECK_TYPE))
+		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, segno))
 			free_segs++;
 	}
 
@@ -1999,7 +1997,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 		se = get_seg_entry(sbi, segno);
 
 		if (se->valid_blocks == sbi->blocks_per_seg ||
-				IS_CUR_SEGNO(sbi, segno, type)) {
+				IS_CUR_SEGNO(sbi, segno)) {
 			*to = left ? START_BLOCK(sbi, segno) - 1:
 						START_BLOCK(sbi, segno + 1);
 			continue;

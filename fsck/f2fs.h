@@ -380,15 +380,12 @@ static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
 	return 1;
 }
 
-static inline int IS_CUR_SEGNO(struct f2fs_sb_info *sbi, u32 segno, int type)
+static inline int IS_CUR_SEGNO(struct f2fs_sb_info *sbi, u32 segno)
 {
 	int i;
 
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
-
-		if (type == i)
-			continue;
 
 		if (segno == curseg->segno)
 			return 1;
