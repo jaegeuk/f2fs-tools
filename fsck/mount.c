@@ -340,7 +340,7 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
 	DISP_u32(sb, cp_payload);
-	DISP("%s", sb, version);
+	DISP("%-.256s", sb, version);
 	printf("\n");
 }
 
