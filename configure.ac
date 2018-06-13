@@ -166,7 +166,7 @@ build_mac=no
 
 # Detect the target system
 case "${host_os}" in
-linux*)
+linux*|uclinux*)
 	build_linux=yes
 	;;
 cygwin*|mingw*)
