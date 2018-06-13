@@ -1947,11 +1947,9 @@ void flush_journal_entries(struct f2fs_sb_info *sbi)
 
 void flush_sit_entries(struct f2fs_sb_info *sbi)
 {
-	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct f2fs_sit_block *sit_blk;
 	unsigned int segno = 0;
-	u32 free_segs = 0;
 
 	sit_blk = calloc(BLOCK_SZ, 1);
 	ASSERT(sit_blk);
@@ -1971,13 +1969,9 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 		sit->vblocks = cpu_to_le16((se->type << SIT_VBLOCKS_SHIFT) |
 							se->valid_blocks);
 		rewrite_current_sit_page(sbi, segno, sit_blk);
-
-		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, segno))
-			free_segs++;
 	}
 
 	free(sit_blk);
-	set_cp(free_segment_count, free_segs);
 }
 
 int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
