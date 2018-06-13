@@ -1229,6 +1229,7 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 		SET_SUM_TYPE(sum_footer, SUM_TYPE_NODE);
 	se = get_seg_entry(sbi, curseg->segno);
 	se->type = type;
+	se->dirty = 1;
 }
 
 static void read_compacted_summaries(struct f2fs_sb_info *sbi)
