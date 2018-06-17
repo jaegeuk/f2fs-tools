@@ -2575,6 +2575,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 
 		if (force || c.bug_on) {
+			/* flush nats to write_nit_bits below */
+			flush_journal_entries(sbi);
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);

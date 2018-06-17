@@ -1044,6 +1044,85 @@ void write_nat_bits(struct f2fs_sb_info *sbi,
 	free(nat_bits);
 }
 
+static int check_nat_bits(struct f2fs_sb_info *sbi,
+	struct f2fs_super_block *sb, struct f2fs_checkpoint *cp)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	u_int32_t nat_blocks = get_sb(segment_count_nat) <<
+				(get_sb(log_blocks_per_seg) - 1);
+	u_int32_t nat_bits_bytes = nat_blocks >> 3;
+	u_int32_t nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) +
+					8 + F2FS_BLKSIZE - 1);
+	unsigned char *nat_bits, *full_nat_bits, *empty_nat_bits;
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
+	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	u_int32_t i, j;
+	block_t blkaddr;
+	int err = 0;
+
+	nat_bits = calloc(F2FS_BLKSIZE, nat_bits_blocks);
+	ASSERT(nat_bits);
+
+	full_nat_bits = nat_bits + 8;
+	empty_nat_bits = full_nat_bits + nat_bits_bytes;
+
+	blkaddr = get_sb(segment0_blkaddr) + (sbi->cur_cp <<
+				get_sb(log_blocks_per_seg)) - nat_bits_blocks;
+
+	for (i = 0; i < nat_bits_blocks; i++) {
+		if (dev_read_block(nat_bits + i * F2FS_BLKSIZE, blkaddr + i))
+			ASSERT_MSG("\tError: read NAT bits to disk!!!\n");
+	}
+
+	if (*(__le64 *)nat_bits != get_cp_crc(cp) || nats_in_cursum(journal)) {
+		/*
+		 * if there is a journal, f2fs was not shutdown cleanly. Let's
+		 * flush them with nat_bits.
+		 */
+		if (c.fix_on)
+			err = -1;
+		/* Otherwise, kernel will disable nat_bits */
+		goto out;
+	}
+
+	for (i = 0; i < nat_blocks; i++) {
+		u_int32_t start_nid = i * NAT_ENTRY_PER_BLOCK;
+		u_int32_t valid = 0;
+		int empty = test_bit_le(i, empty_nat_bits);
+		int full = test_bit_le(i, full_nat_bits);
+
+		for (j = 0; j < NAT_ENTRY_PER_BLOCK; j++) {
+			if (f2fs_test_bit(start_nid + j, nm_i->nid_bitmap))
+				valid++;
+		}
+		if (valid == 0) {
+			if (!empty || full) {
+				err = -1;
+				goto out;
+			}
+		} else if (valid == NAT_ENTRY_PER_BLOCK) {
+			if (empty || !full) {
+				err = -1;
+				goto out;
+			}
+		} else {
+			if (empty || full) {
+				err = -1;
+				goto out;
+			}
+		}
+	}
+out:
+	free(nat_bits);
+	if (!err) {
+		MSG(0, "Info: Checked valid nat_bits in checkpoint\n");
+	} else {
+		c.bug_on = 1;
+		MSG(0, "Info: Corrupted valid nat_bits in checkpoint\n");
+	}
+	return err;
+}
+
 int init_node_manager(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
@@ -2394,28 +2473,9 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 
 	/* Check nat_bits */
-	if (c.func != DUMP && is_set_ckpt_flags(cp, CP_NAT_BITS_FLAG)) {
-		u_int32_t nat_bits_bytes, nat_bits_blocks;
-		__le64 *kaddr;
-		u_int32_t blk;
-
-		blk = get_sb(cp_blkaddr) + (1 << get_sb(log_blocks_per_seg));
-		if (sbi->cur_cp == 2)
-			blk += 1 << get_sb(log_blocks_per_seg);
-
-		nat_bits_bytes = get_sb(segment_count_nat) << 5;
-		nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) + 8 +
-				F2FS_BLKSIZE - 1);
-		blk -= nat_bits_blocks;
-
-		kaddr = malloc(PAGE_SIZE);
-		ret = dev_read_block(kaddr, blk);
-		ASSERT(ret >= 0);
-		if (*kaddr != get_cp_crc(cp))
+	if (c.func == FSCK && is_set_ckpt_flags(cp, CP_NAT_BITS_FLAG)) {
+		if (check_nat_bits(sbi, sb, cp) && c.fix_on)
 			write_nat_bits(sbi, sb, cp, sbi->cur_cp);
-		else
-			MSG(0, "Info: Found valid nat_bits in checkpoint\n");
-		free(kaddr);
 	}
 	return 0;
 }
