@@ -339,8 +339,11 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 				(seg_off << sbi->log_blocks_per_seg << 1) +
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
 
-		if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+		/* move to set #0 */
+		if (f2fs_test_bit(block_off, nm_i->nat_bitmap)) {
 			block_addr += sbi->blocks_per_seg;
+			f2fs_clear_bit(block_off, nm_i->nat_bitmap);
+		}
 
 		ret = dev_read_block(nat_block, block_addr);
 		ASSERT(ret >= 0);
