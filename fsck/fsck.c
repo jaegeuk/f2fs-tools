@@ -2422,6 +2422,45 @@ out:
 	return cnt;
 }
 
+int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
+{
+	struct curseg_info *curseg;
+	struct seg_entry *se;
+	struct f2fs_summary_block *sum_blk;
+	int i, ret = 0;
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		curseg = CURSEG_I(sbi, i);
+		se = get_seg_entry(sbi, curseg->segno);
+		sum_blk = curseg->sum_blk;
+
+		if (se->type != i) {
+			ASSERT_MSG("Incorrect curseg [%d]: segno [0x%x] "
+				   "type(SIT) [%d]", i, curseg->segno,
+				   se->type);
+			if (c.fix_on || c.preen_mode)
+				se->type = i;
+			ret = -1;
+		}
+		if (i <= CURSEG_COLD_DATA && IS_SUM_DATA_SEG(sum_blk->footer)) {
+			continue;
+		} else if (i > CURSEG_COLD_DATA && IS_SUM_NODE_SEG(sum_blk->footer)) {
+			continue;
+		} else {
+			ASSERT_MSG("Incorrect curseg [%d]: segno [0x%x] "
+				   "type(SSA) [%d]", i, curseg->segno,
+				   sum_blk->footer.entry_type);
+			if (c.fix_on || c.preen_mode)
+				sum_blk->footer.entry_type =
+					i <= CURSEG_COLD_DATA ?
+					SUM_TYPE_DATA : SUM_TYPE_NODE;
+			ret = -1;
+		}
+	}
+
+	return ret;
+}
+
 int fsck_verify(struct f2fs_sb_info *sbi)
 {
 	unsigned int i = 0;
