@@ -13,6 +13,8 @@
 #define __F2FS_FS_H__
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -38,14 +40,6 @@
 
 #ifdef HAVE_LINUX_BLKZONED_H
 #include <linux/blkzoned.h>
-#endif
-
-#ifdef HAVE_STDLIB_H
-#include <stdlib.h>
-#endif
-
-#ifdef HAVE_STRING_H
-#include <string.h>
 #endif
 
 #ifdef HAVE_LIBSELINUX
