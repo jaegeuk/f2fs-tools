@@ -1663,7 +1663,7 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 		nid_t ino = QUOTA_INO(sb, qtype);
 		struct node_info ni;
 
-		DBG(1, "[%3d] ino [0x%x]\n", qtype, ino);
+		DBG(1, "qtype [%d] ino [0x%x]\n", qtype, ino);
 		blk_cnt = 1;
 
 		if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
@@ -1676,7 +1676,8 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 		ret = fsck_chk_node_blk(sbi, NULL, ino,
 				F2FS_FT_REG_FILE, TYPE_INODE, &blk_cnt, NULL);
 		if (ret)
-			ASSERT_MSG("[0x%x] wrong orphan inode", ino);
+			ASSERT_MSG("wrong quota inode, qtype [%d] ino [0x%x]",
+								qtype, ino);
 	}
 	return ret;
 }
