@@ -73,7 +73,7 @@ void dump_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -i inode no (hex)\n");
-	MSG(0, "  -n [NAT dump segno from #1~#2 (decimal), for all 0~-1]\n");
+	MSG(0, "  -n [NAT dump nid from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
@@ -641,7 +641,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	if (opt->end_ssa == -1)
 		opt->end_ssa = SM_I(sbi)->main_segments;
 	if (opt->start_nat != -1)
-		nat_dump(sbi);
+		nat_dump(sbi, opt->start_nat, opt->end_nat);
 	if (opt->start_sit != -1)
 		sit_dump(sbi, opt->start_sit, opt->end_sit);
 	if (opt->start_ssa != -1)

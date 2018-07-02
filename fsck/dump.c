@@ -31,78 +31,38 @@ const char *seg_type_name[SEG_TYPE_MAX + 1] = {
 	"SEG_TYPE_NONE",
 };
 
-void nat_dump(struct f2fs_sb_info *sbi)
+void nat_dump(struct f2fs_sb_info *sbi, nid_t start_nat, nid_t end_nat)
 {
-	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
-	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	struct f2fs_nat_block *nat_block;
 	struct f2fs_node *node_block;
-	u32 nr_nat_blks, nid;
-	pgoff_t block_off;
+	nid_t nid;
 	pgoff_t block_addr;
 	char buf[BUF_SZ];
-	int seg_off;
 	int fd, ret, pack;
-	unsigned int i;
 
 	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
-	node_block = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
 	ASSERT(nat_block);
-
-	nr_nat_blks = get_sb(segment_count_nat) <<
-				(sbi->log_blocks_per_seg - 1);
+	node_block = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_block);
 
 	fd = open("dump_nat", O_CREAT|O_WRONLY|O_TRUNC, 0666);
 	ASSERT(fd >= 0);
 
-	for (block_off = 0; block_off < nr_nat_blks; pack = 1, block_off++) {
+	for (nid = start_nat; nid < end_nat; nid++) {
+		struct f2fs_nat_entry raw_nat;
+		struct node_info ni;
+		if(nid == 0 || nid == F2FS_NODE_INO(sbi) ||
+					nid == F2FS_META_INO(sbi))
+			continue;
 
-		seg_off = block_off >> sbi->log_blocks_per_seg;
-		block_addr = (pgoff_t)(nm_i->nat_blkaddr +
-			(seg_off << sbi->log_blocks_per_seg << 1) +
-			(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
+		ni.nid = nid;
+		block_addr = current_nat_addr(sbi, nid, &pack);
 
-		if (f2fs_test_bit(block_off, nm_i->nat_bitmap)) {
-			block_addr += sbi->blocks_per_seg;
-			pack = 2;
-		}
-
-		ret = dev_read_block(nat_block, block_addr);
-		ASSERT(ret >= 0);
-
-		nid = block_off * NAT_ENTRY_PER_BLOCK;
-		for (i = 0; i < NAT_ENTRY_PER_BLOCK; i++) {
-			struct f2fs_nat_entry raw_nat;
-			struct node_info ni;
-			ni.nid = nid + i;
-
-			if(nid + i  == 0 || nid + i  == 1 || nid + i == 2 )
-				continue;
-			if (lookup_nat_in_journal(sbi, nid + i,
-							&raw_nat) >= 0) {
-				node_info_from_raw_nat(&ni, &raw_nat);
-				ret = dev_read_block(node_block, ni.blk_addr);
-				ASSERT(ret >= 0);
-				if (ni.blk_addr != 0x0) {
-					memset(buf, 0, BUF_SZ);
-					snprintf(buf, BUF_SZ,
-						"nid:%5u\tino:%5u\toffset:%5u"
-						"\tblkaddr:%10u\tpack:%d\n",
-						ni.nid, ni.ino,
-						le32_to_cpu(node_block->footer.flag) >>
-							OFFSET_BIT_SHIFT,
-						ni.blk_addr, pack);
-					ret = write(fd, buf, strlen(buf));
-					ASSERT(ret >= 0);
-				}
-			} else {
-				node_info_from_raw_nat(&ni,
-						&nat_block->entries[i]);
-				if (ni.blk_addr == 0)
-					continue;
-
-				ret = dev_read_block(node_block, ni.blk_addr);
-				ASSERT(ret >= 0);
+		if (lookup_nat_in_journal(sbi, nid, &raw_nat) >= 0) {
+			node_info_from_raw_nat(&ni, &raw_nat);
+			ret = dev_read_block(node_block, ni.blk_addr);
+			ASSERT(ret >= 0);
+			if (ni.blk_addr != 0x0) {
 				memset(buf, 0, BUF_SZ);
 				snprintf(buf, BUF_SZ,
 					"nid:%5u\tino:%5u\toffset:%5u"
@@ -114,6 +74,26 @@ void nat_dump(struct f2fs_sb_info *sbi)
 				ret = write(fd, buf, strlen(buf));
 				ASSERT(ret >= 0);
 			}
+		} else {
+			ret = dev_read_block(nat_block, block_addr);
+			ASSERT(ret >= 0);
+			node_info_from_raw_nat(&ni,
+					&nat_block->entries[nid % NAT_ENTRY_PER_BLOCK]);
+			if (ni.blk_addr == 0)
+				continue;
+
+			ret = dev_read_block(node_block, ni.blk_addr);
+			ASSERT(ret >= 0);
+			memset(buf, 0, BUF_SZ);
+			snprintf(buf, BUF_SZ,
+				"nid:%5u\tino:%5u\toffset:%5u"
+				"\tblkaddr:%10u\tpack:%d\n",
+				ni.nid, ni.ino,
+				le32_to_cpu(node_block->footer.flag) >>
+					OFFSET_BIT_SHIFT,
+				ni.blk_addr, pack);
+			ret = write(fd, buf, strlen(buf));
+			ASSERT(ret >= 0);
 		}
 	}
 

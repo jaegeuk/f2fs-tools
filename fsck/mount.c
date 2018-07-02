@@ -881,7 +881,7 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
-static pgoff_t current_nat_addr(struct f2fs_sb_info *sbi, nid_t start)
+pgoff_t current_nat_addr(struct f2fs_sb_info *sbi, nid_t start, int *pack)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	pgoff_t block_off;
@@ -894,9 +894,14 @@ static pgoff_t current_nat_addr(struct f2fs_sb_info *sbi, nid_t start)
 	block_addr = (pgoff_t)(nm_i->nat_blkaddr +
 			(seg_off << sbi->log_blocks_per_seg << 1) +
 			(block_off & ((1 << sbi->log_blocks_per_seg) -1)));
+	if (pack)
+		*pack = 1;
 
-	if (f2fs_test_bit(block_off, nm_i->nat_bitmap))
+	if (f2fs_test_bit(block_off, nm_i->nat_bitmap)) {
 		block_addr += sbi->blocks_per_seg;
+		if (pack)
+			*pack = 2;
+	}
 
 	return block_addr;
 }
@@ -933,7 +938,7 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
 			int ret;
 
-			start_blk = current_nat_addr(sbi, nid);
+			start_blk = current_nat_addr(sbi, nid, NULL);
 			ret = dev_read_block(nat_block, start_blk);
 			ASSERT(ret >= 0);
 		}
@@ -1599,7 +1604,7 @@ static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-	block_addr = current_nat_addr(sbi, nid);
+	block_addr = current_nat_addr(sbi, nid, NULL);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -1673,7 +1678,7 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-	block_addr = current_nat_addr(sbi, nid);
+	block_addr = current_nat_addr(sbi, nid, NULL);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -1922,7 +1927,7 @@ next:
 	nid = le32_to_cpu(nid_in_journal(journal, i));
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-	block_addr = current_nat_addr(sbi, nid);
+	block_addr = current_nat_addr(sbi, nid, NULL);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
@@ -2138,7 +2143,7 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
-	block_addr = current_nat_addr(sbi, nid);
+	block_addr = current_nat_addr(sbi, nid, NULL);
 
 	ret = dev_read_block(nat_block, block_addr);
 	ASSERT(ret >= 0);
