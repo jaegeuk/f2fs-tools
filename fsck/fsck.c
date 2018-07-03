@@ -584,6 +584,9 @@ static void check_extent_info(struct child_info *child,
 	if (child->state & FSCK_UNMATCHED_EXTENT)
 		return;
 
+	if ((child->state & FSCK_INLINE_INODE) && ei->len)
+		goto unmatched;
+
 	if (last) {
 		/* hole exist in the back of extent */
 		if (child->last_blk != ei->blk + ei->len - 1)
@@ -719,6 +722,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			ftype == F2FS_FT_FIFO || ftype == F2FS_FT_SOCK)
 		goto check;
 
+	/* init extent info */
+	get_extent_info(&child.ei, &node_blk->i.i_ext);
+	child.last_blk = 0;
+
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
 			/* should fix this bug all the time */
@@ -740,6 +747,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			}
 		}
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
+		child.state |= FSCK_INLINE_INODE;
 		goto check;
 	}
 
@@ -759,12 +767,9 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			/* should fix this bug all the time */
 			need_fix = 1;
 		}
+		child.state |= FSCK_INLINE_INODE;
 		goto check;
 	}
-
-	/* init extent info */
-	get_extent_info(&child.ei, &node_blk->i.i_ext);
-	child.last_blk = 0;
 
 	/* check data blocks in inode */
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i);
@@ -835,6 +840,7 @@ skip:
 
 	}
 
+check:
 	/* check uncovered range in the back of extent */
 	check_extent_info(&child, 0, 1);
 
@@ -844,7 +850,7 @@ skip:
 		if (c.fix_on)
 			need_fix = 1;
 	}
-check:
+
 	if (i_blocks != *blk_cnt) {
 		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
 				"but has %u blocks",

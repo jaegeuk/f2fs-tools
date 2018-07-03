@@ -16,6 +16,7 @@
 struct quota_ctx;
 
 #define FSCK_UNMATCHED_EXTENT		0x00000001
+#define FSCK_INLINE_INODE		0x00000002
 
 enum {
 	PREEN_MODE_0,
