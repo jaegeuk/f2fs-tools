@@ -783,21 +783,35 @@ int get_device_info(int i)
 #endif
 	struct device_info *dev = c.devices + i;
 
+	stat_buf = malloc(sizeof(struct stat));
+	ASSERT(stat_buf);
+	if (stat(dev->path, stat_buf) < 0 ) {
+		MSG(0, "\tError: Failed to get the device stat!\n");
+		free(stat_buf);
+		return -1;
+	}
+
 	if (c.sparse_mode) {
-		fd = open((char *)dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
+		fd = open(dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
 	} else {
-		fd = open((char *)dev->path, O_RDWR);
+		if (S_ISBLK(stat_buf->st_mode))
+			fd = open(dev->path, O_RDWR | O_EXCL);
+		else
+			fd = open(dev->path, O_RDWR);
 	}
 	if (fd < 0) {
 		MSG(0, "\tError: Failed to open the device!\n");
+		free(stat_buf);
 		return -1;
 	}
 
 	dev->fd = fd;
 
 	if (c.sparse_mode) {
-		if (f2fs_init_sparse_file())
+		if (f2fs_init_sparse_file()) {
+			free(stat_buf);
 			return -1;
+		}
 	}
 
 	if (c.kd == -1) {
@@ -808,13 +822,6 @@ int get_device_info(int i)
 			MSG(0, "\tInfo: No support kernel version!\n");
 			c.kd = -2;
 		}
-	}
-
-	stat_buf = malloc(sizeof(struct stat));
-	if (fstat(fd, stat_buf) < 0 ) {
-		MSG(0, "\tError: Failed to get the device stat!\n");
-		free(stat_buf);
-		return -1;
 	}
 
 	if (c.sparse_mode) {
