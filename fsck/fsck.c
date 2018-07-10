@@ -660,7 +660,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	int ofs;
 	unsigned char *en;
-	int namelen;
+	u32 namelen;
 	unsigned int idx = 0;
 	int need_fix = 0;
 	int ret;
@@ -1145,7 +1145,7 @@ static int digest_encode(const char *src, int len, char *dst)
 	return cp - dst;
 }
 
-int convert_encrypted_name(unsigned char *name, int len,
+int convert_encrypted_name(unsigned char *name, u32 len,
 				unsigned char *new, int enc_name)
 {
 	if (!enc_name) {
@@ -1166,7 +1166,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 {
 	int last_de = 0;
 	int next_idx = 0;
-	int name_len;
+	u32 name_len;
 	unsigned int i;
 	int bit_offset;
 	unsigned char new[F2FS_NAME_LEN + 1];

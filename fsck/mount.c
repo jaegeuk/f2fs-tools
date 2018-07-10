@@ -175,7 +175,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	struct f2fs_xattr_entry *ent;
 	unsigned char en[F2FS_NAME_LEN + 1];
 	unsigned int i = 0;
-	int namelen = le32_to_cpu(inode->i_namelen);
+	u32 namelen = le32_to_cpu(inode->i_namelen);
 	int enc_name = file_enc_name(inode);
 	int ofs = __get_extra_isize(inode);
 
