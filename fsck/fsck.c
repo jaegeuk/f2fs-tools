@@ -658,7 +658,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
-	int ofs = get_extra_isize(node_blk);
+	int ofs;
 	unsigned char *en;
 	int namelen;
 	unsigned int idx = 0;
@@ -725,6 +725,22 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	/* init extent info */
 	get_extent_info(&child.ei, &node_blk->i.i_ext);
 	child.last_blk = 0;
+
+	if (f2fs_has_extra_isize(&node_blk->i)) {
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+			if (node_blk->i.i_extra_isize >
+				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE)) {
+				node_blk->i.i_extra_isize =
+					cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+				need_fix = 1;
+			}
+		} else {
+			/* we don't support tuning F2FS_FEATURE_EXTRA_ATTR now */
+			node_blk->i.i_inline &= ~F2FS_EXTRA_ATTR;
+			need_fix = 1;
+		}
+	}
+	ofs = get_extra_isize(node_blk);
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
