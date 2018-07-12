@@ -160,6 +160,7 @@ errcode_t quota_file_create(struct f2fs_sb_info *sbi, struct quota_handle *h,
 	f2fs_ino_t qf_inum = sb->qf_ino[qtype];
 	errcode_t err = 0;
 
+	memset(&h->qh_qf, 0, sizeof(h->qh_qf));
 	h->qh_qf.sbi = sbi;
 	h->qh_qf.ino = qf_inum;
 	h->write = quota_write_nomount;
