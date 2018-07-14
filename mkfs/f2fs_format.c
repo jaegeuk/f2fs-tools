@@ -43,6 +43,9 @@ const char *media_ext_lists[] = {
 	"png",
 	"avi",
 	"divx",
+	"m4a",
+	"m4v",
+	"m4p",
 	"mp4",
 	"mp3",
 	"3gp",
@@ -56,15 +59,19 @@ const char *media_ext_lists[] = {
 	"wmx",
 	"svi",
 	"wvx",
+	"wv",
 	"wm",
 	"mpg",
 	"mpe",
 	"rm",
 	"ogg",
+	"opus",
+	"flac",
 	"jpeg",
 	"video",
 	"apk",	/* for android system */
 	"so",	/* for android system */
+	"exe",
 	NULL
 };
 
