@@ -202,22 +202,22 @@ static void f2fs_parse_options(int argc, char *argv[])
 
 	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR))) {
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
-			MSG(0, "\tInfo: project quota feature should always been"
+			MSG(0, "\tInfo: project quota feature should always be "
 				"enabled with extra attr feature\n");
 			exit(1);
 		}
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
-			MSG(0, "\tInfo: inode checksum feature should always been"
+			MSG(0, "\tInfo: inode checksum feature should always be "
 				"enabled with extra attr feature\n");
 			exit(1);
 		}
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
-			MSG(0, "\tInfo: flexible inline xattr feature should always been"
+			MSG(0, "\tInfo: flexible inline xattr feature should always be "
 				"enabled with extra attr feature\n");
 			exit(1);
 		}
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
-			MSG(0, "\tInfo: inode crtime feature should always been"
+			MSG(0, "\tInfo: inode crtime feature should always be "
 				"enabled with extra attr feature\n");
 			exit(1);
 		}

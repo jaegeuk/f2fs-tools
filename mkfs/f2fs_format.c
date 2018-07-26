@@ -594,19 +594,19 @@ static int f2fs_write_check_point_pack(void)
 
 	cp = calloc(F2FS_BLKSIZE, 1);
 	if (cp == NULL) {
-		MSG(1, "\tError: Calloc Failed for f2fs_checkpoint!!!\n");
+		MSG(1, "\tError: Calloc failed for f2fs_checkpoint!!!\n");
 		return ret;
 	}
 
 	sum = calloc(F2FS_BLKSIZE, 1);
 	if (sum == NULL) {
-		MSG(1, "\tError: Calloc Failed for summay_node!!!\n");
+		MSG(1, "\tError: Calloc failed for summary_node!!!\n");
 		goto free_cp;
 	}
 
 	sum_compact = calloc(F2FS_BLKSIZE, 1);
 	if (sum_compact == NULL) {
-		MSG(1, "\tError: Calloc Failed for summay buffer!!!\n");
+		MSG(1, "\tError: Calloc failed for summary buffer!!!\n");
 		goto free_sum;
 	}
 	sum_compact_p = sum_compact;
@@ -616,13 +616,13 @@ static int f2fs_write_check_point_pack(void)
 						F2FS_BLKSIZE - 1);
 	nat_bits = calloc(F2FS_BLKSIZE, nat_bits_blocks);
 	if (nat_bits == NULL) {
-		MSG(1, "\tError: Calloc Failed for nat bits buffer!!!\n");
+		MSG(1, "\tError: Calloc failed for nat bits buffer!!!\n");
 		goto free_sum_compact;
 	}
 
 	cp_payload = calloc(F2FS_BLKSIZE, 1);
 	if (cp_payload == NULL) {
-		MSG(1, "\tError: Calloc Failed for cp_payload!!!\n");
+		MSG(1, "\tError: Calloc failed for cp_payload!!!\n");
 		goto free_nat_bits;
 	}
 
@@ -928,7 +928,7 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* cp page 1 of check point pack 2
-	 * Initiatialize other checkpoint pack with version zero
+	 * Initialize other checkpoint pack with version zero
 	 */
 	cp->checkpoint_ver = 0;
 
@@ -1638,13 +1638,13 @@ int f2fs_format_device(void)
 
 	err = f2fs_init_sit_area();
 	if (err < 0) {
-		MSG(0, "\tError: Failed to Initialise the SIT AREA!!!\n");
+		MSG(0, "\tError: Failed to initialise the SIT AREA!!!\n");
 		goto exit;
 	}
 
 	err = f2fs_init_nat_area();
 	if (err < 0) {
-		MSG(0, "\tError: Failed to Initialise the NAT AREA!!!\n");
+		MSG(0, "\tError: Failed to initialise the NAT AREA!!!\n");
 		goto exit;
 	}
 
@@ -1662,7 +1662,7 @@ int f2fs_format_device(void)
 
 	err = f2fs_write_super_block();
 	if (err < 0) {
-		MSG(0, "\tError: Failed to write the Super Block!!!\n");
+		MSG(0, "\tError: Failed to write the super block!!!\n");
 		goto exit;
 	}
 exit:
