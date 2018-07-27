@@ -56,6 +56,7 @@ static void mkfs_usage()
 	MSG(0, "  -o overprovision ratio [default:5]\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -q quiet mode\n");
+	MSG(0, "  -R root_owner [default: 0:0]\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -S sparse mode\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
@@ -104,7 +105,7 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:E:g:il:mo:O:s:S:z:t:fw:V";
+	static const char *option_string = "qa:c:d:e:E:g:il:mo:O:R:s:S:z:t:fw:V";
 	int32_t option=0;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
@@ -160,6 +161,10 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'O':
 			if (parse_feature(feature_table, optarg))
+				mkfs_usage();
+			break;
+		case 'R':
+			if (parse_root_owner(optarg, &c.root_uid, &c.root_gid))
 				mkfs_usage();
 			break;
 		case 's':

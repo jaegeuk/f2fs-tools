@@ -1078,8 +1078,8 @@ static int f2fs_write_root_inode(void)
 		raw_node->i.i_links = cpu_to_le32(3);
 	else
 		raw_node->i.i_links = cpu_to_le32(2);
-	raw_node->i.i_uid = cpu_to_le32(getuid());
-	raw_node->i.i_gid = cpu_to_le32(getgid());
+	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
+	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
 
 	blk_size_bytes = 1 << get_sb(log_blocksize);
 	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes); /* dentry */
@@ -1236,8 +1236,8 @@ static int f2fs_write_qf_inode(int qtype)
 
 	raw_node->i.i_mode = cpu_to_le16(0x8180);
 	raw_node->i.i_links = cpu_to_le32(1);
-	raw_node->i.i_uid = cpu_to_le32(getuid());
-	raw_node->i.i_gid = cpu_to_le32(getgid());
+	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
+	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
 
 	raw_node->i.i_size = cpu_to_le64(1024 * 6); /* Hard coded */
 	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
@@ -1435,8 +1435,8 @@ static int f2fs_write_lpf_inode(void)
 
 	raw_node->i.i_mode = cpu_to_le16(0x41c0); /* 0700 */
 	raw_node->i.i_links = cpu_to_le32(2);
-	raw_node->i.i_uid = cpu_to_le32(getuid());
-	raw_node->i.i_gid = cpu_to_le32(getgid());
+	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
+	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
 
 	blk_size_bytes = 1 << get_sb(log_blocksize);
 	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes);

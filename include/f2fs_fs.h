@@ -384,6 +384,8 @@ struct f2fs_configuration {
 	u_int32_t lpf_inum;
 	u_int32_t lpf_dnum;
 	u_int32_t lpf_ino;
+	u_int32_t root_uid;
+	u_int32_t root_gid;
 
 	/* defragmentation parameters */
 	int defrag_shrink;
@@ -1379,4 +1381,24 @@ static inline int parse_feature(struct feature *table, const char *features)
 	free(buf);
 	return 0;
 }
+
+static inline int parse_root_owner(char *ids,
+			u_int32_t *root_uid, u_int32_t *root_gid)
+{
+	char *uid = ids;
+	char *gid = NULL;
+	int i;
+
+	/* uid:gid */
+	for (i = 0; i < strlen(ids) - 1; i++)
+		if (*(ids + i) == ':')
+			gid = ids + i + 1;
+	if (!gid)
+		return -1;
+
+	*root_uid = atoi(uid);
+	*root_gid = atoi(gid);
+	return 0;
+}
+
 #endif	/*__F2FS_FS_H */

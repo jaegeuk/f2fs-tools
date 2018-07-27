@@ -615,6 +615,10 @@ void f2fs_init_configuration(void)
 	c.trim = 1;
 	c.kd = -1;
 	c.fixed_time = -1;
+
+	/* default root owner */
+	c.root_uid = getuid();
+	c.root_gid = getgid();
 }
 
 #ifdef HAVE_SETMNTENT
