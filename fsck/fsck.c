@@ -2523,7 +2523,11 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 
 	for (i = 0; i < fsck->nr_nat_entries; i++) {
 		if (f2fs_test_bit(i, fsck->nat_area_bitmap) != 0) {
-			printf("NID[0x%x] is unreachable\n", i);
+			struct node_info ni;
+
+			get_node_info(sbi, i, &ni);
+			printf("NID[0x%x] is unreachable, blkaddr:0x%x\n",
+							i, ni.blk_addr);
 			nr_unref_nid++;
 		}
 	}
