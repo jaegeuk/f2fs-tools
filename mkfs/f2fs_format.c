@@ -1251,7 +1251,7 @@ static int f2fs_write_qf_inode(int qtype)
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
 	raw_node->i.i_flags = FS_IMMUTABLE_FL;
-	raw_node->i.i_current_depth = cpu_to_le32(1);
+	raw_node->i.i_current_depth = cpu_to_le32(0);
 	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {

@@ -445,7 +445,10 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 	node_blk->i.i_ctime_nsec = 0;
 	node_blk->i.i_mtime_nsec = 0;
 	node_blk->i.i_generation = 0;
-	node_blk->i.i_current_depth = cpu_to_le32(1);
+	if (de->file_type == F2FS_FT_DIR)
+		node_blk->i.i_current_depth = cpu_to_le32(1);
+	else
+		node_blk->i.i_current_depth = cpu_to_le32(0);
 	node_blk->i.i_xattr_nid = 0;
 	node_blk->i.i_flags = 0;
 	node_blk->i.i_inline = F2FS_INLINE_XATTR;

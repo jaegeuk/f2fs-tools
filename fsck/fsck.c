@@ -662,6 +662,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	unsigned char *en;
 	u32 namelen;
 	unsigned int idx = 0;
+	unsigned short i_gc_failures;
 	int need_fix = 0;
 	int ret;
 
@@ -936,6 +937,21 @@ skip_blkcnt_fix:
 				need_fix = 1;
 				FIX_MSG("Dir: 0x%x set inline_dots", nid);
 			}
+		}
+	}
+
+	i_gc_failures = le16_to_cpu(node_blk->i.i_gc_failures);
+	if (ftype == F2FS_FT_REG_FILE && i_gc_failures) {
+
+		DBG(1, "Regular Inode: 0x%x [%s] depth: %d\n\n",
+				le32_to_cpu(node_blk->footer.ino), en,
+				i_gc_failures);
+
+		if (c.fix_on) {
+			node_blk->i.i_gc_failures = cpu_to_le16(0);
+			need_fix = 1;
+			FIX_MSG("Regular: 0x%x reset i_gc_failures from 0x%x to 0x00",
+					nid, i_gc_failures);
 		}
 	}
 
