@@ -747,6 +747,9 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 	if (f2fs_crc_valid(crc, cp, crc_offset))
 		goto invalid_cp1;
 
+	if (get_cp(cp_pack_total_block_count) > sbi->blocks_per_seg)
+		goto invalid_cp1;
+
 	pre_version = get_cp(checkpoint_ver);
 
 	/* Read the 2nd cp block in this CP pack */
@@ -867,16 +870,78 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	unsigned int total, fsmeta;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	unsigned int ovp_segments, reserved_segments;
+	unsigned int main_segs, blocks_per_seg;
+	unsigned int sit_segs, nat_segs;
+	unsigned int sit_bitmap_size, nat_bitmap_size;
+	unsigned int log_blocks_per_seg;
+	unsigned int segment_count_main;
+	unsigned int cp_pack_start_sum, cp_payload;
+	block_t user_block_count;
+	int i;
 
 	total = get_sb(segment_count);
 	fsmeta = get_sb(segment_count_ckpt);
-	fsmeta += get_sb(segment_count_sit);
-	fsmeta += get_sb(segment_count_nat);
+	sit_segs = get_sb(segment_count_sit);
+	fsmeta += sit_segs;
+	nat_segs = get_sb(segment_count_nat);
+	fsmeta += nat_segs;
 	fsmeta += get_cp(rsvd_segment_count);
 	fsmeta += get_sb(segment_count_ssa);
 
 	if (fsmeta >= total)
 		return 1;
+
+	ovp_segments = get_cp(overprov_segment_count);
+	reserved_segments = get_cp(rsvd_segment_count);
+
+	if (fsmeta < F2FS_MIN_SEGMENT || ovp_segments == 0 ||
+					reserved_segments == 0) {
+		MSG(0, "\tWrong layout: check mkfs.f2fs version\n");
+		return 1;
+	}
+
+	user_block_count = get_cp(user_block_count);
+	segment_count_main = get_sb(segment_count_main);
+	log_blocks_per_seg = get_sb(log_blocks_per_seg);
+	if (!user_block_count || user_block_count >=
+			segment_count_main << log_blocks_per_seg) {
+		MSG(0, "\tWrong user_block_count(%u)\n", user_block_count);
+		return 1;
+	}
+
+	main_segs = get_sb(segment_count_main);
+	blocks_per_seg = sbi->blocks_per_seg;
+
+	for (i = 0; i < NR_CURSEG_NODE_TYPE; i++) {
+		if (get_cp(cur_node_segno[i]) >= main_segs ||
+			get_cp(cur_node_blkoff[i]) >= blocks_per_seg)
+			return 1;
+	}
+	for (i = 0; i < NR_CURSEG_DATA_TYPE; i++) {
+		if (get_cp(cur_data_segno[i]) >= main_segs ||
+			get_cp(cur_data_blkoff[i]) >= blocks_per_seg)
+			return 1;
+	}
+
+	sit_bitmap_size = get_cp(sit_ver_bitmap_bytesize);
+	nat_bitmap_size = get_cp(nat_ver_bitmap_bytesize);
+
+	if (sit_bitmap_size != ((sit_segs / 2) << log_blocks_per_seg) / 8 ||
+		nat_bitmap_size != ((nat_segs / 2) << log_blocks_per_seg) / 8) {
+		MSG(0, "\tWrong bitmap size: sit(%u), nat(%u)\n",
+				sit_bitmap_size, nat_bitmap_size);
+		return 1;
+	}
+
+	cp_pack_start_sum = __start_sum_addr(sbi);
+	cp_payload = get_sb(cp_payload);
+	if (cp_pack_start_sum < cp_payload + 1 ||
+		cp_pack_start_sum > blocks_per_seg - 1 -
+			NR_CURSEG_TYPE) {
+		MSG(0, "\tWrong cp_pack_start_sum(%u)\n", cp_pack_start_sum);
+		return 1;
+	}
 
 	return 0;
 }
