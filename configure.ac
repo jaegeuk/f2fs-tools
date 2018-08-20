@@ -190,6 +190,17 @@ AM_CONDITIONAL([OSX], [test "$build_mac" = "yes"])
 #AC_SUBST([sbindir], [/sbin])
 #AC_SUBST([sysconfdir], [/etc])
 #AC_SUBST([localstatedir], [/var])
+
+AC_ARG_WITH([root-libdir],
+[  --with-root-libdir=DIR override location for /lib/libf2fs.so],
+root_libdir=$withval,
+root_libdir=NONE)dnl
+
+if test "$root_libdir" = NONE ; then
+   root_libdir="$libdir"
+fi
+AC_SUBST(root_libdir)
+
 AC_CONFIG_FILES([
 	Makefile
 	man/Makefile
