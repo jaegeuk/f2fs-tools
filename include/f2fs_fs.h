@@ -278,7 +278,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
-#define CHECKSUM_OFFSET		4092
+#define CP_CHKSUM_OFFSET	4092
 #define MAX_PATH_LEN		64
 #define MAX_DEVICES		8
 
@@ -679,9 +679,9 @@ struct f2fs_checkpoint {
 } __attribute__((packed));
 
 #define MAX_SIT_BITMAP_SIZE_IN_CKPT    \
-	(CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1 - 64)
+	(CP_CHKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1 - 64)
 #define MAX_BITMAP_SIZE_IN_CKPT	\
-	(CHECKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1)
+	(CP_CHKSUM_OFFSET - sizeof(struct f2fs_checkpoint) + 1)
 
 /*
  * For orphan inode management
