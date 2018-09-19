@@ -2670,7 +2670,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 				flush_curseg_sit_entries(sbi);
 			}
 			fix_checkpoint(sbi);
-		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG)) {
+		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG) ||
+			is_set_ckpt_flags(cp, CP_QUOTA_NEED_FSCK_FLAG)) {
 			write_checkpoint(sbi);
 		}
 	}

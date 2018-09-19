@@ -162,6 +162,7 @@ static void add_default_options(void)
 	case CONF_ANDROID:
 		__add_fsck_options();
 	}
+	c.quota_fix = 1;
 }
 
 void f2fs_parse_options(int argc, char *argv[])
