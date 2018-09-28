@@ -477,8 +477,28 @@ void print_sb_state(struct f2fs_super_block *sb)
 	MSG(0, "\n");
 }
 
+void update_superblock(struct f2fs_super_block *sb, int sb_mask)
+{
+	int addr, ret;
+	u_int8_t *buf;
+
+	buf = calloc(BLOCK_SZ, 1);
+	ASSERT(buf);
+
+	memcpy(buf + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
+	for (addr = SB0_ADDR; addr < SB_MAX_ADDR; addr++) {
+		if (SB_MASK(addr) & sb_mask) {
+			ret = dev_write_block(buf, addr);
+			ASSERT(ret >= 0);
+		}
+	}
+
+	free(buf);
+	DBG(0, "Info: Done to update superblock\n");
+}
+
 static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
-							u64 offset)
+							enum SB_ADDR sb_addr)
 {
 	u32 segment0_blkaddr = get_sb(segment0_blkaddr);
 	u32 cp_blkaddr = get_sb(cp_blkaddr);
@@ -544,14 +564,11 @@ static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
 			segment_count_main << log_blocks_per_seg);
 		return -1;
 	} else if (main_end_blkaddr < seg_end_blkaddr) {
-		int err;
-
 		set_sb(segment_count, (main_end_blkaddr -
 				segment0_blkaddr) >> log_blocks_per_seg);
 
-		err = dev_write(sb, offset, sizeof(struct f2fs_super_block));
-		MSG(0, "Info: Fix alignment: %s, start(%u) end(%u) block(%u)\n",
-			err ? "failed": "done",
+		update_superblock(sb, SB_MASK(sb_addr));
+		MSG(0, "Info: Fix alignment: start(%u) end(%u) block(%u)\n",
 			main_blkaddr,
 			segment0_blkaddr +
 				(segment_count << log_blocks_per_seg),
@@ -560,7 +577,7 @@ static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
 	return 0;
 }
 
-int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
+int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 {
 	unsigned int blocksize;
 
@@ -602,30 +619,24 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, u64 offset)
 	if (get_sb(segment_count) > F2FS_MAX_SEGMENT)
 		return -1;
 
-	if (sanity_check_area_boundary(sb, offset))
+	if (sanity_check_area_boundary(sb, sb_addr))
 		return -1;
 	return 0;
 }
 
-int validate_super_block(struct f2fs_sb_info *sbi, int block)
+int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 {
-	u64 offset;
 	char buf[F2FS_BLKSIZE];
 
 	sbi->raw_super = malloc(sizeof(struct f2fs_super_block));
 
-	if (block == 0)
-		offset = F2FS_SUPER_OFFSET;
-	else
-		offset = F2FS_BLKSIZE + F2FS_SUPER_OFFSET;
-
-	if (dev_read_block(buf, block))
+	if (dev_read_block(buf, sb_addr))
 		return -1;
 
 	memcpy(sbi->raw_super, buf + F2FS_SUPER_OFFSET,
 					sizeof(struct f2fs_super_block));
 
-	if (!sanity_check_raw_super(sbi->raw_super, offset)) {
+	if (!sanity_check_raw_super(sbi->raw_super, sb_addr)) {
 		/* get kernel version */
 		if (c.kd >= 0) {
 			dev_read_version(c.version, 0, VERSION_LEN);
@@ -644,13 +655,9 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					c.sb_version, c.version);
 		if (memcmp(c.sb_version, c.version, VERSION_LEN)) {
-			int ret;
-
 			memcpy(sbi->raw_super->version,
 						c.version, VERSION_LEN);
-			ret = dev_write(sbi->raw_super, offset,
-					sizeof(struct f2fs_super_block));
-			ASSERT(ret >= 0);
+			update_superblock(sbi->raw_super, SB_MASK(sb_addr));
 
 			c.auto_fix = 0;
 			c.fix_on = 1;
@@ -661,7 +668,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, int block)
 
 	free(sbi->raw_super);
 	sbi->raw_super = NULL;
-	MSG(0, "\tCan't find a valid F2FS superblock at 0x%x\n", block);
+	MSG(0, "\tCan't find a valid F2FS superblock at 0x%x\n", sb_addr);
 
 	return -EINVAL;
 }
@@ -2299,23 +2306,6 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 }
 
-void write_superblock(struct f2fs_super_block *new_sb)
-{
-	int index, ret;
-	u_int8_t *buf;
-
-	buf = calloc(BLOCK_SZ, 1);
-	ASSERT(buf);
-
-	memcpy(buf + F2FS_SUPER_OFFSET, new_sb, sizeof(*new_sb));
-	for (index = 0; index < 2; index++) {
-		ret = dev_write_block(buf, index);
-		ASSERT(ret >= 0);
-	}
-	free(buf);
-	DBG(0, "Info: Done to rebuild superblock\n");
-}
-
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
@@ -2454,9 +2444,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 
 static int check_sector_size(struct f2fs_super_block *sb)
 {
-	int index;
 	u_int32_t log_sectorsize, log_sectors_per_block;
-	u_int8_t *zero_buff;
 
 	log_sectorsize = log_base_2(c.sector_size);
 	log_sectors_per_block = log_base_2(c.sectors_per_blk);
@@ -2465,24 +2453,10 @@ static int check_sector_size(struct f2fs_super_block *sb)
 			log_sectors_per_block == get_sb(log_sectors_per_block))
 		return 0;
 
-	zero_buff = calloc(F2FS_BLKSIZE, 1);
-	ASSERT(zero_buff);
-
 	set_sb(log_sectorsize, log_sectorsize);
 	set_sb(log_sectors_per_block, log_sectors_per_block);
 
-	memcpy(zero_buff + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
-	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
-	for (index = 0; index < 2; index++) {
-		if (dev_write(zero_buff, index * F2FS_BLKSIZE, F2FS_BLKSIZE)) {
-			MSG(1, "\tError: Failed while writing supe_blk "
-				"on disk!!! index : %d\n", index);
-			free(zero_buff);
-			return -1;
-		}
-	}
-
-	free(zero_buff);
+	update_superblock(sb, SB_MASK_ALL);
 	return 0;
 }
 
@@ -2503,7 +2477,7 @@ static void tune_sb_features(struct f2fs_sb_info *sbi)
 	if (!sb_changed)
 		return;
 
-	write_superblock(sb);
+	update_superblock(sb, SB_MASK_ALL);
 }
 
 int f2fs_do_mount(struct f2fs_sb_info *sbi)
@@ -2513,9 +2487,9 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	int ret;
 
 	sbi->active_logs = NR_CURSEG_TYPE;
-	ret = validate_super_block(sbi, 0);
+	ret = validate_super_block(sbi, SB0_ADDR);
 	if (ret) {
-		ret = validate_super_block(sbi, 1);
+		ret = validate_super_block(sbi, SB1_ADDR);
 		if (ret)
 			return -1;
 	}

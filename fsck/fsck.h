@@ -32,6 +32,15 @@ enum {
 	EUNKNOWN_ARG,
 };
 
+enum SB_ADDR {
+	SB0_ADDR = 0,
+	SB1_ADDR,
+	SB_MAX_ADDR,
+};
+
+#define SB_MASK(i)	(1 << i)
+#define SB_MASK_ALL	(SB_MASK(SB0_ADDR) | SB_MASK(SB1_ADDR))
+
 /* fsck.c */
 struct orphan_info {
 	u32 nr_inodes;
@@ -178,7 +187,7 @@ extern void move_curseg_info(struct f2fs_sb_info *, u64, int);
 extern void write_curseg_info(struct f2fs_sb_info *);
 extern int find_next_free_block(struct f2fs_sb_info *, u64 *, int, int);
 extern void write_checkpoint(struct f2fs_sb_info *);
-extern void write_superblock(struct f2fs_super_block *);
+extern void update_superblock(struct f2fs_super_block *, int);
 extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t);
 extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, nid_t, block_t);
 
