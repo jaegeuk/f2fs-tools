@@ -977,12 +977,16 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	}
 
 	cp_pack_start_sum = __start_sum_addr(sbi);
-	cp_payload = get_sb(cp_payload);
+	cp_payload = __cp_payload(sbi);
 	if (cp_pack_start_sum < cp_payload + 1 ||
 		cp_pack_start_sum > blocks_per_seg - 1 -
 			NR_CURSEG_TYPE) {
-		MSG(0, "\tWrong cp_pack_start_sum(%u)\n", cp_pack_start_sum);
-		return 1;
+		MSG(0, "\tWrong cp_pack_start_sum(%u) or cp_payload(%u)\n",
+			cp_pack_start_sum, cp_payload);
+		if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM))
+			return 1;
+		set_sb(cp_payload, cp_pack_start_sum - 1);
+		update_superblock(sb, SB_MASK_ALL);
 	}
 
 	return 0;
