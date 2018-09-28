@@ -603,9 +603,6 @@ static int f2fs_resize_grow(struct f2fs_sb_info *sbi)
 		}
 	}
 
-	print_raw_sb_info(sb);
-	print_raw_sb_info(new_sb);
-
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);
 	offset = new_main_blkaddr - old_main_blkaddr;
@@ -629,6 +626,9 @@ static int f2fs_resize_grow(struct f2fs_sb_info *sbi)
 	migrate_sit(sbi, new_sb, offset_seg);
 	rebuild_checkpoint(sbi, new_sb, offset_seg);
 	update_superblock(new_sb, SB_MASK_ALL);
+	print_raw_sb_info(sb);
+	print_raw_sb_info(new_sb);
+
 	return 0;
 }
 
@@ -657,9 +657,6 @@ static int f2fs_resize_shrink(struct f2fs_sb_info *sbi)
 			return err;
 		}
 	}
-
-	print_raw_sb_info(sb);
-	print_raw_sb_info(new_sb);
 
 	old_main_blkaddr = get_sb(main_blkaddr);
 	new_main_blkaddr = get_newsb(main_blkaddr);
@@ -690,6 +687,9 @@ static int f2fs_resize_shrink(struct f2fs_sb_info *sbi)
 	/* move whole data region */
 	//if (err)
 	//	migrate_main(sbi, offset);
+	print_raw_sb_info(sb);
+	print_raw_sb_info(new_sb);
+
 	return 0;
 }
 

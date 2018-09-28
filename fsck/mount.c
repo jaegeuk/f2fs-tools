@@ -340,6 +340,7 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
 	DISP_u32(sb, cp_payload);
+	DISP_u32(sb, crc);
 	DISP("%-.256s", sb, version);
 	printf("\n");
 }
@@ -469,6 +470,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	if (f & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
 		MSG(0, "%s", " lost_found");
 	}
+	if (f & cpu_to_le32(F2FS_FEATURE_SB_CHKSUM)) {
+		MSG(0, "%s", " sb_checksum");
+	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
 					sb->encryption_level);
@@ -481,9 +485,19 @@ void update_superblock(struct f2fs_super_block *sb, int sb_mask)
 {
 	int addr, ret;
 	u_int8_t *buf;
+	u32 old_crc, new_crc;
 
 	buf = calloc(BLOCK_SZ, 1);
 	ASSERT(buf);
+
+	if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) {
+		old_crc = get_sb(crc);
+		new_crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, sb,
+						SB_CHKSUM_OFFSET);
+		set_sb(crc, new_crc);
+		MSG(1, "Info: SB CRC is updated (0x%x -> 0x%x)\n",
+							old_crc, new_crc);
+	}
 
 	memcpy(buf + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
 	for (addr = SB0_ADDR; addr < SB_MAX_ADDR; addr++) {
@@ -577,9 +591,28 @@ static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
 	return 0;
 }
 
+static int verify_sb_chksum(struct f2fs_super_block *sb)
+{
+	if (SB_CHKSUM_OFFSET != get_sb(checksum_offset)) {
+		MSG(0, "\tInvalid SB CRC offset: %u\n",
+					get_sb(checksum_offset));
+		return -1;
+	}
+	if (f2fs_crc_valid(get_sb(crc), sb,
+			get_sb(checksum_offset))) {
+		MSG(0, "\tInvalid SB CRC: 0x%x\n", get_sb(crc));
+		return -1;
+	}
+	return 0;
+}
+
 int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 {
 	unsigned int blocksize;
+
+	if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) &&
+					verify_sb_chksum(sb))
+		return -1;
 
 	if (F2FS_SUPER_MAGIC != get_sb(magic))
 		return -1;

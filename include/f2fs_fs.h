@@ -279,6 +279,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define BITS_PER_BYTE		8
 #define F2FS_SUPER_MAGIC	0xF2F52010	/* F2FS Magic Number */
 #define CP_CHKSUM_OFFSET	4092
+#define SB_CHKSUM_OFFSET	3068
 #define MAX_PATH_LEN		64
 #define MAX_DEVICES		8
 
@@ -579,6 +580,7 @@ enum {
 #define F2FS_FEATURE_INODE_CRTIME	0x0100
 #define F2FS_FEATURE_LOST_FOUND		0x0200
 #define F2FS_FEATURE_VERITY		0x0400	/* reserved */
+#define F2FS_FEATURE_SB_CHKSUM		0x0800
 
 #define MAX_VOLUME_NAME		512
 
@@ -632,7 +634,8 @@ struct f2fs_super_block {
 	struct f2fs_device devs[MAX_DEVICES];	/* device list */
 	__le32 qf_ino[F2FS_MAX_QUOTAS];	/* quota inode numbers */
 	__u8 hot_ext_count;		/* # of hot file extension */
-	__u8 reserved[314];		/* valid reserved region */
+	__u8 reserved[310];		/* valid reserved region */
+	__le32 crc;			/* checksum of superblock */
 } __attribute__((packed));
 
 /*
@@ -1339,6 +1342,7 @@ struct feature feature_table[] = {					\
 	{ "inode_crtime",		F2FS_FEATURE_INODE_CRTIME },	\
 	{ "lost_found",			F2FS_FEATURE_LOST_FOUND },	\
 	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */ \
+	{ "sb_checksum",		F2FS_FEATURE_SB_CHKSUM },	\
 	{ NULL,				0x0},				\
 };
 

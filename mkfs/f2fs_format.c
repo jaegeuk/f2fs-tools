@@ -504,6 +504,14 @@ static int f2fs_prepare_super_block(void)
 
 	sb->feature = c.feature;
 
+	if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) {
+		set_sb(checksum_offset, SB_CHKSUM_OFFSET);
+		set_sb(crc, f2fs_cal_crc32(F2FS_SUPER_MAGIC, sb,
+						SB_CHKSUM_OFFSET));
+		MSG(1, "Info: SB CRC is set: offset (%d), crc (0x%x)\n",
+					get_sb(checksum_offset), get_sb(crc));
+	}
+
 	return 0;
 }
 
