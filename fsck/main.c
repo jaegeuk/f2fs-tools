@@ -747,7 +747,7 @@ int main(int argc, char **argv)
 
 	f2fs_parse_options(argc, argv);
 
-	if (f2fs_devs_are_umounted() < 0) {
+	if (c.func != DUMP && f2fs_devs_are_umounted() < 0) {
 		if (errno == EBUSY)
 			return -1;
 		if (!c.ro || c.func == DEFRAG) {
