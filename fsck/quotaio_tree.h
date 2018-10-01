@@ -58,7 +58,7 @@ struct qtree_mem_dqinfo {
 						 * manipulation */
 };
 
-void qtree_write_dquot(struct dquot *dquot);
+int qtree_write_dquot(struct dquot *dquot);
 struct dquot *qtree_read_dquot(struct quota_handle *h, qid_t id);
 void qtree_delete_dquot(struct dquot *dquot);
 int qtree_entry_unused(struct qtree_mem_dqinfo *info, char *disk);

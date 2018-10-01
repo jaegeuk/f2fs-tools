@@ -261,7 +261,7 @@ static int v2_commit_dquot(struct dquot *dquot)
 	{
 		qtree_delete_dquot(dquot);
 	} else {
-		qtree_write_dquot(dquot);
+		return qtree_write_dquot(dquot);
 	}
 	return 0;
 }

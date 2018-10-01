@@ -291,7 +291,9 @@ static int do_insert_tree(struct quota_handle *h, struct dquot *dquot,
 	if (newson && ret >= 0) {
 		ref[get_index(dquot->dq_id, depth)] =
 			cpu_to_le32(newblk);
-		write_blk(h, *treeblk, buf);
+		ret = write_blk(h, *treeblk, buf);
+		if (ret)
+			goto out_buf;
 	} else if (newact && ret < 0) {
 		put_free_dqblk(h, buf, *treeblk);
 	}
@@ -302,17 +304,20 @@ out_buf:
 }
 
 /* Wrapper for inserting quota structure into tree */
-static void dq_insert_tree(struct quota_handle *h, struct dquot *dquot)
+static int dq_insert_tree(struct quota_handle *h, struct dquot *dquot)
 {
 	unsigned int tmp = QT_TREEOFF;
+	int err;
 
-	if (do_insert_tree(h, dquot, &tmp, 0) < 0)
+	err = do_insert_tree(h, dquot, &tmp, 0);
+	if (err < 0)
 		log_err("Cannot write quota (id %u): %s",
 			(unsigned int) dquot->dq_id, strerror(errno));
+	return err;
 }
 
 /* Write dquot to file */
-void qtree_write_dquot(struct dquot *dquot)
+int qtree_write_dquot(struct dquot *dquot)
 {
 	errcode_t retval;
 	unsigned int ret;
@@ -321,21 +326,22 @@ void qtree_write_dquot(struct dquot *dquot)
 	struct qtree_mem_dqinfo *info =
 			&dquot->dq_h->qh_info.u.v2_mdqi.dqi_qtree;
 
-
 	log_debug("writing ddquot 1: off=%llu, info->dqi_entry_size=%u",
 			dquot->dq_dqb.u.v2_mdqb.dqb_off,
 			info->dqi_entry_size);
 	retval = quota_get_mem(info->dqi_entry_size, &ddquot);
 	if (retval) {
-		errno = ENOMEM;
 		log_err("Quota write failed (id %u): %s",
 			(unsigned int)dquot->dq_id, strerror(errno));
-		return;
+		return -ENOMEM;
 	}
 	memset(ddquot, 0, info->dqi_entry_size);
 
 	if (!dquot->dq_dqb.u.v2_mdqb.dqb_off) {
-		dq_insert_tree(dquot->dq_h, dquot);
+		if (dq_insert_tree(dquot->dq_h, dquot)) {
+			quota_free_mem(&ddquot);
+			return -EIO;
+		}
 	}
 	info->dqi_ops->mem2disk_dqblk(ddquot, dquot);
 	log_debug("writing ddquot 2: off=%llu, info->dqi_entry_size=%u",
@@ -345,12 +351,12 @@ void qtree_write_dquot(struct dquot *dquot)
 			info->dqi_entry_size);
 
 	if (ret != info->dqi_entry_size) {
-		if (ret > 0)
-			errno = ENOSPC;
 		log_err("Quota write failed (id %u): %s",
 			(unsigned int)dquot->dq_id, strerror(errno));
+		return ret;
 	}
 	quota_free_mem(&ddquot);
+	return 0;
 }
 
 /* Free dquot entry in data block */

@@ -1988,8 +1988,9 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	unsigned long long cp_blk_no;
-	u32 flags = CP_UMOUNT_FLAG;
+	u32 flags = c.alloc_failed ? CP_FSCK_FLAG: CP_UMOUNT_FLAG;
 	block_t orphan_blks = 0;
+	block_t cp_blocks;
 	u32 i;
 	int ret;
 	u_int32_t crc = 0;
@@ -2001,7 +2002,13 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	if (is_set_ckpt_flags(cp, CP_DISABLED_FLAG))
 		flags |= CP_DISABLED_FLAG;
 
-	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
+	if (flags & CP_UMOUNT_FLAG)
+		cp_blocks = 8;
+	else
+		cp_blocks = 5;
+
+	set_cp(cp_pack_total_block_count, cp_blocks +
+				orphan_blks + get_sb(cp_payload));
 
 	flags = update_nat_bits_flags(sb, cp, flags);
 	flags |= CP_NOCRC_RECOVERY_FLAG;
@@ -2032,6 +2039,9 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
+
+		if (!(flags & CP_UMOUNT_FLAG) && IS_NODESEG(i))
+			continue;
 
 		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
 		ASSERT(ret >= 0);

@@ -235,7 +235,7 @@ int f2fs_sload(struct f2fs_sb_info *);
 /* segment.c */
 void reserve_new_block(struct f2fs_sb_info *, block_t *,
 					struct f2fs_summary *, int);
-void new_data_block(struct f2fs_sb_info *, void *,
+int new_data_block(struct f2fs_sb_info *, void *,
 					struct dnode_of_data *, int);
 int f2fs_build_file(struct f2fs_sb_info *, struct dentry *);
 void f2fs_alloc_nid(struct f2fs_sb_info *, nid_t *, int);
@@ -248,7 +248,7 @@ u64 f2fs_read(struct f2fs_sb_info *, nid_t, u8 *, u64, pgoff_t);
 u64 f2fs_write(struct f2fs_sb_info *, nid_t, u8 *, u64, pgoff_t);
 void f2fs_filesize_update(struct f2fs_sb_info *, nid_t, u64);
 
-void get_dnode_of_data(struct f2fs_sb_info *, struct dnode_of_data *,
+int get_dnode_of_data(struct f2fs_sb_info *, struct dnode_of_data *,
 					pgoff_t, int);
 void make_dentry_ptr(struct f2fs_dentry_ptr *, struct f2fs_node *, void *, int);
 int f2fs_create(struct f2fs_sb_info *, struct dentry *);

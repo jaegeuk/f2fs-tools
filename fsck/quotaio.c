@@ -80,7 +80,8 @@ static unsigned int quota_write_nomount(struct quota_file *qf,
 	written = f2fs_write(qf->sbi, qf->ino, buf, size, offset);
 	if (qf->filesize < offset + written)
 		qf->filesize = offset + written;
-
+	if (written != size)
+		return -EIO;
 	return written;
 }
 

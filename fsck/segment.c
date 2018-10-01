@@ -61,12 +61,18 @@ void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	update_sum_entry(sbi, *to, sum);
 }
 
-void new_data_block(struct f2fs_sb_info *sbi, void *block,
+int new_data_block(struct f2fs_sb_info *sbi, void *block,
 				struct dnode_of_data *dn, int type)
 {
 	struct f2fs_summary sum;
 	struct node_info ni;
 	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+
+	if (!is_set_ckpt_flags(cp, CP_UMOUNT_FLAG)) {
+		c.alloc_failed = 1;
+		return -EINVAL;
+	}
 
 	ASSERT(dn->node_blk);
 	memset(block, 0, BLOCK_SZ);
@@ -80,6 +86,7 @@ void new_data_block(struct f2fs_sb_info *sbi, void *block,
 	else if (blkaddr == NEW_ADDR)
 		dn->idirty = 1;
 	set_data_blkaddr(dn);
+	return 0;
 }
 
 u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
@@ -179,6 +186,7 @@ u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	block_t blkaddr;
 	void* index_node = NULL;
 	int idirty = 0;
+	int err;
 
 	/* Memory allocation for block buffer and inode. */
 	blk_buffer = calloc(BLOCK_SZ, 2);
@@ -196,8 +204,10 @@ u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	while (count > 0) {
 		if (remained_blkentries == 0) {
 			set_new_dnode(&dn, inode, NULL, ino);
-			get_dnode_of_data(sbi, &dn, F2FS_BYTES_TO_BLK(offset),
-					ALLOC_NODE);
+			err = get_dnode_of_data(sbi, &dn,
+					F2FS_BYTES_TO_BLK(offset), ALLOC_NODE);
+			if (err)
+				break;
 			idirty |= dn.idirty;
 			if (index_node)
 				free(index_node);
@@ -209,7 +219,10 @@ u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 
 		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
 		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR) {
-			new_data_block(sbi, blk_buffer, &dn, CURSEG_WARM_DATA);
+			err = new_data_block(sbi, blk_buffer,
+						&dn, CURSEG_WARM_DATA);
+			if (err)
+				break;
 			blkaddr = dn.data_blkaddr;
 		}
 

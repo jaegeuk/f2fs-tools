@@ -179,7 +179,7 @@ got:
 	return level;
 }
 
-void get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
+int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 						pgoff_t index, int mode)
 {
 	int offset[4];
@@ -205,6 +205,12 @@ void get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 
 	for (i = 1; i <= level; i++) {
 		if (!nids[i] && mode == ALLOC_NODE) {
+			struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+
+			if (!is_set_ckpt_flags(cp, CP_UMOUNT_FLAG)) {
+				c.alloc_failed = 1;
+				return -EINVAL;
+			}
 			f2fs_alloc_nid(sbi, &nids[i], 0);
 
 			dn->nid = nids[i];
@@ -247,4 +253,5 @@ void get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 	dn->ofs_in_node = offset[level];
 	dn->data_blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 	dn->node_blkaddr = nblk[level];
+	return 0;
 }

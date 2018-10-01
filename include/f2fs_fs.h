@@ -371,6 +371,7 @@ struct f2fs_configuration {
 	int fix_on;
 	int defset;
 	int bug_on;
+	int alloc_failed;
 	int auto_fix;
 	int quota_fix;
 	int preen_mode;
