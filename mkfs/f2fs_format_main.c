@@ -81,7 +81,7 @@ static void f2fs_show_info()
 	if (c.extension_list[1])
 		MSG(0, "Info: Add new hot file extension list\n");
 
-	if (c.vol_label)
+	if (strlen(c.vol_label))
 		MSG(0, "Info: Label = %s\n", c.vol_label);
 	MSG(0, "Info: Trim is %s\n", c.trim ? "enabled": "disabled");
 
