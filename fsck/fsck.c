@@ -1145,7 +1145,7 @@ static int digest_encode(const char *src, int len, char *dst)
 	int i = 0, bits = 0, ac = 0;
 	char *cp = dst;
 
-	while (i < len) {
+	while (i < len && i < 24) {
 		ac += (((unsigned char) src[i]) << bits);
 		bits += 8;
 		do {
@@ -1173,7 +1173,7 @@ int convert_encrypted_name(unsigned char *name, u32 len,
 	}
 
 	*new = '_';
-	return digest_encode((const char *)name, 24, (char *)new + 1);
+	return digest_encode((const char *)name, len, (char *)new + 1);
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
