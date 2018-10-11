@@ -55,6 +55,11 @@ static int trim_device(int i)
 	int fd = dev->fd;
 
 	stat_buf = malloc(sizeof(struct stat));
+	if (stat_buf == NULL) {
+		MSG(1, "\tError: Malloc Failed for trim_stat_buf!!!\n");
+		return -1;
+	}
+
 	if (fstat(fd, stat_buf) < 0 ) {
 		MSG(1, "\tError: Failed to get the device stat!!!\n");
 		free(stat_buf);

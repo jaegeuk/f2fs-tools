@@ -991,12 +991,16 @@ static int f2fs_write_super_block(void)
 	u_int8_t *zero_buff;
 
 	zero_buff = calloc(F2FS_BLKSIZE, 1);
+	if (zero_buff == NULL) {
+		MSG(1, "\tError: Calloc Failed for super_blk_zero_buf!!!\n");
+		return -1;
+	}
 
 	memcpy(zero_buff + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
 	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
 	for (index = 0; index < 2; index++) {
 		if (dev_write_block(zero_buff, index)) {
-			MSG(1, "\tError: While while writing supe_blk "
+			MSG(1, "\tError: While while writing super_blk "
 					"on disk!!! index : %d\n", index);
 			free(zero_buff);
 			return -1;
@@ -1021,8 +1025,10 @@ static int f2fs_discard_obsolete_dnode(void)
 		return 0;
 
 	raw_node = calloc(sizeof(struct f2fs_node), 1);
-	if (!raw_node)
+	if (raw_node == NULL) {
+		MSG(1, "\tError: Calloc Failed for discard_raw_node!!!\n");
 		return -1;
+	}
 
 	/* avoid power-off-recovery based on roll-forward policy */
 	offset = get_sb(main_blkaddr);
