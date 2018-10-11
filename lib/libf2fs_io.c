@@ -385,6 +385,7 @@ int f2fs_finalize_device(void)
 			MSG(0, "\tError: Failed to close device file!!!\n");
 			break;
 		}
+		free(c.devices[i].path);
 	}
 	close(c.kd);
 
