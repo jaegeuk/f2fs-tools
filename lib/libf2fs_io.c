@@ -311,6 +311,7 @@ int f2fs_init_sparse_file(void)
 #endif
 }
 
+#define MAX_CHUNK_SIZE (1 * 1024 * 1024 * 1024ULL)
 int f2fs_finalize_device(void)
 {
 	int i;
@@ -337,6 +338,12 @@ int f2fs_finalize_device(void)
 				chunk_start = -1;
 			} else if (blocks[j] && chunk_start == -1) {
 				chunk_start = j;
+			} else if (blocks[j] && (chunk_start != -1) &&
+				 (j + 1 - chunk_start >=
+					(MAX_CHUNK_SIZE / F2FS_BLKSIZE))) {
+				ret = sparse_merge_blocks(chunk_start,
+							  j + 1 - chunk_start);
+				chunk_start = -1;
 			}
 			ASSERT(!ret);
 		}
