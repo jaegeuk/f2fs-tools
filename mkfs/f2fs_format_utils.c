@@ -16,6 +16,10 @@
 #define _GNU_SOURCE
 #endif
 
+#ifndef _FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
+
 #include <f2fs_fs.h>
 
 #include <stdio.h>
