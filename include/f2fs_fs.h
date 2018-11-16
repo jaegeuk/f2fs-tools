@@ -1326,7 +1326,11 @@ static inline int is_qf_ino(struct f2fs_super_block *sb, nid_t ino)
 
 static inline void show_version(const char *prog)
 {
+#if defined(F2FS_TOOLS_VERSION) && defined(F2FS_TOOLS_DATE)
 	MSG(0, "%s %s (%s)\n", prog, F2FS_TOOLS_VERSION, F2FS_TOOLS_DATE);
+#else
+	MSG(0, "%s -- version not supported\n", prog);
+#endif
 }
 
 struct feature {
