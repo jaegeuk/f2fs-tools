@@ -793,17 +793,24 @@ int get_device_info(int i)
 #endif
 	struct device_info *dev = c.devices + i;
 
-	stat_buf = malloc(sizeof(struct stat));
-	ASSERT(stat_buf);
-	if (stat(dev->path, stat_buf) < 0 ) {
-		MSG(0, "\tError: Failed to get the device stat!\n");
-		free(stat_buf);
-		return -1;
-	}
-
 	if (c.sparse_mode) {
 		fd = open(dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
-	} else {
+		if (fd < 0) {
+			MSG(0, "\tError: Failed to open a sparse file!\n");
+			return -1;
+		}
+	}
+
+	stat_buf = malloc(sizeof(struct stat));
+	ASSERT(stat_buf);
+
+	if (!c.sparse_mode) {
+		if (stat(dev->path, stat_buf) < 0 ) {
+			MSG(0, "\tError: Failed to get the device stat!\n");
+			free(stat_buf);
+			return -1;
+		}
+
 		if (S_ISBLK(stat_buf->st_mode))
 			fd = open(dev->path, O_RDWR | O_EXCL);
 		else
