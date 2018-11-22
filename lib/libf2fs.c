@@ -535,22 +535,21 @@ __u32 f2fs_inode_chksum(struct f2fs_node *node)
 /*
  * try to identify the root device
  */
-const char *get_rootdev()
+char *get_rootdev()
 {
 #if defined(ANDROID_WINDOWS_HOST) || defined(WITH_ANDROID)
 	return NULL;
 #else
 	struct stat sb;
 	int fd, ret;
-	char buf[32];
+	char buf[PATH_MAX + 1];
 	char *uevent, *ptr;
-
-	static char rootdev[PATH_MAX + 1];
+	char *rootdev;
 
 	if (stat("/", &sb) == -1)
 		return NULL;
 
-	snprintf(buf, 32, "/sys/dev/block/%u:%u/uevent",
+	snprintf(buf, PATH_MAX, "/sys/dev/block/%u:%u/uevent",
 		major(sb.st_dev), minor(sb.st_dev));
 
 	fd = open(buf, O_RDONLY);
@@ -577,8 +576,16 @@ const char *get_rootdev()
 		return NULL;
 
 	ret = sscanf(ptr, "DEVNAME=%s\n", buf);
-	snprintf(rootdev, PATH_MAX + 1, "/dev/%s", buf);
+	if (strlen(buf) == 0)
+		return NULL;
 
+	ret = strlen(buf) + 5;
+	rootdev = malloc(ret + 1);
+	if (!rootdev)
+		return NULL;
+	rootdev[ret] = '\0';
+
+	snprintf(rootdev, ret, "/dev/%s", buf);
 	return rootdev;
 #endif
 }
@@ -594,7 +601,6 @@ void f2fs_init_configuration(void)
 	c.ndevs = 1;
 	c.sectors_per_blk = DEFAULT_SECTORS_PER_BLOCK;
 	c.blks_per_seg = DEFAULT_BLOCKS_PER_SEGMENT;
-	c.rootdev_name = get_rootdev();
 	c.wanted_total_sectors = -1;
 	c.wanted_sector_size = -1;
 #ifndef WITH_ANDROID
@@ -654,9 +660,13 @@ int f2fs_dev_is_umounted(char *path)
 	struct stat *st_buf;
 	int is_rootdev = 0;
 	int ret = 0;
+	char *rootdev_name = get_rootdev();
 
-	if (c.rootdev_name && !strcmp(path, c.rootdev_name))
-		is_rootdev = 1;
+	if (rootdev_name) {
+		if (!strcmp(path, rootdev_name))
+			is_rootdev = 1;
+		free(rootdev_name);
+	}
 
 	/*
 	 * try with /proc/mounts fist to detect RDONLY.
