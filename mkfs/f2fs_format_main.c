@@ -93,11 +93,12 @@ static void add_default_options(void)
 {
 	switch (c.defset) {
 	case CONF_ANDROID:
-		/* -d1 -f -O encrypt -O quota -w 4096 -R 0:0 */
+		/* -d1 -f -O encrypt -O quota -O verity -w 4096 -R 0:0 */
 		c.dbg_lv = 1;
 		force_overwrite = 1;
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
 		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+		c.feature |= cpu_to_le32(F2FS_FEATURE_VERITY);
 		c.wanted_sector_size = 4096;
 		c.root_uid = c.root_gid = 0;
 		break;
