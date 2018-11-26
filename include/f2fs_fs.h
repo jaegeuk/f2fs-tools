@@ -369,6 +369,7 @@ struct f2fs_configuration {
 	void *private;
 	int dry_run;
 	int fix_on;
+	int force;
 	int defset;
 	int bug_on;
 	int alloc_failed;

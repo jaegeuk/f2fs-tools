@@ -249,6 +249,7 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'f':
 			case 'y':
 				c.fix_on = 1;
+				c.force = 1;
 				MSG(0, "Info: Force to fix corruption\n");
 				break;
 			case 'q':

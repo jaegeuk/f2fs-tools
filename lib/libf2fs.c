@@ -825,7 +825,7 @@ int get_device_info(int i)
 			return -1;
 		}
 
-		if (S_ISBLK(stat_buf->st_mode))
+		if (S_ISBLK(stat_buf->st_mode) && !c.force)
 			fd = open(dev->path, O_RDWR | O_EXCL);
 		else
 			fd = open(dev->path, O_RDWR);
