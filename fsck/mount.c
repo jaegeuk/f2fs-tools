@@ -664,6 +664,8 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 	char buf[F2FS_BLKSIZE];
 
 	sbi->raw_super = malloc(sizeof(struct f2fs_super_block));
+	if (!sbi->raw_super)
+		return -ENOMEM;
 
 	if (dev_read_block(buf, sb_addr))
 		return -1;
@@ -779,6 +781,8 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 
 	/* Read the 1st cp block in this CP pack */
 	cp_page_1 = malloc(PAGE_SIZE);
+	ASSERT(cp_page_1);
+
 	if (dev_read_block(cp_page_1, cp_addr) < 0)
 		goto invalid_cp1;
 
@@ -798,6 +802,8 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 
 	/* Read the 2nd cp block in this CP pack */
 	cp_page_2 = malloc(PAGE_SIZE);
+	ASSERT(cp_page_2);
+
 	cp_addr += get_cp(cp_pack_total_block_count) - 1;
 
 	if (dev_read_block(cp_page_2, cp_addr) < 0)
@@ -1320,6 +1326,9 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	src_bitmap = __bitmap_ptr(sbi, SIT_BITMAP);
 
 	dst_bitmap = malloc(bitmap_size);
+	if (!dst_bitmap)
+		return -ENOMEM;
+
 	memcpy(dst_bitmap, src_bitmap, bitmap_size);
 
 	sit_i->sit_base_addr = get_sb(sit_blkaddr);
@@ -1361,6 +1370,8 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 	start = start_sum_block(sbi);
 
 	kaddr = (char *)malloc(PAGE_SIZE);
+	ASSERT(kaddr);
+
 	ret = dev_read_block(kaddr, start++);
 	ASSERT(ret >= 0);
 
@@ -1452,6 +1463,8 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 	}
 
 	sum_blk = (struct f2fs_summary_block *)malloc(PAGE_SIZE);
+	ASSERT(sum_blk);
+
 	ret = dev_read_block(sum_blk, blk_addr);
 	ASSERT(ret >= 0);
 

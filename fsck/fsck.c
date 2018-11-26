@@ -1420,6 +1420,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			continue;
 		}
 		name = calloc(name_len + 1, 1);
+		ASSERT(name);
+
 		memcpy(name, filenames[i], name_len);
 		slots = (name_len + F2FS_SLOT_LEN - 1) / F2FS_SLOT_LEN;
 

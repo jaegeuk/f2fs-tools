@@ -566,6 +566,8 @@ char *get_rootdev()
 	}
 
 	uevent = malloc(ret + 1);
+	ASSERT(uevent);
+
 	uevent[ret] = '\0';
 
 	ret = read(fd, uevent, ret);
@@ -709,6 +711,8 @@ int f2fs_dev_is_umounted(char *path)
 	 * the file system. In this case, we should not format.
 	 */
 	st_buf = malloc(sizeof(struct stat));
+	ASSERT(st_buf);
+
 	if (stat(path, st_buf) == 0 && S_ISBLK(st_buf->st_mode)) {
 		int fd = open(path, O_RDONLY | O_EXCL);
 

@@ -302,6 +302,10 @@ int f2fs_init_sparse_file(void)
 	}
 	blocks_count = c.device_size / F2FS_BLKSIZE;
 	blocks = calloc(blocks_count, sizeof(char *));
+	if (!blocks) {
+		MSG(0, "\tError: Calloc Failed for blocks!!!\n");
+		return -1;
+	}
 
 	return sparse_file_foreach_chunk(f2fs_sparse_file, true, false,
 				sparse_import_segment, NULL);
