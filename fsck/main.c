@@ -216,6 +216,8 @@ void f2fs_parse_options(int argc, char *argv[])
 				/* preen mode has different levels:
 				 *  0: default level, the same as -a
 				 *  1: check meta
+				 *  2: same as 0, but will skip some
+				 *     check for old kernel
 				 */
 				if (optarg[0] == '-' || !is_digits(optarg) ||
 							optind == argc) {
@@ -230,7 +232,8 @@ void f2fs_parse_options(int argc, char *argv[])
 					c.preen_mode = PREEN_MODE_0;
 				else if (c.preen_mode >= PREEN_MODE_MAX)
 					c.preen_mode = PREEN_MODE_MAX - 1;
-				if (c.preen_mode == PREEN_MODE_0)
+				if (c.preen_mode == PREEN_MODE_0 ||
+					c.preen_mode == PREEN_MODE_2)
 					c.auto_fix = 1;
 				MSG(0, "Info: Fix the reported corruption in "
 					"preen mode %d\n", c.preen_mode);

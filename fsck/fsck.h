@@ -21,6 +21,7 @@ struct quota_ctx;
 enum {
 	PREEN_MODE_0,
 	PREEN_MODE_1,
+	PREEN_MODE_2,
 	PREEN_MODE_MAX
 };
 

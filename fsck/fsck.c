@@ -941,7 +941,13 @@ skip_blkcnt_fix:
 	}
 
 	i_gc_failures = le16_to_cpu(node_blk->i.i_gc_failures);
-	if (ftype == F2FS_FT_REG_FILE && i_gc_failures) {
+
+	/*
+	 * old kernel initialized i_gc_failures as 0x01, in preen mode 2,
+	 * let's skip repairing.
+	 */
+	if (ftype == F2FS_FT_REG_FILE && i_gc_failures &&
+		(c.preen_mode != PREEN_MODE_2 || i_gc_failures != 0x01)) {
 
 		DBG(1, "Regular Inode: 0x%x [%s] depth: %d\n\n",
 				le32_to_cpu(node_blk->footer.ino), en,
