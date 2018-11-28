@@ -1242,7 +1242,7 @@ out:
 	if (!err) {
 		MSG(0, "Info: Checked valid nat_bits in checkpoint\n");
 	} else {
-		c.bug_on = 1;
+		c.bug_nat_bits = 1;
 		MSG(0, "Info: Corrupted valid nat_bits in checkpoint\n");
 	}
 	return err;
