@@ -14,4 +14,4 @@ f2fscrypt_LDFLAGS = -luuid
 dist_man_MANS = f2fscrypt.8
 endif
 
-SUBDIRS = sg_write_buffer
+SUBDIRS = sg_write_buffer f2fs_io

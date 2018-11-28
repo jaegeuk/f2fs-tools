@@ -209,6 +209,7 @@ AC_CONFIG_FILES([
 	fsck/Makefile
 	tools/Makefile
 	tools/sg_write_buffer/Makefile
+	tools/f2fs_io/Makefile
 ])
 
 # export library version info for mkfs/libf2fs_format_la
