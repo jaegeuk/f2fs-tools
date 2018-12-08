@@ -339,7 +339,7 @@ out:
 	return ret;
 }
 
-static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u32 mode)
+static int __check_inode_mode(u32 nid, enum FILE_TYPE ftype, u16 mode)
 {
 	if (ftype >= F2FS_FT_MAX)
 		return 0;
@@ -457,7 +457,7 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		return 0;
 
 	if (ntype == TYPE_INODE &&
-		__check_inode_mode(nid, ftype, le32_to_cpu(node_blk->i.i_mode)))
+		__check_inode_mode(nid, ftype, le16_to_cpu(node_blk->i.i_mode)))
 		return -EINVAL;
 
 	/* workaround to fix later */
