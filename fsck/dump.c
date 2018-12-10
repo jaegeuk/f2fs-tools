@@ -409,7 +409,7 @@ static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 				struct f2fs_node *node_blk, int force)
 {
 	struct f2fs_inode *inode = &node_blk->i;
-	u32 imode = le32_to_cpu(inode->i_mode);
+	u32 imode = le16_to_cpu(inode->i_mode);
 	u32 namelen = le32_to_cpu(inode->i_namelen);
 	char name[F2FS_NAME_LEN + 1] = {0};
 	char path[1024] = {0};
