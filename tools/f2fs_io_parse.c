@@ -191,6 +191,8 @@ static void handle_tp_ios(char *ptr)
 	rw = atoh(ptr);
 
 	ptr = strtok(NULL, " ");
+	/* int op_flags = atoh(ptr) */
+	ptr = strtok(NULL, " ");
 	/* unsigned long long blkaddr = atoh(ptr); */
 
 	ptr = strtok(NULL, " ");
