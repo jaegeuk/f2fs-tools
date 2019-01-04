@@ -75,6 +75,58 @@ static void do_shutdown(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define pinfile_desc "pin file control"
+#define pinfile_help						\
+"f2fs_io pinfile [get|set] [file]\n\n"			\
+"get/set pinning given the file\n"				\
+
+static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	u32 pin;
+	int ret, fd;
+
+	if (argc != 3) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = open(argv[2], O_RDWR);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = -1;
+	if (!strcmp(argv[1], "set")) {
+		pin = 1;
+		ret = ioctl(fd, F2FS_IOC_SET_PIN_FILE, &pin);
+		if (ret != 0) {
+			perror("set_pin_file failed");
+			exit(1);
+		}
+		printf("set_pin_file: %u blocks moved in %s\n", ret, argv[2]);
+	} else if (!strcmp(argv[1], "get")) {
+		unsigned int flags;
+
+		ret = ioctl(fd, F2FS_IOC_GET_PIN_FILE, &pin);
+		if (ret < 0) {
+			perror("pin_file failed");
+			exit(1);
+		}
+		ret = ioctl(fd, F2FS_IOC_GETFLAGS, &flags);
+		if (ret < 0) {
+			perror("get flags failed");
+			exit(1);
+		}
+		printf("get_pin_file: %s with %u blocks moved in %s\n",
+				(flags & F2FS_NOCOW_FL) ? "pinned" : "un-pinned",
+				pin, argv[2]);
+	}
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -83,6 +135,7 @@ static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
 const struct cmd_desc cmd_list[] = {
 	_CMD(help),
 	CMD(shutdown),
+	CMD(pinfile),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
