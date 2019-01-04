@@ -822,7 +822,7 @@ fsck_again:
 	f2fs_do_umount(sbi);
 
 	if (c.func == FSCK && c.bug_on) {
-		if (!c.ro && c.fix_on == 0 && c.auto_fix == 0) {
+		if (!c.ro && c.fix_on == 0 && c.auto_fix == 0 && !c.dry_run) {
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");
