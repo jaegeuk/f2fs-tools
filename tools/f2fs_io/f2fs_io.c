@@ -9,6 +9,15 @@
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE
+#endif
+#ifndef _LARGEFILE64_SOURCE
+#define _LARGEFILE64_SOURCE
+#endif
+#ifndef O_LARGEFILE
+#define O_LARGEFILE 0
+#endif
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -299,6 +308,57 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+struct file_ext {
+	__u32 f_pos;
+	__u32 start_blk;
+	__u32 end_blk;
+	__u32 blk_count;
+};
+
+#ifndef FIBMAP
+#define FIBMAP          _IO(0x00, 1)    /* bmap access */
+#endif
+
+#define fiemap_desc "get block address in file"
+#define fiemap_help					\
+"f2fs_io fiemap [offset in 4kb] [count] [file_path]\n\n"\
+
+static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	loff_t offset;
+	u32 blknum;
+	unsigned count, i;
+	int fd;
+
+	if (argc != 4) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	offset = atoi(argv[1]);
+	count = atoi(argv[2]);
+
+	fd = open(argv[3], O_RDONLY | O_LARGEFILE);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		exit(1);
+	}
+
+	printf("Fiemap: offset = %08lx len = %d\n", offset, count);
+	for (i = 0; i < count; i++) {
+		blknum = offset + i;
+
+		if (ioctl(fd, FIBMAP, &blknum) < 0) {
+			fputs("FIBMAP failed\n\n", stderr);
+			exit(1);
+		}
+		printf("%u ", blknum);
+	}
+	printf("\n");
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -310,6 +370,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(pinfile),
 	CMD(write),
 	CMD(read),
+	CMD(fiemap),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
