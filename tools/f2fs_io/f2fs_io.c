@@ -15,8 +15,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
+#include <string.h>
 #include <signal.h>
 #include <termios.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -127,6 +131,89 @@ static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define write_desc "write data into file"
+#define write_help					\
+"f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path]\n\n"	\
+"Write given patten data in file_path\n"		\
+"pattern can be\n"					\
+"  zero     : zeros\n"					\
+"  inc_num  : incrementing numbers\n"			\
+"  rand     : random numbers\n"				\
+"IO can be\n"						\
+"  buffered : buffered IO\n"				\
+"  dio      : direct IO\n"				\
+
+static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	u64 buf_size = 0, inc_num = 0, ret = 0, written = 0;
+	loff_t offset;
+	char *buf = NULL;
+	unsigned bs, count, i;
+	int flags = 0;
+	int fd;
+
+	srand(time(0));
+
+	if (argc != 7) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	bs = atoi(argv[1]);
+	if (bs > 1024) {
+		fputs("Too big chunk size - limit: 4MB\n\n", stderr);
+		exit(1);
+	}
+	buf_size = bs * 4096;
+
+	offset = atoi(argv[2]) * buf_size;
+
+	buf = aligned_alloc(4096, buf_size);
+	if (!buf) {
+		fputs("Memory alloc failed\n\n", stderr);
+		exit(1);
+	}
+	count = atoi(argv[3]);
+
+	if (!strcmp(argv[4], "zero")) {
+		memset(buf, 0, buf_size);
+	} else if (strcmp(argv[4], "inc_num") &&
+			strcmp(argv[4], "rand")) {
+		fputs("Wrong pattern type\n\n", stderr);
+		exit(1);
+	}
+
+	if (!strcmp(argv[5], "buffered")) {
+		flags |= O_DIRECT;
+	} else if (strcmp(argv[5], "dio")) {
+		fputs("Wrong IO type\n\n", stderr);
+		exit(1);
+	}
+
+	fd = open(argv[6], O_CREAT | O_WRONLY | flags, 0755);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		exit(1);
+	}
+
+	for (i = 0; i < count; i++) {
+		if (!strcmp(argv[4], "inc_num"))
+			*(int *)buf = inc_num++;
+		else if (!strcmp(argv[4], "rand"))
+			*(int *)buf = rand();
+
+		/* write data */
+		ret = pwrite(fd, buf, buf_size, offset + buf_size * i);
+		if (ret != buf_size)
+			break;
+		written += ret;
+	}
+
+	printf("Written %lu bytes with pattern=%s\n", written, argv[4]);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -136,6 +223,7 @@ const struct cmd_desc cmd_list[] = {
 	_CMD(help),
 	CMD(shutdown),
 	CMD(pinfile),
+	CMD(write),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
