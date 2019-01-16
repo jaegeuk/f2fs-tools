@@ -214,6 +214,91 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define read_desc "read data from file"
+#define read_help					\
+"f2fs_io read [chunk_size in 4kb] [offset in chunk_size] [count] [IO] [print_nbytes] [file_path]\n\n"	\
+"Read data in file_path and print nbytes\n"		\
+"IO can be\n"						\
+"  buffered : buffered IO\n"				\
+"  dio      : direct IO\n"				\
+
+static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	u64 buf_size = 0, ret = 0, read_cnt = 0;
+	loff_t offset;
+	char *buf = NULL;
+	char *print_buf = NULL;
+	unsigned bs, count, i, print_bytes;
+	int flags = 0;
+	int fd;
+
+	if (argc != 7) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	bs = atoi(argv[1]);
+	if (bs > 1024) {
+		fputs("Too big chunk size - limit: 4MB\n\n", stderr);
+		exit(1);
+	}
+	buf_size = bs * 4096;
+
+	offset = atoi(argv[2]) * buf_size;
+
+	buf = aligned_alloc(4096, buf_size);
+	if (!buf) {
+		fputs("Memory alloc failed\n\n", stderr);
+		exit(1);
+	}
+	count = atoi(argv[3]);
+	if (!strcmp(argv[4], "buffered")) {
+		flags |= O_DIRECT;
+	} else if (strcmp(argv[4], "dio")) {
+		fputs("Wrong IO type\n\n", stderr);
+		exit(1);
+	}
+
+	print_bytes = atoi(argv[5]);
+	if (print_bytes > buf_size) {
+		fputs("Print_nbytes should be less then chunk_size in kb\n\n", stderr);
+		exit(1);
+	}
+	print_buf = malloc(print_bytes);
+	if (!print_buf) {
+		fputs("Memory alloc failed\n\n", stderr);
+		exit(1);
+	}
+
+	fd = open(argv[6], O_RDONLY | flags);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		exit(1);
+	}
+
+	for (i = 0; i < count; i++) {
+		ret = pread(fd, buf, buf_size, offset + buf_size * i);
+		if (ret != buf_size)
+			break;
+
+		read_cnt += ret;
+		if (i == 0)
+			memcpy(print_buf, buf, print_bytes);
+	}
+	printf("Read %lu bytes and print %d bytes:\n", read_cnt, print_bytes);
+	printf("%08lx : ", offset);
+	for (i = 1; i <= print_bytes; i++) {
+		printf("%02x", print_buf[i - 1]);
+		if (i % 16 == 0)
+			printf("\n%08lx : ", offset + 16 * i);
+		else if (i % 2 == 0)
+			printf(" ");
+	}
+	printf("\n");
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -224,6 +309,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(shutdown),
 	CMD(pinfile),
 	CMD(write),
+	CMD(read),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
