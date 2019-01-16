@@ -81,7 +81,7 @@ void f2fstat(struct options *opt)
 	int ret;
 	char keyname[32];
 	char buf[4096];
-	struct mm_table key = { keyname, NULL };
+	struct mm_table key = { keyname, NULL, 0 };
 	struct mm_table *found;
 	int f2fstat_table_cnt;
 	char *head, *tail;

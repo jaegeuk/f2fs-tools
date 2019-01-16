@@ -18,13 +18,11 @@
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
 
-#define HAVE_ADD_KEY 1
 #define HAVE_FALLOCATE 1
 #define HAVE_FSETXATTR 1
 #define HAVE_FSTAT 1
 #define HAVE_FSTAT64 1
 #define HAVE_GETMNTENT 1
-#define HAVE_KEYCTL 1
 #define HAVE_LLSEEK 1
 #define HAVE_LSEEK64 1
 #define HAVE_MEMSET 1
@@ -48,13 +46,11 @@
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
 
-#define HAVE_ADD_KEY 1
 #define HAVE_FALLOCATE 1
 #define HAVE_FSETXATTR 1
 #define HAVE_FSTAT 1
 #define HAVE_FSTAT64 1
 #define HAVE_GETMNTENT 1
-#define HAVE_KEYCTL 1
 #define HAVE_LLSEEK 1
 #define HAVE_MEMSET 1
 
