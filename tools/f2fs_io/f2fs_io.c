@@ -130,6 +130,33 @@ static void full_write(int fd, const void *buf, size_t count)
 	}
 }
 
+#define set_verity_desc "Set fs-verity"
+#define set_verity_help					\
+"f2fs_io set_verity [file]\n\n"				\
+"Set fsverity bit given a file\n"			\
+
+static void do_set_verity(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret, fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = open(argv[1], O_RDWR);
+
+	ret = ioctl(fd, FS_IOC_ENABLE_VERITY);
+	if (ret < 0) {
+		perror("FS_IOC_ENABLE_VERITY");
+		exit(1);
+	}
+
+	printf("Set fsverity bit to %s\n", argv[1]);
+	exit(0);
+}
+
 #define getflags_desc "getflags ioctl"
 #define getflags_help						\
 "f2fs_io getflags [file]\n\n"					\
@@ -678,6 +705,7 @@ static void do_copy(int argc, char **argv, const struct cmd_desc *cmd)
 static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
 const struct cmd_desc cmd_list[] = {
 	_CMD(help),
+	CMD(set_verity),
 	CMD(getflags),
 	CMD(setflags),
 	CMD(shutdown),
