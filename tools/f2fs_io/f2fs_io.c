@@ -359,6 +359,40 @@ static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define gc_urgent_desc "start/end/run gc_urgent for given time period"
+#define gc_urgent_help					\
+"f2fs_io gc_urgent $dev [start/end/run] [time in sec]\n\n"\
+" - f2fs_io gc_urgent sda21 start\n"		\
+" - f2fs_io gc_urgent sda21 end\n"		\
+" - f2fs_io gc_urgent sda21 run 10\n"		\
+
+static void do_gc_urgent(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	char command[255];
+
+	if (argc == 3 && !strcmp(argv[2], "start")) {
+		printf("gc_urgent: start on %s\n", argv[1]);
+		sprintf(command, "echo %d > %s/%s/gc_urgent", 1, "/sys/fs/f2fs/", argv[1]);
+		system(command);
+	} else if (argc == 3 && !strcmp(argv[2], "end")) {
+		printf("gc_urgent: end on %s\n", argv[1]);
+		sprintf(command, "echo %d > %s/%s/gc_urgent", 0, "/sys/fs/f2fs/", argv[1]);
+		system(command);
+	} else if (argc == 4 && !strcmp(argv[2], "run")) {
+		printf("gc_urgent: start on %s for %d secs\n", argv[1], atoi(argv[3]));
+		sprintf(command, "echo %d > %s/%s/gc_urgent", 1, "/sys/fs/f2fs/", argv[1]);
+		system(command);
+		sleep(atoi(argv[3]));
+		printf("gc_urgent: end on %s for %d secs\n", argv[1], atoi(argv[3]));
+		sprintf(command, "echo %d > %s/%s/gc_urgent", 0, "/sys/fs/f2fs/", argv[1]);
+		system(command);
+	} else {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -371,6 +405,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(write),
 	CMD(read),
 	CMD(fiemap),
+	CMD(gc_urgent),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
