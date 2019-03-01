@@ -731,11 +731,19 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 			if (node_blk->i.i_extra_isize >
 				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE)) {
+				FIX_MSG("ino[0x%x] recover i_extra_isize "
+					"from %u to %lu",
+					nid,
+					le16_to_cpu(node_blk->i.i_extra_isize),
+					F2FS_TOTAL_EXTRA_ATTR_SIZE);
 				node_blk->i.i_extra_isize =
 					cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
 				need_fix = 1;
 			}
 		} else {
+			FIX_MSG("ino[0x%x] remove F2FS_EXTRA_ATTR "
+				"flag in i_inline:%u",
+				nid, node_blk->i.i_inline);
 			/* we don't support tuning F2FS_FEATURE_EXTRA_ATTR now */
 			node_blk->i.i_inline &= ~F2FS_EXTRA_ATTR;
 			need_fix = 1;
