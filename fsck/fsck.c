@@ -9,6 +9,7 @@
  * published by the Free Software Foundation.
  */
 #include "fsck.h"
+#include "xattr.h"
 #include "quotaio.h"
 #include <time.h>
 
@@ -747,6 +748,24 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			/* we don't support tuning F2FS_FEATURE_EXTRA_ATTR now */
 			node_blk->i.i_inline &= ~F2FS_EXTRA_ATTR;
 			need_fix = 1;
+		}
+
+		if ((c.feature &
+			cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) &&
+			(node_blk->i.i_inline & F2FS_INLINE_XATTR)) {
+			unsigned int inline_size =
+				le16_to_cpu(node_blk->i.i_inline_xattr_size);
+
+			if (!inline_size ||
+					inline_size > MAX_INLINE_XATTR_SIZE) {
+				FIX_MSG("ino[0x%x] recover inline xattr size "
+					"from %u to %u",
+					nid, inline_size,
+					DEFAULT_INLINE_XATTR_ADDRS);
+				node_blk->i.i_inline_xattr_size =
+					cpu_to_le16(DEFAULT_INLINE_XATTR_ADDRS);
+				need_fix = 1;
+			}
 		}
 	}
 	ofs = get_extra_isize(node_blk);
