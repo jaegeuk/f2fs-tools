@@ -1381,9 +1381,9 @@ static inline int parse_feature(struct feature *table, const char *features)
 {
 	char *buf, *sub, *next;
 
-	buf = calloc(strlen(features) + 1, sizeof(char));
-	ASSERT(buf);
-	strncpy(buf, features, strlen(features) + 1);
+	buf = strdup(features);
+	if (!buf)
+		return -1;
 
 	for (sub = buf; sub && *sub; sub = next ? next + 1 : NULL) {
 		/* Skip the beginning blanks */

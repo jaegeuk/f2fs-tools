@@ -240,7 +240,7 @@ void print_head(char *res)
 
 	for (i = 0; i < 20; i++) {
 		ptr = (i == 0) ? strtok(res, " ") : strtok(NULL, " ");
-		strncpy(ptr_buf, name[i], strlen(name[i]));
+		strcpy(ptr_buf, name[i]);
 		if (i == 1) {
 			prev_index = ptr_buf - buf - 1;
 		} else if (i == 7) {

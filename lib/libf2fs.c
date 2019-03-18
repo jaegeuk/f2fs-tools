@@ -587,7 +587,7 @@ char *get_rootdev()
 		return NULL;
 	rootdev[ret] = '\0';
 
-	snprintf(rootdev, ret, "/dev/%s", buf);
+	snprintf(rootdev, ret + 1, "/dev/%s", buf);
 	return rootdev;
 #endif
 }
