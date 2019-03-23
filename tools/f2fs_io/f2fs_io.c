@@ -374,19 +374,23 @@ static void do_gc_urgent(int argc, char **argv, const struct cmd_desc *cmd)
 	if (argc == 3 && !strcmp(argv[2], "start")) {
 		printf("gc_urgent: start on %s\n", argv[1]);
 		sprintf(command, "echo %d > %s/%s/gc_urgent", 1, "/sys/fs/f2fs/", argv[1]);
-		system(command);
+		if (system(command))
+			exit(1);
 	} else if (argc == 3 && !strcmp(argv[2], "end")) {
 		printf("gc_urgent: end on %s\n", argv[1]);
 		sprintf(command, "echo %d > %s/%s/gc_urgent", 0, "/sys/fs/f2fs/", argv[1]);
-		system(command);
+		if (system(command))
+			exit(1);
 	} else if (argc == 4 && !strcmp(argv[2], "run")) {
 		printf("gc_urgent: start on %s for %d secs\n", argv[1], atoi(argv[3]));
 		sprintf(command, "echo %d > %s/%s/gc_urgent", 1, "/sys/fs/f2fs/", argv[1]);
-		system(command);
+		if (system(command))
+			exit(1);
 		sleep(atoi(argv[3]));
 		printf("gc_urgent: end on %s for %d secs\n", argv[1], atoi(argv[3]));
 		sprintf(command, "echo %d > %s/%s/gc_urgent", 0, "/sys/fs/f2fs/", argv[1]);
-		system(command);
+		if (system(command))
+			exit(1);
 	} else {
 		fputs("Excess arguments\n\n", stderr);
 		fputs(cmd->cmd_help, stderr);
