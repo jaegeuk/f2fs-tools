@@ -236,16 +236,18 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 		}
 	}
 
-	DISP_u32(inode, i_addr[ofs]);		/* Pointers to data blocks */
-	DISP_u32(inode, i_addr[ofs + 1]);	/* Pointers to data blocks */
-	DISP_u32(inode, i_addr[ofs + 2]);	/* Pointers to data blocks */
-	DISP_u32(inode, i_addr[ofs + 3]);	/* Pointers to data blocks */
+	for (i = ofs; i < ADDRS_PER_INODE(inode); i++) {
+		block_t blkaddr = le32_to_cpu(inode->i_addr[i]);
+		char *flag = "";
 
-	for (i = ofs + 3; i < ADDRS_PER_INODE(inode); i++) {
-		if (inode->i_addr[i] == 0x0)
-			break;
-		printf("i_addr[0x%x] points data block\t\t[0x%4x]\n",
-				i, le32_to_cpu(inode->i_addr[i]));
+		if (blkaddr == 0x0)
+			continue;
+		if (blkaddr == COMPRESS_ADDR)
+			flag = "cluster flag";
+		else if (blkaddr == NEW_ADDR)
+			flag = "reserved flag";
+		printf("i_addr[0x%x] %-16s\t\t[0x%8x : %u]\n", i, flag,
+				blkaddr, blkaddr);
 	}
 
 	DISP_u32(inode, i_nid[0]);	/* direct */
