@@ -241,6 +241,11 @@ static void f2fs_parse_options(int argc, char *argv[])
 				"enabled with extra attr feature\n");
 			exit(1);
 		}
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+			MSG(0, "\tInfo: compression feature should always be "
+				"enabled with extra attr feature\n");
+			exit(1);
+		}
 	}
 
 	if (optind >= argc) {

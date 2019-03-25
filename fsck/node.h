@@ -18,12 +18,34 @@
 
 #include "fsck.h"
 
-#define ADDRS_PER_PAGE(page) \
-	(IS_INODE(page) ? ADDRS_PER_INODE(&page->i) : ADDRS_PER_BLOCK)
-
 static inline int IS_INODE(struct f2fs_node *node)
 {
 	return ((node)->footer.nid == (node)->footer.ino);
+}
+
+static inline unsigned int ADDRS_PER_PAGE(struct f2fs_sb_info *sbi,
+		struct f2fs_node *node_blk, struct f2fs_node *inode_blk)
+{
+	nid_t ino = le32_to_cpu(node_blk->footer.ino);
+	unsigned int nblocks;
+
+	if (IS_INODE(node_blk))
+		return ADDRS_PER_INODE(&node_blk->i);
+
+	if (!inode_blk) {
+		struct node_info ni;
+
+		inode_blk = calloc(BLOCK_SZ, 2);
+		ASSERT(inode_blk);
+
+		get_node_info(sbi, ino, &ni);
+		ASSERT(dev_read_block(inode_blk, ni.blk_addr) >= 0);
+		nblocks = ADDRS_PER_BLOCK(&inode_blk->i);
+		free(inode_blk);
+	} else {
+		nblocks = ADDRS_PER_BLOCK(&inode_blk->i);
+	}
+	return nblocks;
 }
 
 static inline __le32 *blkaddr_in_inode(struct f2fs_node *node)

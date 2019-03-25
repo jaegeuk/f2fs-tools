@@ -499,9 +499,21 @@ opaque_seq:
 	return __f2fs_dentry_hash(name, len);
 }
 
+#define ALIGN_DOWN(addrs, size)		(((addrs) / (size)) * (size))
 unsigned int addrs_per_inode(struct f2fs_inode *i)
 {
-	return CUR_ADDRS_PER_INODE(i) - get_inline_xattr_addrs(i);
+	unsigned int addrs = CUR_ADDRS_PER_INODE(i) - get_inline_xattr_addrs(i);
+
+	if (!(le32_to_cpu(i->i_flags) & F2FS_COMPR_FL))
+		return addrs;
+	return ALIGN_DOWN(addrs, 1 << i->i_log_cluster_size);
+}
+
+unsigned int addrs_per_block(struct f2fs_inode *i)
+{
+	if (!(le32_to_cpu(i->i_flags) & F2FS_COMPR_FL))
+		return DEF_ADDRS_PER_BLOCK;
+	return ALIGN_DOWN(DEF_ADDRS_PER_BLOCK, 1 << i->i_log_cluster_size);
 }
 
 /*
@@ -1246,6 +1258,8 @@ unsigned int calc_extra_isize(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
 		size = offsetof(struct f2fs_inode, i_crtime);
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME))
+		size = offsetof(struct f2fs_inode, i_compr_blocks);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION))
 		size = offsetof(struct f2fs_inode, i_extra_end);
 
 	return size - F2FS_EXTRA_ISIZE_OFFSET;

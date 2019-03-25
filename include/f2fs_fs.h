@@ -574,6 +574,7 @@ enum {
 
 #define NULL_ADDR		0x0U
 #define NEW_ADDR		-1U
+#define COMPRESS_ADDR		-2U
 
 #define F2FS_ROOT_INO(sbi)	(sbi->root_ino_num)
 #define F2FS_NODE_INO(sbi)	(sbi->node_ino_num)
@@ -614,6 +615,7 @@ enum {
 #define F2FS_FEATURE_VERITY		0x0400	/* reserved */
 #define F2FS_FEATURE_SB_CHKSUM		0x0800
 #define F2FS_FEATURE_CASEFOLD		0x1000
+ #define F2FS_FEATURE_COMPRESSION	0x2000
 
 #define MAX_VOLUME_NAME		512
 
@@ -767,7 +769,8 @@ struct f2fs_extent {
 #define CUR_ADDRS_PER_INODE(inode)	(DEF_ADDRS_PER_INODE - \
 					__get_extra_isize(inode))
 #define ADDRS_PER_INODE(i)	addrs_per_inode(i)
-#define ADDRS_PER_BLOCK         1018	/* Address Pointers in a Direct Block */
+#define DEF_ADDRS_PER_BLOCK	1018	/* Address Pointers in a Direct Block */
+#define ADDRS_PER_BLOCK(i)	addrs_per_block(i)
 #define NIDS_PER_BLOCK          1018	/* Node IDs in an Indirect Block */
 
 #define	NODE_DIR1_BLOCK		(DEF_ADDRS_PER_INODE + 1)
@@ -827,6 +830,10 @@ struct f2fs_extent {
 #define F2FS_CASEFOLD_FL	0x40000000 /* Casefolded file */
 #define IS_CASEFOLDED(dir)     ((dir)->i_flags & F2FS_CASEFOLD_FL)
 
+/*
+ * inode flags
+ */
+#define F2FS_COMPR_FL		0x00000004 /* Compress file */
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
 	__u8 i_advise;			/* file hints */
@@ -867,6 +874,10 @@ struct f2fs_inode {
 			__le32 i_inode_checksum;/* inode meta checksum */
 			__le64 i_crtime;	/* creation time */
 			__le32 i_crtime_nsec;	/* creation time in nano scale */
+			__le64 i_compr_blocks;	/* # of compressed blocks */
+			__u8 i_compress_algrithm;	/* compress algrithm */
+			__u8 i_log_cluster_size;	/* log of cluster size */
+			__le16 i_padding;		/* padding */
 			__le32 i_extra_end[0];	/* for attribute size calculation */
 		} __attribute__((packed));
 		__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
@@ -877,7 +888,7 @@ struct f2fs_inode {
 
 
 struct direct_node {
-	__le32 addr[ADDRS_PER_BLOCK];	/* array of data block address */
+	__le32 addr[DEF_ADDRS_PER_BLOCK];	/* array of data block address */
 } __attribute__((packed));
 
 struct indirect_node {
@@ -1176,6 +1187,7 @@ extern int utf8_to_utf16(u_int16_t *, const char *, size_t, size_t);
 extern int utf16_to_utf8(char *, const u_int16_t *, size_t, size_t);
 extern int log_base_2(u_int32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
+extern unsigned int addrs_per_block(struct f2fs_inode *);
 extern __u32 f2fs_inode_chksum(struct f2fs_node *);
 extern __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *);
 extern int write_inode(struct f2fs_node *, u64);
@@ -1417,6 +1429,7 @@ struct feature feature_table[] = {					\
 	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */ \
 	{ "sb_checksum",		F2FS_FEATURE_SB_CHKSUM },	\
 	{ "casefold",			F2FS_FEATURE_CASEFOLD },	\
+	{ "compression",		F2FS_FEATURE_COMPRESSION },	\
 	{ NULL,				0x0},				\
 };
 

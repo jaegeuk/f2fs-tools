@@ -170,7 +170,8 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 				free(index_node);
 			index_node = (dn.node_blk == dn.inode_blk) ?
 							NULL : dn.node_blk;
-			remained_blkentries = ADDRS_PER_PAGE(dn.node_blk);
+			remained_blkentries = ADDRS_PER_PAGE(sbi,
+						dn.node_blk, dn.inode_blk);
 		}
 		ASSERT(remained_blkentries > 0);
 
@@ -248,7 +249,8 @@ u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 				free(index_node);
 			index_node = (dn.node_blk == dn.inode_blk) ?
 							NULL : dn.node_blk;
-			remained_blkentries = ADDRS_PER_PAGE(dn.node_blk);
+			remained_blkentries = ADDRS_PER_PAGE(sbi,
+						dn.node_blk, dn.inode_blk);
 		}
 		ASSERT(remained_blkentries > 0);
 

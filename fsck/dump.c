@@ -253,15 +253,22 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 	struct node_info ni;
 	struct f2fs_node *node_blk;
 	u32 skip = 0;
-	u32 i, idx;
+	u32 i, idx = 0;
+
+	get_node_info(sbi, nid, &ni);
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	dev_read_block(node_blk, ni.blk_addr);
 
 	switch (ntype) {
 	case TYPE_DIRECT_NODE:
-		skip = idx = ADDRS_PER_BLOCK;
+		skip = idx = ADDRS_PER_BLOCK(&node_blk->i);
 		break;
 	case TYPE_INDIRECT_NODE:
 		idx = NIDS_PER_BLOCK;
-		skip = idx * ADDRS_PER_BLOCK;
+		skip = idx * ADDRS_PER_BLOCK(&node_blk->i);
 		break;
 	case TYPE_DOUBLE_INDIRECT_NODE:
 		skip = 0;
@@ -273,13 +280,6 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 		*ofs += skip;
 		return;
 	}
-
-	get_node_info(sbi, nid, &ni);
-
-	node_blk = calloc(BLOCK_SZ, 1);
-	ASSERT(node_blk);
-
-	dev_read_block(node_blk, ni.blk_addr);
 
 	for (i = 0; i < idx; i++, (*ofs)++) {
 		switch (ntype) {
@@ -545,7 +545,8 @@ unsigned int start_bidx_of_node(unsigned int node_ofs,
 		int dec = (node_ofs - indirect_blks - 3) / (NIDS_PER_BLOCK + 1);
 		bidx = node_ofs - 5 - dec;
 	}
-	return bidx * ADDRS_PER_BLOCK + ADDRS_PER_INODE(&node_blk->i);
+	return bidx * ADDRS_PER_BLOCK(&node_blk->i) +
+				ADDRS_PER_INODE(&node_blk->i);
 }
 
 static void dump_data_offset(u32 blk_addr, int ofs_in_node)
