@@ -969,15 +969,18 @@ int get_device_info(int i)
 	}
 
 	if (dev->zoned_model != F2FS_ZONED_NONE) {
-		if (dev->zoned_model == F2FS_ZONED_HM)
-			c.zoned_model = F2FS_ZONED_HM;
 
+		/* Get the number of blocks per zones */
 		if (f2fs_get_zone_blocks(i)) {
 			MSG(0, "\tError: Failed to get number of blocks per zone\n");
 			free(stat_buf);
 			return -1;
 		}
 
+		/*
+		 * Check zone configuration: for the first disk of a
+		 * multi-device volume, conventional zones are needed.
+		 */
 		if (f2fs_check_zones(i)) {
 			MSG(0, "\tError: Failed to check zone configuration\n");
 			free(stat_buf);
@@ -1125,22 +1128,53 @@ int f2fs_get_device_info(void)
 		return -1;
 	}
 
+	/*
+	 * Check device types and determine the final volume operation mode:
+	 *   - If all devices are regular block devices, default operation.
+	 *   - If at least one HM device is found, operate in HM mode (BLKZONED
+	 *     feature will be enabled by mkfs).
+	 *   - If an HA device is found, let mkfs decide based on the -m option
+	 *     setting by the user.
+	 */
+	c.zoned_model = F2FS_ZONED_NONE;
 	for (i = 0; i < c.ndevs; i++) {
-		if (c.devices[i].zoned_model != F2FS_ZONED_NONE) {
+		switch (c.devices[i].zoned_model) {
+		case F2FS_ZONED_NONE:
+			continue;
+		case F2FS_ZONED_HM:
+			c.zoned_model = F2FS_ZONED_HM;
+			break;
+		case F2FS_ZONED_HA:
+			if (c.zoned_model != F2FS_ZONED_HM)
+				c.zoned_model = F2FS_ZONED_HA;
+			break;
+		}
+	}
+
+	if (c.zoned_model != F2FS_ZONED_NONE) {
+
+		/*
+		 * For zoned model, the zones sizes of all zoned devices must
+		 * be equal.
+		 */
+		for (i = 0; i < c.ndevs; i++) {
+			if (c.devices[i].zoned_model == F2FS_ZONED_NONE)
+				continue;
 			if (c.zone_blocks &&
 				c.zone_blocks != c.devices[i].zone_blocks) {
-				MSG(0, "\tError: not support different zone sizes!!!\n");
+				MSG(0, "\tError: zones of different size are "
+				       "not supported\n");
 				return -1;
 			}
 			c.zone_blocks = c.devices[i].zone_blocks;
 		}
-	}
 
-	/*
-	 * Align sections to the device zone size
-	 * and align F2FS zones to the device zones.
-	 */
-	if (c.zone_blocks) {
+		/*
+		 * Align sections to the device zone size and align F2FS zones
+		 * to the device zones. For F2FS_ZONED_HA model without the
+		 * BLKZONED feature set at format time, this is only an
+		 * optimization as sequential writes will not be enforced.
+		 */
 		c.segs_per_sec = c.zone_blocks / DEFAULT_BLOCKS_PER_SEGMENT;
 		c.secs_per_zone = 1;
 	} else {
