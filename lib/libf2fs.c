@@ -961,8 +961,12 @@ int get_device_info(int i)
 	}
 
 #if !defined(WITH_ANDROID) && defined(__linux__)
-	if (S_ISBLK(stat_buf->st_mode))
-		f2fs_get_zoned_model(i);
+	if (S_ISBLK(stat_buf->st_mode)) {
+		if (f2fs_get_zoned_model(i) < 0) {
+			free(stat_buf);
+			return -1;
+                }
+	}
 
 	if (dev->zoned_model != F2FS_ZONED_NONE) {
 		if (dev->zoned_model == F2FS_ZONED_HM)

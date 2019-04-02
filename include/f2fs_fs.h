@@ -1274,7 +1274,7 @@ blk_zone_cond_str(struct blk_zone *blkz)
 
 #endif
 
-extern void f2fs_get_zoned_model(int);
+extern int f2fs_get_zoned_model(int);
 extern int f2fs_get_zone_blocks(int);
 extern int f2fs_check_zones(int);
 extern int f2fs_reset_zones(int);

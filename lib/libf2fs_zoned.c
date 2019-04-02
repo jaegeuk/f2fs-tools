@@ -24,7 +24,7 @@
 
 #ifdef HAVE_LINUX_BLKZONED_H
 
-void f2fs_get_zoned_model(int i)
+int f2fs_get_zoned_model(int i)
 {
 	struct device_info *dev = c.devices + i;
 	char str[128];
@@ -36,27 +36,41 @@ void f2fs_get_zoned_model(int i)
 		 "/sys/block/%s/queue/zoned",
 		 basename(dev->path));
 	file = fopen(str, "r");
-	if (!file)
-		goto not_zoned;
+	if (!file) {
+		/*
+		 * The kernel does not support zoned block devices, but we have
+		 * a block device file. This means that the device is not zoned
+		 * or is zoned but can be randomly written (i.e. host-aware
+		 * zoned model). Treat the device as a regular block device.
+		 */
+		dev->zoned_model = F2FS_ZONED_NONE;
+		return 0;
+	}
 
 	memset(str, 0, sizeof(str));
 	res = fscanf(file, "%s", str);
 	fclose(file);
 
-	if (res != 1)
-		goto not_zoned;
+	if (res != 1) {
+		MSG(0, "\tError: Failed to parse the device zoned model\n");
+		return -1;
+	}
 
-	if (strcmp(str, "host-aware") == 0) {
+	if (strcmp(str, "none") == 0) {
+		/* Regular block device */
+		dev->zoned_model = F2FS_ZONED_NONE;
+	} else if (strcmp(str, "host-aware") == 0) {
+		/* Host-aware zoned block device: can be randomly written */
 		dev->zoned_model = F2FS_ZONED_HA;
-		return;
-	}
-	if (strcmp(str, "host-managed") == 0) {
+	} else if (strcmp(str, "host-managed") == 0) {
+		/* Host-managed zoned block device: sequential writes needed */
 		dev->zoned_model = F2FS_ZONED_HM;
-		return;
+	} else {
+		MSG(0, "\tError: Unsupported device zoned model\n");
+		return -1;
 	}
 
-not_zoned:
-	dev->zoned_model = F2FS_ZONED_NONE;
+	return 0;
 }
 
 int f2fs_get_zone_blocks(int i)
@@ -276,12 +290,13 @@ out:
 
 #else
 
-void f2fs_get_zoned_model(int i)
+int f2fs_get_zoned_model(int i)
 {
 	struct device_info *dev = c.devices + i;
 
 	c.zoned_mode = 0;
 	dev->zoned_model = F2FS_ZONED_NONE;
+	return 0;
 }
 
 int f2fs_get_zone_blocks(int i)
