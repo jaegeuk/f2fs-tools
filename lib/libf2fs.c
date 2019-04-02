@@ -965,7 +965,7 @@ int get_device_info(int i)
 		if (f2fs_get_zoned_model(i) < 0) {
 			free(stat_buf);
 			return -1;
-                }
+		}
 	}
 
 	if (dev->zoned_model != F2FS_ZONED_NONE) {
