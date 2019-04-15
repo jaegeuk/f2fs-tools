@@ -65,6 +65,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 	struct node_info ni;
 	block_t blkaddr = NULL_ADDR;
 	int type;
+	int ret;
 
 	f2fs_inode = dn->inode_blk;
 
@@ -86,7 +87,11 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, 0, ni.version);
-	reserve_new_block(sbi, &blkaddr, &sum, type);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, type);
+	if (ret) {
+		free(node_blk);
+		return 0;
+	}
 
 	/* update nat info */
 	update_nat_blkaddr(sbi, le32_to_cpu(f2fs_inode->footer.ino),

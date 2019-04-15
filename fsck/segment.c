@@ -24,7 +24,7 @@ static void write_inode(u64 blkaddr, struct f2fs_node *inode)
 	ASSERT(dev_write_block(inode, blkaddr) >= 0);
 }
 
-void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
+int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 			struct f2fs_summary *sum, int type)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -32,10 +32,25 @@ void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	u64 blkaddr, offset;
 	u64 old_blkaddr = *to;
 
+	if (old_blkaddr == NULL_ADDR) {
+		if (c.func == FSCK) {
+			if (fsck->chk.valid_blk_cnt >= sbi->user_block_count) {
+				ERR_MSG("Not enough space");
+				return -ENOSPC;
+			}
+		} else {
+			if (sbi->total_valid_block_count >=
+						sbi->user_block_count) {
+				ERR_MSG("Not enough space");
+				return -ENOSPC;
+			}
+		}
+	}
+
 	blkaddr = SM_I(sbi)->main_blkaddr;
 
 	if (find_next_free_block(sbi, &blkaddr, 0, type)) {
-		ERR_MSG("Not enough space to allocate blocks");
+		ERR_MSG("Can't find free block");
 		ASSERT(0);
 	}
 
@@ -59,6 +74,8 @@ void reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	/* read/write SSA */
 	*to = (block_t)blkaddr;
 	update_sum_entry(sbi, *to, sum);
+
+	return 0;
 }
 
 int new_data_block(struct f2fs_sb_info *sbi, void *block,
@@ -68,6 +85,7 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 	struct node_info ni;
 	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	int ret;
 
 	if (!is_set_ckpt_flags(cp, CP_UMOUNT_FLAG)) {
 		c.alloc_failed = 1;
@@ -79,7 +97,11 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
-	reserve_new_block(sbi, &dn->data_blkaddr, &sum, type);
+	ret = reserve_new_block(sbi, &dn->data_blkaddr, &sum, type);
+	if (ret) {
+		c.alloc_failed = 1;
+		return ret;
+	}
 
 	if (blkaddr == NULL_ADDR)
 		inc_inode_blocks(dn);

@@ -360,7 +360,8 @@ static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 	test_and_set_bit_le(1, dent_blk->dentry_bitmap);
 
 	set_summary(&sum, ino, 0, ni.version);
-	reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_DATA);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_DATA);
+	ASSERT(!ret);
 
 	ret = dev_write_block(dent_blk, blkaddr);
 	ASSERT(ret >= 0);
@@ -395,7 +396,8 @@ static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 	memcpy(data_blk, symname, symlen);
 
 	set_summary(&sum, ino, 0, ni.version);
-	reserve_new_block(sbi, &blkaddr, &sum, CURSEG_WARM_DATA);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_WARM_DATA);
+	ASSERT(!ret);
 
 	ret = dev_write_block(data_blk, blkaddr);
 	ASSERT(ret >= 0);
@@ -630,7 +632,8 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 
 	/* write child */
 	set_summary(&sum, de->ino, 0, ni.version);
-	reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE);
+	ASSERT(!ret);
 
 	/* update nat info */
 	update_nat_blkaddr(sbi, de->ino, de->ino, blkaddr);
