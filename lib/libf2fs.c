@@ -794,6 +794,15 @@ void get_kernel_uname_version(__u8 *version)
 #endif /* APPLE_DARWIN */
 
 #ifndef ANDROID_WINDOWS_HOST
+static int open_check_fs(char *path, int flag)
+{
+	if (c.func != FSCK || c.fix_on || c.auto_fix)
+		return -1;
+
+	/* allow to open ro */
+	return open(path, O_RDONLY | flag);
+}
+
 int get_device_info(int i)
 {
 	int32_t fd = 0;
@@ -815,8 +824,11 @@ int get_device_info(int i)
 	if (c.sparse_mode) {
 		fd = open(dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
 		if (fd < 0) {
-			MSG(0, "\tError: Failed to open a sparse file!\n");
-			return -1;
+			fd = open_check_fs(dev->path, O_BINARY);
+			if (fd < 0) {
+				MSG(0, "\tError: Failed to open a sparse file!\n");
+				return -1;
+			}
 		}
 	}
 
@@ -830,10 +842,15 @@ int get_device_info(int i)
 			return -1;
 		}
 
-		if (S_ISBLK(stat_buf->st_mode) && !c.force)
+		if (S_ISBLK(stat_buf->st_mode) && !c.force) {
 			fd = open(dev->path, O_RDWR | O_EXCL);
-		else
+			if (fd < 0)
+				fd = open_check_fs(dev->path, O_EXCL);
+		} else {
 			fd = open(dev->path, O_RDWR);
+			if (fd < 0)
+				fd = open_check_fs(dev->path, 0);
+		}
 	}
 	if (fd < 0) {
 		MSG(0, "\tError: Failed to open the device!\n");
