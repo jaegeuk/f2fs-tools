@@ -38,40 +38,56 @@ struct f2fs_checkpoint *cp;
 static unsigned int quotatype_bits = 0;
 
 const char *media_ext_lists[] = {
-	"jpg",
-	"gif",
-	"png",
+	/* common prefix */
+	"mp", // Covers mp3, mp4, mpeg, mpg
+	"wm", // Covers wma, wmb, wmv
+	"og", // Covers oga, ogg, ogm, ogv
+	"jp", // Covers jpg, jpeg, jp2
+
+	/* video */
 	"avi",
-	"divx",
-	"m4a",
 	"m4v",
 	"m4p",
-	"mp4",
-	"mp3",
-	"3gp",
-	"wmv",
-	"wma",
-	"mpeg",
 	"mkv",
 	"mov",
-	"asx",
-	"asf",
-	"wmx",
-	"svi",
-	"wvx",
-	"wv",
-	"wm",
-	"mpg",
-	"mpe",
-	"rm",
-	"ogg",
+	"webm",
+
+	/* audio */
+	"wav",
+	"m4a",
+	"3gp",
 	"opus",
 	"flac",
-	"jpeg",
-	"video",
-	"apk",	/* for android system */
-	"so",	/* for android system */
+
+	/* image */
+	"gif",
+	"png",
+	"svg",
+	"webp",
+
+	/* archives */
+	"jar",
+	"deb",
+	"iso",
+	"gz",
+	"xz",
+	"zst",
+
+	/* others */
+	"pdf",
+	"pyc", // Python bytecode
+	"ttc",
+	"ttf",
 	"exe",
+
+	/* android */
+	"apk",
+	"cnt", // Image alias
+	"exo", // YouTube
+	"odex", // Android RunTime
+	"vdex", // Android RunTime
+	"so",
+
 	NULL
 };
 
