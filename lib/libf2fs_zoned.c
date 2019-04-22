@@ -8,6 +8,7 @@
  */
 #define _LARGEFILE64_SOURCE
 
+#include <f2fs_fs.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +16,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
+#endif
+#ifdef HAVE_LINUX_LIMITS_H
+#include <linux/limits.h>
+#endif
 #ifndef ANDROID_WINDOWS_HOST
 #include <sys/ioctl.h>
 #endif
@@ -24,27 +31,92 @@
 
 #ifdef HAVE_LINUX_BLKZONED_H
 
+int get_sysfs_path(struct device_info *dev, const char *attr,
+		   char *buf, size_t buflen)
+{
+	struct stat statbuf;
+	char str[PATH_MAX];
+	char sysfs_path[PATH_MAX];
+	ssize_t len;
+	char *delim;
+	int ret;
+
+	if (stat(dev->path, &statbuf) < 0)
+		return -1;
+
+	snprintf(str, sizeof(str), "/sys/dev/block/%d:%d",
+		 major(statbuf.st_rdev), minor(statbuf.st_rdev));
+	len = readlink(str, buf, buflen - 1);
+	if (len < 0)
+		return -1;
+	buf[len] = '\0';
+
+	ret = snprintf(sysfs_path, sizeof(sysfs_path),
+		       "/sys/dev/block/%s", buf);
+	if (ret >= sizeof(sysfs_path))
+		return -1;
+
+	/* Test if the device is a partition */
+	ret = snprintf(str, sizeof(str), "%s/partition", sysfs_path);
+	if (ret >= sizeof(str))
+		return -1;
+	ret = stat(str, &statbuf);
+	if (ret) {
+		if (errno == ENOENT) {
+			/* Not a partition */
+			goto out;
+		}
+		return -1;
+	}
+
+	/*
+	 * The device is a partition: remove the device name from the
+	 * attribute file path to obtain the sysfs path of the holder device.
+	 *   e.g.:  /sys/dev/block/.../sda/sda1 -> /sys/dev/block/.../sda
+	 */
+	delim = strrchr(sysfs_path, '/');
+	if (!delim)
+		return -1;
+	*delim = '\0';
+
+out:
+	ret = snprintf(buf, buflen, "%s/%s", sysfs_path, attr);
+	if (ret >= buflen)
+		return -1;
+
+	return 0;
+}
+
 int f2fs_get_zoned_model(int i)
 {
 	struct device_info *dev = c.devices + i;
-	char str[128];
+	char str[PATH_MAX];
 	FILE *file;
 	int res;
 
 	/* Check that this is a zoned block device */
-	snprintf(str, sizeof(str),
-		 "/sys/block/%s/queue/zoned",
-		 basename(dev->path));
+	res = get_sysfs_path(dev, "queue/zoned", str, sizeof(str));
+	if (res != 0) {
+		MSG(0, "\tError: Failed to get device sysfs path\n");
+		return -1;
+	}
+
 	file = fopen(str, "r");
 	if (!file) {
 		/*
 		 * The kernel does not support zoned block devices, but we have
-		 * a block device file. This means that the device is not zoned
-		 * or is zoned but can be randomly written (i.e. host-aware
-		 * zoned model). Treat the device as a regular block device.
+		 * a block device file. This means that if the zoned file is
+		 * not found, then the device is not zoned or is zoned but can
+		 * be randomly written (i.e. host-aware zoned model).
+		 * Treat the device as a regular block device. Otherwise, signal
+		 * the failure to verify the disk zone model.
 		 */
-		dev->zoned_model = F2FS_ZONED_NONE;
-		return 0;
+		if (errno == ENOENT) {
+			dev->zoned_model = F2FS_ZONED_NONE;
+			return 0;
+		}
+		MSG(0, "\tError: Failed to check the device zoned model\n");
+		return -1;
 	}
 
 	memset(str, 0, sizeof(str));
@@ -77,16 +149,19 @@ int f2fs_get_zone_blocks(int i)
 {
 	struct device_info *dev = c.devices + i;
 	uint64_t sectors;
-	char str[128];
+	char str[PATH_MAX];
 	FILE *file;
 	int res;
 
 	/* Get zone size */
 	dev->zone_blocks = 0;
 
-	snprintf(str, sizeof(str),
-		 "/sys/block/%s/queue/chunk_sectors",
-		 basename(dev->path));
+	res = get_sysfs_path(dev, "queue/chunk_sectors", str, sizeof(str));
+	if (res != 0) {
+		MSG(0, "\tError: Failed to get device sysfs attribute path\n");
+		return -1;
+	}
+
 	file = fopen(str, "r");
 	if (!file)
 		return -1;
