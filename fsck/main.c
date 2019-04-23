@@ -757,9 +757,13 @@ int main(int argc, char **argv)
 		}
 
 		/* allow ro-mounted partition */
-		MSG(0, "Info: Check FS only due to RO\n");
-		c.fix_on = 0;
-		c.auto_fix = 0;
+		if (c.force) {
+			MSG(0, "Info: Force to check/repair FS on RO mounted device\n");
+		} else {
+			MSG(0, "Info: Check FS only on RO mounted device\n");
+			c.fix_on = 0;
+			c.auto_fix = 0;
+		}
 	}
 
 	/* Get device */

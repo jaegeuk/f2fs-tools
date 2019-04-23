@@ -630,6 +630,11 @@ void f2fs_init_configuration(void)
 	c.root_gid = getgid();
 }
 
+int f2fs_dev_is_writable(void)
+{
+	return !c.ro || c.force;
+}
+
 #ifdef HAVE_SETMNTENT
 static int is_mounted(const char *mpt, const char *device)
 {

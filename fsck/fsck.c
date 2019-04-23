@@ -199,7 +199,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 			need_fix = 1;
 		}
 	}
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		u64 ssa_blk;
 		int ret2;
 
@@ -325,7 +325,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			need_fix = 1;
 		}
 	}
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		u64 ssa_blk;
 		int ret2;
 
@@ -1015,7 +1015,7 @@ skip_blkcnt_fix:
 	}
 
 	/* drop extent information to avoid potential wrong access */
-	if (need_fix && !c.ro)
+	if (need_fix && f2fs_dev_is_writable())
 		node_blk->i.i_ext.len = 0;
 
 	if ((c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) &&
@@ -1038,7 +1038,7 @@ skip_blkcnt_fix:
 		}
 	}
 
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
 	}
@@ -1073,7 +1073,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			FIX_MSG("[0x%x] dn.addr[%d] = 0", nid, idx);
 		}
 	}
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		ret = dev_write_block(node_blk, ni->blk_addr);
 		ASSERT(ret >= 0);
 	}
@@ -1110,7 +1110,7 @@ skip:
 		}
 	}
 
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		struct node_info ni;
 		nid_t nid = le32_to_cpu(node_blk->footer.nid);
 
@@ -1152,7 +1152,7 @@ skip:
 		}
 	}
 
-	if (need_fix && !c.ro) {
+	if (need_fix && f2fs_dev_is_writable()) {
 		struct node_info ni;
 		nid_t nid = le32_to_cpu(node_blk->footer.nid);
 
@@ -1595,7 +1595,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			de_blk->dentry, de_blk->filename,
 			NR_DENTRY_IN_BLOCK, last_blk, enc_name);
 
-	if (dentries < 0 && !c.ro) {
+	if (dentries < 0 && f2fs_dev_is_writable()) {
 		ret = dev_write_block(de_blk, blk_addr);
 		ASSERT(ret >= 0);
 		DBG(1, "[%3d] Dentry Block [0x%x] Fixed hash_codes\n\n",
@@ -1708,7 +1708,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			else if (ret)
 				ASSERT_MSG("[0x%x] wrong orphan inode", ino);
 		}
-		if (!c.ro && c.fix_on &&
+		if (f2fs_dev_is_writable() && c.fix_on &&
 				entry_count != new_entry_count) {
 			new_blk->entry_count = cpu_to_le32(new_entry_count);
 			ret = dev_write_block(new_blk, start_blk + i);
@@ -2702,7 +2702,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 #endif
 	/* fix global metadata */
-	if (force || (c.fix_on && !c.ro)) {
+	if (force || (c.fix_on && f2fs_dev_is_writable())) {
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 
 		if (force || c.bug_on || c.bug_nat_bits) {
