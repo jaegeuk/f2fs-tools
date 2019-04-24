@@ -353,6 +353,7 @@ int qtree_write_dquot(struct dquot *dquot)
 	if (ret != info->dqi_entry_size) {
 		log_err("Quota write failed (id %u): %s",
 			(unsigned int)dquot->dq_id, strerror(errno));
+		quota_free_mem(&ddquot);
 		return ret;
 	}
 	quota_free_mem(&ddquot);
