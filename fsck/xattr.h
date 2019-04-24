@@ -34,6 +34,7 @@ struct f2fs_xattr_entry {
 	char e_name[0];		/* attribute name */
 };
 
+#define FS_ENCRYPTION_CONTEXT_FORMAT_V1 1
 #define FS_KEY_DESCRIPTOR_SIZE 8
 #define FS_KEY_DERIVATION_NONCE_SIZE 16
 

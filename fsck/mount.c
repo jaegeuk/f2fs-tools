@@ -55,11 +55,11 @@ void update_free_segments(struct f2fs_sb_info *sbi)
 }
 
 #if defined(HAVE_LINUX_POSIX_ACL_H) || defined(HAVE_SYS_ACL_H)
-void print_acl(char *value, int size)
+static void print_acl(const u8 *value, int size)
 {
-	struct f2fs_acl_header *hdr = (struct f2fs_acl_header *)value;
-	struct f2fs_acl_entry *entry = (struct f2fs_acl_entry *)(hdr + 1);
-	const char *end = value + size;
+	const struct f2fs_acl_header *hdr = (struct f2fs_acl_header *)value;
+	const struct f2fs_acl_entry *entry = (struct f2fs_acl_entry *)(hdr + 1);
+	const u8 *end = value + size;
 	int i, count;
 
 	if (hdr->a_version != cpu_to_le32(F2FS_ACL_VERSION)) {
@@ -75,7 +75,7 @@ void print_acl(char *value, int size)
 	}
 
 	for (i = 0; i < count; i++) {
-		if ((char *)entry > end) {
+		if ((u8 *)entry > end) {
 			MSG(0, "Invalid ACL entries count %d\n", count);
 			return;
 		}
@@ -114,42 +114,33 @@ void print_acl(char *value, int size)
 		}
 	}
 }
-#else
-#define print_acl(value, size) do {		\
-	int i;					\
-	for (i = 0; i < size; i++)		\
-		MSG(0, "%02X", value[i]);	\
-	MSG(0, "\n");				\
-} while (0)
-#endif
+#endif /* HAVE_LINUX_POSIX_ACL_H || HAVE_SYS_ACL_H */
 
-void print_xattr_entry(struct f2fs_xattr_entry *ent)
+static void print_xattr_entry(const struct f2fs_xattr_entry *ent)
 {
-	char *value = (char *)(ent->e_name + le16_to_cpu(ent->e_name_len));
-	struct fscrypt_context *ctx;
+	const u8 *value = (const u8 *)&ent->e_name[ent->e_name_len];
+	const int size = le16_to_cpu(ent->e_value_size);
+	const struct fscrypt_context *ctx;
 	int i;
 
 	MSG(0, "\nxattr: e_name_index:%d e_name:", ent->e_name_index);
-	for (i = 0; i < le16_to_cpu(ent->e_name_len); i++)
+	for (i = 0; i < ent->e_name_len; i++)
 		MSG(0, "%c", ent->e_name[i]);
 	MSG(0, " e_name_len:%d e_value_size:%d e_value:\n",
-			ent->e_name_len, le16_to_cpu(ent->e_value_size));
+			ent->e_name_len, size);
 
 	switch (ent->e_name_index) {
+#if defined(HAVE_LINUX_POSIX_ACL_H) || defined(HAVE_SYS_ACL_H)
 	case F2FS_XATTR_INDEX_POSIX_ACL_ACCESS:
 	case F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT:
-		print_acl(value, le16_to_cpu(ent->e_value_size));
-		break;
-	case F2FS_XATTR_INDEX_USER:
-	case F2FS_XATTR_INDEX_SECURITY:
-	case F2FS_XATTR_INDEX_TRUSTED:
-	case F2FS_XATTR_INDEX_LUSTRE:
-		for (i = 0; i < le16_to_cpu(ent->e_value_size); i++)
-			MSG(0, "%02X", value[i]);
-		MSG(0, "\n");
-		break;
+		print_acl(value, size);
+		return;
+#endif
 	case F2FS_XATTR_INDEX_ENCRYPTION:
-		ctx = (struct fscrypt_context *)value;
+		ctx = (const struct fscrypt_context *)value;
+		if (size != sizeof(*ctx) ||
+		    ctx->format != FS_ENCRYPTION_CONTEXT_FORMAT_V1)
+			break;
 		MSG(0, "format: %d\n", ctx->format);
 		MSG(0, "contents_encryption_mode: 0x%x\n", ctx->contents_encryption_mode);
 		MSG(0, "filenames_encryption_mode: 0x%x\n", ctx->filenames_encryption_mode);
@@ -161,10 +152,11 @@ void print_xattr_entry(struct f2fs_xattr_entry *ent)
 		for (i = 0; i < FS_KEY_DERIVATION_NONCE_SIZE; i++)
 			MSG(0, "%02X", ctx->nonce[i]);
 		MSG(0, "\n");
-		break;
-	default:
-		break;
+		return;
 	}
+	for (i = 0; i < size; i++)
+		MSG(0, "%02X", value[i]);
+	MSG(0, "\n");
 }
 
 void print_inode_info(struct f2fs_sb_info *sbi,
