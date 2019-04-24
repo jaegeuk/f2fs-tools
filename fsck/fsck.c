@@ -660,7 +660,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
 	int ofs;
-	unsigned char *en;
+	char *en;
 	u32 namelen;
 	unsigned int idx = 0;
 	unsigned short i_gc_failures;
@@ -907,7 +907,7 @@ check:
 		}
 	}
 skip_blkcnt_fix:
-	en = malloc(F2FS_NAME_LEN + 1);
+	en = malloc(F2FS_PRINT_NAMELEN);
 	ASSERT(en);
 
 	namelen = le32_to_cpu(node_blk->i.i_namelen);
@@ -926,9 +926,8 @@ skip_blkcnt_fix:
 		} else
 			namelen = F2FS_NAME_LEN;
 	}
-	namelen = convert_encrypted_name(node_blk->i.i_name, namelen,
-					en, file_enc_name(&node_blk->i));
-	en[namelen] = '\0';
+	pretty_print_filename(node_blk->i.i_name, namelen, en,
+			      file_enc_name(&node_blk->i));
 	if (ftype == F2FS_FT_ORPHAN)
 		DBG(1, "Orphan Inode: 0x%x [%s] i_blocks: %u\n\n",
 				le32_to_cpu(node_blk->footer.ino),
@@ -1168,45 +1167,40 @@ static const char *lookup_table =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
 
 /**
- * digest_encode() -
+ * base64_encode() -
  *
- * Encodes the input digest using characters from the set [a-zA-Z0-9_+].
+ * Encodes the input string using characters from the set [A-Za-z0-9+,].
  * The encoded string is roughly 4/3 times the size of the input string.
  */
-static int digest_encode(const char *src, int len, char *dst)
+static int base64_encode(const u8 *src, int len, char *dst)
 {
-	int i = 0, bits = 0, ac = 0;
+	int i, bits = 0, ac = 0;
 	char *cp = dst;
 
-	while (i < len && i < 24) {
-		ac += (((unsigned char) src[i]) << bits);
+	for (i = 0; i < len; i++) {
+		ac += src[i] << bits;
 		bits += 8;
 		do {
 			*cp++ = lookup_table[ac & 0x3f];
 			ac >>= 6;
 			bits -= 6;
 		} while (bits >= 6);
-		i++;
 	}
 	if (bits)
 		*cp++ = lookup_table[ac & 0x3f];
-	*cp = 0;
 	return cp - dst;
 }
 
-int convert_encrypted_name(unsigned char *name, u32 len,
-				unsigned char *new, int enc_name)
+void pretty_print_filename(const u8 *raw_name, u32 len,
+			   char out[F2FS_PRINT_NAMELEN], int enc_name)
 {
-	if (!enc_name) {
-		if (len > F2FS_NAME_LEN)
-			len = F2FS_NAME_LEN;
-		memcpy(new, name, len);
-		new[len] = 0;
-		return len;
-	}
+	len = min(len, (u32)F2FS_NAME_LEN);
 
-	*new = '_';
-	return digest_encode((const char *)name, len, (char *)new + 1);
+	if (enc_name)
+		len = base64_encode(raw_name, len, out);
+	else
+		memcpy(out, raw_name, len);
+	out[len] = 0;
 }
 
 static void print_dentry(__u32 depth, __u8 *name,
@@ -1218,7 +1212,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	u32 name_len;
 	unsigned int i;
 	int bit_offset;
-	unsigned char new[F2FS_NAME_LEN + 1];
+	char new[F2FS_PRINT_NAMELEN];
 
 	if (!c.show_dentry)
 		return;
@@ -1248,7 +1242,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	for (i = 1; i < depth; i++)
 		printf("%c   ", tree_mark[i]);
 
-	convert_encrypted_name(name, name_len, new, enc_name);
+	pretty_print_filename(name, name_len, new, enc_name);
 
 	printf("%c-- %s <ino = 0x%x>, <encrypted (%d)>\n",
 			last_de ? '`' : '|',
@@ -1263,10 +1257,9 @@ static int f2fs_check_hash_code(struct f2fs_dir_entry *dentry,
 
 	/* fix hash_code made by old buggy code */
 	if (dentry->hash_code != hash_code) {
-		unsigned char new[F2FS_NAME_LEN + 1];
+		char new[F2FS_PRINT_NAMELEN];
 
-		convert_encrypted_name((unsigned char *)name, len,
-							new, enc_name);
+		pretty_print_filename(name, len, new, enc_name);
 		FIX_MSG("Mismatch hash_code for \"%s\" [%x:%x]",
 				new, le32_to_cpu(dentry->hash_code),
 				hash_code);
@@ -1380,8 +1373,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 	int dentries = 0;
 	u32 blk_cnt;
 	u8 *name;
-	unsigned char en[F2FS_NAME_LEN + 1];
-	u16 name_len, en_len;
+	char en[F2FS_PRINT_NAMELEN];
+	u16 name_len;
 	int ret = 0;
 	int fixed = 0;
 	int i, slots;
@@ -1507,8 +1500,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, struct child_info *child,
 			}
 		}
 
-		en_len = convert_encrypted_name(name, name_len, en, enc_name);
-		en[en_len] = '\0';
+		pretty_print_filename(name, name_len, en, enc_name);
 		DBG(1, "[%3u]-[0x%x] name[%s] len[0x%x] ino[0x%x] type[0x%x]\n",
 				fsck->dentry_depth, i, en, name_len,
 				le32_to_cpu(dentry[i].ino),

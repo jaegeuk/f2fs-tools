@@ -156,7 +156,8 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		struct child_info *);
 int fsck_chk_meta(struct f2fs_sb_info *sbi);
 int fsck_chk_curseg_info(struct f2fs_sb_info *);
-int convert_encrypted_name(unsigned char *, u32, unsigned char *, int);
+void pretty_print_filename(const u8 *raw_name, u32 len,
+			   char out[F2FS_PRINT_NAMELEN], int enc_name);
 
 extern void update_free_segments(struct f2fs_sb_info *);
 void print_cp_state(u32);

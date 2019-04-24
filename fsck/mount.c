@@ -173,16 +173,14 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	struct f2fs_inode *inode = &node->i;
 	void *xattr_addr;
 	struct f2fs_xattr_entry *ent;
-	unsigned char en[F2FS_NAME_LEN + 1];
+	char en[F2FS_PRINT_NAMELEN];
 	unsigned int i = 0;
 	u32 namelen = le32_to_cpu(inode->i_namelen);
 	int enc_name = file_enc_name(inode);
 	int ofs = __get_extra_isize(inode);
 
-	namelen = convert_encrypted_name(inode->i_name, namelen, en, enc_name);
-	en[namelen] = '\0';
-	if (name && namelen) {
-		inode->i_name[namelen] = '\0';
+	pretty_print_filename(inode->i_name, namelen, en, enc_name);
+	if (name && en[0]) {
 		MSG(0, " - File name         : %s%s\n", en,
 				enc_name ? " <encrypted>" : "");
 		setlocale(LC_ALL, "");
@@ -214,7 +212,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	DISP_u32(inode, i_pino);
 	DISP_u32(inode, i_dir_level);
 
-	if (namelen) {
+	if (en[0]) {
 		DISP_u32(inode, i_namelen);
 		printf("%-30s\t\t[%s]\n", "i_name", en);
 	}

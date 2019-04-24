@@ -627,8 +627,8 @@ static void dump_dirent(u32 blk_addr, int is_inline, int enc_name)
 
 	while (i < d.max) {
 		struct f2fs_dir_entry *de;
-		unsigned char en[F2FS_NAME_LEN + 1];
-		u16 en_len, name_len;
+		char en[F2FS_PRINT_NAMELEN];
+		u16 name_len;
 		int enc;
 
 		if (!test_bit_le(i, d.bitmap)) {
@@ -654,18 +654,16 @@ static void dump_dirent(u32 blk_addr, int is_inline, int enc_name)
 			}
 		}
 
-		en_len = convert_encrypted_name(d.filename[i],
-				le16_to_cpu(de->name_len), en, enc);
-		en[en_len] = '\0';
+		pretty_print_filename(d.filename[i], name_len, en, enc);
 
 		DBG(1, "bitmap pos[0x%x] name[%s] len[0x%x] hash[0x%x] ino[0x%x] type[0x%x]\n",
 				i, en,
-				le16_to_cpu(de->name_len),
+				name_len,
 				le32_to_cpu(de->hash_code),
 				le32_to_cpu(de->ino),
 				de->file_type);
 
-		i += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
+		i += GET_DENTRY_SLOTS(name_len);
 	}
 
 	free(blk);
