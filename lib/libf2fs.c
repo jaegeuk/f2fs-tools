@@ -1139,3 +1139,19 @@ int f2fs_get_device_info(void)
 					(c.sector_size >> 9)) >> 11);
 	return 0;
 }
+
+unsigned int calc_extra_isize(void)
+{
+	unsigned int size = offsetof(struct f2fs_inode, i_projid);
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+		size = offsetof(struct f2fs_inode, i_projid);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
+		size = offsetof(struct f2fs_inode, i_inode_checksum);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		size = offsetof(struct f2fs_inode, i_crtime);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME))
+		size = offsetof(struct f2fs_inode, i_extra_end);
+
+	return size - F2FS_EXTRA_ISIZE_OFFSET;
+}

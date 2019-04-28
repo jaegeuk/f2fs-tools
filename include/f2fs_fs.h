@@ -751,9 +751,10 @@ struct f2fs_extent {
 #define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
+#define F2FS_EXTRA_ISIZE_OFFSET				\
+	offsetof(struct f2fs_inode, i_extra_isize)
 #define F2FS_TOTAL_EXTRA_ATTR_SIZE			\
-	(offsetof(struct f2fs_inode, i_extra_end) -	\
-	offsetof(struct f2fs_inode, i_extra_isize))	\
+	(offsetof(struct f2fs_inode, i_extra_end) - F2FS_EXTRA_ISIZE_OFFSET)
 
 #define	F2FS_DEF_PROJID		0	/* default project ID */
 
@@ -1156,6 +1157,7 @@ extern int f2fs_devs_are_umounted(void);
 extern int f2fs_dev_is_writable(void);
 extern int f2fs_dev_is_umounted(char *);
 extern int f2fs_get_device_info(void);
+extern unsigned int calc_extra_isize(void);
 extern int get_device_info(int);
 extern int f2fs_init_sparse_file(void);
 extern int f2fs_finalize_device(void);

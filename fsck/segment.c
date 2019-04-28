@@ -320,7 +320,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 			node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
 			node_blk->i.i_extra_isize =
-				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+					cpu_to_le16(calc_extra_isize());
 		}
 		n = read(fd, buffer, BLOCK_SZ);
 		ASSERT((unsigned long)n == de->size);

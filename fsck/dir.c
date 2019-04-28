@@ -459,8 +459,7 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 		node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
-		node_blk->i.i_extra_isize =
-				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+		node_blk->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
 
 	node_blk->footer.ino = cpu_to_le32(de->ino);

@@ -733,12 +733,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			if (node_blk->i.i_extra_isize >
 				cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE)) {
 				FIX_MSG("ino[0x%x] recover i_extra_isize "
-					"from %u to %lu",
+					"from %u to %u",
 					nid,
 					le16_to_cpu(node_blk->i.i_extra_isize),
-					F2FS_TOTAL_EXTRA_ATTR_SIZE);
+					calc_extra_isize());
 				node_blk->i.i_extra_isize =
-					cpu_to_le16(F2FS_TOTAL_EXTRA_ATTR_SIZE);
+					cpu_to_le16(calc_extra_isize());
 				need_fix = 1;
 			}
 		} else {
