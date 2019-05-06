@@ -811,6 +811,10 @@ fsck_again:
 		if (do_sload(sbi))
 			goto out_err;
 
+		ret = f2fs_sparse_initialize_meta(sbi);
+		if (ret < 0)
+			goto out_err;
+
 		f2fs_do_umount(sbi);
 
 		/* fsck to fix missing quota */

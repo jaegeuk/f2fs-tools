@@ -181,6 +181,7 @@ extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
 extern int f2fs_do_mount(struct f2fs_sb_info *);
 extern void f2fs_do_umount(struct f2fs_sb_info *);
+extern int f2fs_sparse_initialize_meta(struct f2fs_sb_info *);
 
 extern void flush_journal_entries(struct f2fs_sb_info *);
 extern void zero_journal_entries(struct f2fs_sb_info *);
