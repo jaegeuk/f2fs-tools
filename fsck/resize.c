@@ -514,6 +514,11 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	flags = update_nat_bits_flags(new_sb, cp, get_cp(ckpt_flags));
 	if (flags & CP_COMPACT_SUM_FLAG)
 		flags &= ~CP_COMPACT_SUM_FLAG;
+	if (flags & CP_LARGE_NAT_BITMAP_FLAG)
+		set_cp(checksum_offset, CP_MIN_CHKSUM_OFFSET);
+	else
+		set_cp(checksum_offset, CP_CHKSUM_OFFSET);
+
 	set_cp(ckpt_flags, flags);
 
 	memcpy(new_cp, cp, (unsigned char *)cp->sit_nat_version_bitmap -

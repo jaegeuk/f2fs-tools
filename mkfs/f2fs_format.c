@@ -690,7 +690,10 @@ static int f2fs_write_check_point_pack(void)
 	set_cp(nat_ver_bitmap_bytesize, ((get_sb(segment_count_nat) / 2) <<
 			 get_sb(log_blocks_per_seg)) / 8);
 
-	set_cp(checksum_offset, CP_CHKSUM_OFFSET);
+	if (c.large_nat_bitmap)
+		set_cp(checksum_offset, CP_MIN_CHKSUM_OFFSET);
+	else
+		set_cp(checksum_offset, CP_CHKSUM_OFFSET);
 
 	crc = f2fs_checkpoint_chksum(cp);
 	*((__le32 *)((unsigned char *)cp + get_cp(checksum_offset))) =

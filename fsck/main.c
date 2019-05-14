@@ -616,6 +616,8 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 		c.fix_on = 1;
 	}
 
+	fsck_chk_checkpoint(sbi);
+
 	fsck_chk_quota_node(sbi);
 
 	/* Traverse all block recursively from root inode */

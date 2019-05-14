@@ -1909,6 +1909,19 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+void fsck_chk_checkpoint(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+
+	if (get_cp(ckpt_flags) & CP_LARGE_NAT_BITMAP_FLAG) {
+		if (get_cp(checksum_offset) != CP_MIN_CHKSUM_OFFSET) {
+			ASSERT_MSG("Deprecated layout of large_nat_bitmap, "
+				"chksum_offset:%u", get_cp(checksum_offset));
+			c.fix_chksum = 1;
+		}
+	}
+}
+
 void fsck_init(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -2009,6 +2022,23 @@ static void flush_curseg_sit_entries(struct f2fs_sb_info *sbi)
 	free(sit_blk);
 }
 
+static void fix_checksum(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct sit_info *sit_i = SIT_I(sbi);
+	void *bitmap_offset;
+
+	if (!c.fix_chksum)
+		return;
+
+	bitmap_offset = cp->sit_nat_version_bitmap + sizeof(__le32);
+
+	memcpy(bitmap_offset, nm_i->nat_bitmap, nm_i->bitmap_size);
+	memcpy(bitmap_offset + nm_i->bitmap_size,
+			sit_i->sit_bitmap, sit_i->bitmap_size);
+}
+
 static void fix_checkpoint(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
@@ -2030,6 +2060,12 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 		flags |= CP_TRIMMED_FLAG;
 	if (is_set_ckpt_flags(cp, CP_DISABLED_FLAG))
 		flags |= CP_DISABLED_FLAG;
+	if (is_set_ckpt_flags(cp, CP_LARGE_NAT_BITMAP_FLAG)) {
+		flags |= CP_LARGE_NAT_BITMAP_FLAG;
+		set_cp(checksum_offset, CP_MIN_CHKSUM_OFFSET);
+	} else {
+		set_cp(checksum_offset, CP_CHKSUM_OFFSET);
+	}
 
 	if (flags & CP_UMOUNT_FLAG)
 		cp_blocks = 8;
@@ -2709,6 +2745,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 				write_curseg_info(sbi);
 				flush_curseg_sit_entries(sbi);
 			}
+			fix_checksum(sbi);
 			fix_checkpoint(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG) ||
 			is_set_ckpt_flags(cp, CP_QUOTA_NEED_FSCK_FLAG)) {

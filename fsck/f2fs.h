@@ -270,9 +270,16 @@ static inline void *__bitmap_ptr(struct f2fs_sb_info *sbi, int flag)
 	int offset;
 
 	if (is_set_ckpt_flags(ckpt, CP_LARGE_NAT_BITMAP_FLAG)) {
+		unsigned int chksum_size = 0;
+
 		offset = (flag == SIT_BITMAP) ?
 			le32_to_cpu(ckpt->nat_ver_bitmap_bytesize) : 0;
-		return &ckpt->sit_nat_version_bitmap + offset;
+
+		if (le32_to_cpu(ckpt->checksum_offset) ==
+					CP_MIN_CHKSUM_OFFSET)
+			chksum_size = sizeof(__le32);
+
+		return &ckpt->sit_nat_version_bitmap + offset + chksum_size;
 	}
 
 	if (le32_to_cpu(F2FS_RAW_SUPER(sbi)->cp_payload) > 0) {
