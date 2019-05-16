@@ -2159,6 +2159,30 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 	free(sit_blk);
 }
 
+int relocate_curseg_offset(struct f2fs_sb_info *sbi, int type)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, type);
+	struct seg_entry *se = get_seg_entry(sbi, curseg->segno);
+	unsigned int i;
+
+	for (i = 0; i < sbi->blocks_per_seg; i++) {
+		if (!f2fs_test_bit(i, (const char *)se->cur_valid_map))
+			break;
+	}
+
+	if (i == sbi->blocks_per_seg)
+		return -EINVAL;
+
+	DBG(1, "Update curseg[%d].next_blkoff %u -> %u, alloc_type %s -> SSR\n",
+			type, curseg->next_blkoff, i,
+			curseg->alloc_type == LFS ? "LFS" : "SSR");
+
+	curseg->next_blkoff = i;
+	curseg->alloc_type = SSR;
+
+	return 0;
+}
+
 int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
@@ -2253,6 +2277,13 @@ void move_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left)
 		DBG(1, "Move curseg[%d] %x -> %x after %"PRIx64"\n",
 				i, old_segno, curseg->segno, from);
 	}
+}
+
+void update_curseg_info(struct f2fs_sb_info *sbi, int type)
+{
+	if (!relocate_curseg_offset(sbi, type))
+		return;
+	move_curseg_info(sbi, SM_I(sbi)->main_blkaddr, 0);
 }
 
 void zero_journal_entries(struct f2fs_sb_info *sbi)

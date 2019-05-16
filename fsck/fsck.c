@@ -2164,6 +2164,23 @@ int check_curseg_offsets(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
+static void fix_curseg_info(struct f2fs_sb_info *sbi)
+{
+	int i, need_update = 0;
+
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		if (check_curseg_offset(sbi, i)) {
+			update_curseg_info(sbi, i);
+			need_update = 1;
+		}
+	}
+
+	if (need_update) {
+		write_curseg_info(sbi);
+		flush_curseg_sit_entries(sbi);
+	}
+}
+
 int check_sit_types(struct f2fs_sb_info *sbi)
 {
 	unsigned int i;
@@ -2752,11 +2769,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
-			if (check_curseg_offsets(sbi)) {
-				move_curseg_info(sbi, SM_I(sbi)->main_blkaddr, 0);
-				write_curseg_info(sbi);
-				flush_curseg_sit_entries(sbi);
-			}
+			fix_curseg_info(sbi);
 			fix_checksum(sbi);
 			fix_checkpoint(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG) ||

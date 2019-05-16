@@ -185,6 +185,7 @@ extern void f2fs_do_umount(struct f2fs_sb_info *);
 extern int f2fs_sparse_initialize_meta(struct f2fs_sb_info *);
 
 extern void flush_journal_entries(struct f2fs_sb_info *);
+extern void update_curseg_info(struct f2fs_sb_info *, int);
 extern void zero_journal_entries(struct f2fs_sb_info *);
 extern void flush_sit_entries(struct f2fs_sb_info *);
 extern void move_curseg_info(struct f2fs_sb_info *, u64, int);
