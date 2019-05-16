@@ -2121,33 +2121,45 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 		write_nat_bits(sbi, sb, cp, sbi->cur_cp);
 }
 
-int check_curseg_offset(struct f2fs_sb_info *sbi)
+int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 {
-	int i;
+	struct curseg_info *curseg = CURSEG_I(sbi, type);
+	struct seg_entry *se;
+	int j, nblocks;
+
+	if ((curseg->next_blkoff >> 3) >= SIT_VBLOCK_MAP_SIZE) {
+		ASSERT_MSG("Next block offset:%u is invalid, type:%d",
+			curseg->next_blkoff, type);
+		return -EINVAL;
+	}
+	se = get_seg_entry(sbi, curseg->segno);
+	if (f2fs_test_bit(curseg->next_blkoff,
+				(const char *)se->cur_valid_map)) {
+		ASSERT_MSG("Next block offset is not free, type:%d", type);
+		return -EINVAL;
+	}
+	if (curseg->alloc_type == SSR)
+		return 0;
+
+	nblocks = sbi->blocks_per_seg;
+	for (j = curseg->next_blkoff + 1; j < nblocks; j++) {
+		if (f2fs_test_bit(j, (const char *)se->cur_valid_map)) {
+			ASSERT_MSG("For LFS curseg, space after .next_blkoff "
+				"should be unused, type:%d", type);
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
+int check_curseg_offsets(struct f2fs_sb_info *sbi)
+{
+	int i, ret;
 
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
-		struct curseg_info *curseg = CURSEG_I(sbi, i);
-		struct seg_entry *se;
-		int j, nblocks;
-
-		if ((curseg->next_blkoff >> 3) >= SIT_VBLOCK_MAP_SIZE)
-			return -EINVAL;
-		se = get_seg_entry(sbi, curseg->segno);
-		if (f2fs_test_bit(curseg->next_blkoff,
-					(const char *)se->cur_valid_map)) {
-			ASSERT_MSG("Next block offset is not free, type:%d", i);
-			return -EINVAL;
-		}
-		if (curseg->alloc_type == SSR)
-			continue;
-
-		nblocks = sbi->blocks_per_seg;
-		for (j = curseg->next_blkoff + 1; j < nblocks; j++) {
-			if (f2fs_test_bit(j, (const char *)se->cur_valid_map)) {
-				ASSERT_MSG("LFS must have free section:%d", i);
-				return -EINVAL;
-			}
-		}
+		ret = check_curseg_offset(sbi, i);
+		if (ret)
+			return ret;
 	}
 	return 0;
 }
@@ -2695,7 +2707,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	}
 
 	printf("[FSCK] next block offset is free                     ");
-	if (check_curseg_offset(sbi) == 0) {
+	if (check_curseg_offsets(sbi) == 0) {
 		printf(" [Ok..]\n");
 	} else {
 		printf(" [Fail]\n");
@@ -2740,7 +2752,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
-			if (check_curseg_offset(sbi)) {
+			if (check_curseg_offsets(sbi)) {
 				move_curseg_info(sbi, SM_I(sbi)->main_blkaddr, 0);
 				write_curseg_info(sbi);
 				flush_curseg_sit_entries(sbi);
