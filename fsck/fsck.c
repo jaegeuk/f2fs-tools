@@ -2059,8 +2059,8 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
-		ret = dev_write_block(((unsigned char *)cp) + i * F2FS_BLKSIZE,
-								cp_blk_no++);
+		ret = dev_write_block(((unsigned char *)cp) +
+					(i + 1) * F2FS_BLKSIZE, cp_blk_no++);
 		ASSERT(ret >= 0);
 	}
 
