@@ -18,6 +18,7 @@
 #include "fsck.h"
 #include <libgen.h>
 #include <ctype.h>
+#include <time.h>
 #include <getopt.h>
 #include "quotaio.h"
 
@@ -745,6 +746,7 @@ int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
+	clock_t start = clock();
 
 	f2fs_init_configuration();
 
@@ -853,7 +855,7 @@ retry:
 	if (ret < 0)
 		return ret;
 
-	printf("\nDone.\n");
+	printf("\nDone: %lf secs\n", (clock() - start) / (double)CLOCKS_PER_SEC);
 	return 0;
 
 out_err:
