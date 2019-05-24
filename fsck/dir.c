@@ -319,7 +319,7 @@ add_dentry:
 
 	if (dn.idirty) {
 		ASSERT(parent == dn.inode_blk);
-		ret = dev_write_block(dn.inode_blk, p_blkaddr);
+		ret = write_inode(dn.inode_blk, p_blkaddr);
 		ASSERT(ret >= 0);
 	}
 

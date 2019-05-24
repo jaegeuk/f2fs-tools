@@ -1815,13 +1815,14 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 
 		oldaddr = le32_to_cpu(node_blk->i.i_addr[ofs + ofs_in_node]);
 		node_blk->i.i_addr[ofs + ofs_in_node] = cpu_to_le32(newaddr);
+		ret = write_inode(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
 	} else {
 		oldaddr = le32_to_cpu(node_blk->dn.addr[ofs_in_node]);
 		node_blk->dn.addr[ofs_in_node] = cpu_to_le32(newaddr);
+		ret = dev_write_block(node_blk, ni.blk_addr);
+		ASSERT(ret >= 0);
 	}
-
-	ret = dev_write_block(node_blk, ni.blk_addr);
-	ASSERT(ret >= 0);
 
 	/* check extent cache entry */
 	if (node_blk->footer.nid != node_blk->footer.ino) {
@@ -1838,8 +1839,7 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 		node_blk->i.i_ext.len = 0;
 
 		/* update inode block */
-		ret = dev_write_block(node_blk, ni.blk_addr);
-		ASSERT(ret >= 0);
+		ASSERT(write_inode(node_blk, ni.blk_addr) >= 0);
 	}
 	free(node_blk);
 }

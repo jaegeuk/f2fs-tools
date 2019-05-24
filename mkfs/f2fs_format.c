@@ -1149,10 +1149,6 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_ext.blk_addr = 0;
 	raw_node->i.i_ext.len = 0;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
-		raw_node->i.i_inode_checksum =
-			cpu_to_le32(f2fs_inode_chksum(raw_node));
-
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
 					c.blks_per_seg;
@@ -1161,7 +1157,7 @@ static int f2fs_write_root_inode(void)
 			get_sb(main_blkaddr),
 			c.cur_seg[CURSEG_HOT_NODE],
 			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (dev_write_block(raw_node, main_area_node_seg_blk_offset)) {
+	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1320,10 +1316,6 @@ static int f2fs_write_qf_inode(int qtype)
 	raw_node->i.i_ext.blk_addr = 0;
 	raw_node->i.i_ext.len = 0;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
-		raw_node->i.i_inode_checksum =
-			cpu_to_le32(f2fs_inode_chksum(raw_node));
-
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
 					c.blks_per_seg + qtype + 1;
@@ -1332,7 +1324,7 @@ static int f2fs_write_qf_inode(int qtype)
 			get_sb(main_blkaddr),
 			c.cur_seg[CURSEG_HOT_NODE],
 			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (dev_write_block(raw_node, main_area_node_seg_blk_offset)) {
+	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1507,10 +1499,6 @@ static int f2fs_write_lpf_inode(void)
 	}
 	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
-		raw_node->i.i_inode_checksum =
-			cpu_to_le32(f2fs_inode_chksum(raw_node));
-
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
 		c.blks_per_seg + c.quota_inum + 1;
@@ -1519,7 +1507,7 @@ static int f2fs_write_lpf_inode(void)
 			get_sb(main_blkaddr),
 			c.cur_seg[CURSEG_HOT_NODE],
 			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (dev_write_block(raw_node, main_area_node_seg_blk_offset)) {
+	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		err = -1;
 		goto exit;

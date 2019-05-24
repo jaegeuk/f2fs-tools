@@ -16,14 +16,6 @@
 #include "fsck.h"
 #include "node.h"
 
-static void write_inode(u64 blkaddr, struct f2fs_node *inode)
-{
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
-		inode->i.i_inode_checksum =
-			cpu_to_le32(f2fs_inode_chksum(inode));
-	ASSERT(dev_write_block(inode, blkaddr) >= 0);
-}
-
 int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 			struct f2fs_summary *sum, int type)
 {
@@ -278,7 +270,7 @@ u64 f2fs_write(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	}
 	if (idirty) {
 		ASSERT(inode == dn.inode_blk);
-		write_inode(ni.blk_addr, inode);
+		ASSERT(write_inode(inode, ni.blk_addr) >= 0);
 	}
 	if (index_node)
 		free(index_node);
@@ -303,7 +295,7 @@ void f2fs_filesize_update(struct f2fs_sb_info *sbi, nid_t ino, u64 filesize)
 
 	inode->i.i_size = cpu_to_le64(filesize);
 
-	write_inode(ni.blk_addr, inode);
+	ASSERT(write_inode(inode, ni.blk_addr) >= 0);
 	free(inode);
 }
 
@@ -348,7 +340,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		ASSERT((unsigned long)n == de->size);
 		memcpy(inline_data_addr(node_blk), buffer, de->size);
 		node_blk->i.i_size = cpu_to_le64(de->size);
-		write_inode(ni.blk_addr, node_blk);
+		ASSERT(write_inode(node_blk, ni.blk_addr) >= 0);
 		free(node_blk);
 	} else {
 		while ((n = read(fd, buffer, BLOCK_SZ)) > 0) {

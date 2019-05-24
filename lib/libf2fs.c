@@ -546,6 +546,14 @@ __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *cp)
 	return chksum;
 }
 
+int write_inode(struct f2fs_node *inode, u64 blkaddr)
+{
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		inode->i.i_inode_checksum =
+			cpu_to_le32(f2fs_inode_chksum(inode));
+	return dev_write_block(inode, blkaddr);
+}
+
 /*
  * try to identify the root device
  */
