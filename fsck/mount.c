@@ -2453,6 +2453,9 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	/* write the last cp */
 	ret = dev_write_block(cp, cp_blk_no++);
 	ASSERT(ret >= 0);
+
+	ret = f2fs_fsync_device();
+	ASSERT(ret >= 0);
 }
 
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
