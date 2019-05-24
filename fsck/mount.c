@@ -1915,8 +1915,25 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	}
 
 	free(sit_blk);
+
+	if (sits_in_cursum(journal) > SIT_JOURNAL_ENTRIES) {
+		MSG(0, "\tError: build_sit_entries truncate n_sits(%u) to "
+			"SIT_JOURNAL_ENTRIES(%lu)\n",
+			sits_in_cursum(journal), SIT_JOURNAL_ENTRIES);
+		journal->n_sits = cpu_to_le16(SIT_JOURNAL_ENTRIES);
+		c.fix_on = 1;
+	}
+
 	for (i = 0; i < sits_in_cursum(journal); i++) {
 		segno = le32_to_cpu(segno_in_journal(journal, i));
+
+		if (segno >= TOTAL_SEGS(sbi)) {
+			MSG(0, "\tError: build_sit_entries: segno(%u) is invalid!!!\n", segno);
+			journal->n_sits = cpu_to_le16(i);
+			c.fix_on = 1;
+			continue;
+		}
+
 		se = &sit_i->sentries[segno];
 		sit = sit_in_journal(journal, i);
 
