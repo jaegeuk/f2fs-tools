@@ -780,6 +780,24 @@ static int verify_checksum_chksum(struct f2fs_checkpoint *cp)
 	return 0;
 }
 
+static void *get_checkpoint_version(block_t cp_addr)
+{
+	void *cp_page;
+
+	cp_page = malloc(PAGE_SIZE);
+	ASSERT(cp_page);
+
+	if (dev_read_block(cp_page, cp_addr) < 0)
+		ASSERT(0);
+
+	if (verify_checksum_chksum((struct f2fs_checkpoint *)cp_page))
+		goto out;
+	return cp_page;
+out:
+	free(cp_page);
+	return NULL;
+}
+
 void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 				unsigned long long *version)
 {
@@ -788,34 +806,23 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 	unsigned long long cur_version = 0, pre_version = 0;
 
 	/* Read the 1st cp block in this CP pack */
-	cp_page_1 = malloc(PAGE_SIZE);
-	ASSERT(cp_page_1);
-
-	if (dev_read_block(cp_page_1, cp_addr) < 0)
-		goto invalid_cp1;
+	cp_page_1 = get_checkpoint_version(cp_addr);
+	if (!cp_page_1)
+		return NULL;
 
 	cp = (struct f2fs_checkpoint *)cp_page_1;
-	if (verify_checksum_chksum(cp))
-		goto invalid_cp1;
-
 	if (get_cp(cp_pack_total_block_count) > sbi->blocks_per_seg)
 		goto invalid_cp1;
 
 	pre_version = get_cp(checkpoint_ver);
 
 	/* Read the 2nd cp block in this CP pack */
-	cp_page_2 = malloc(PAGE_SIZE);
-	ASSERT(cp_page_2);
-
 	cp_addr += get_cp(cp_pack_total_block_count) - 1;
-
-	if (dev_read_block(cp_page_2, cp_addr) < 0)
-		goto invalid_cp2;
+	cp_page_2 = get_checkpoint_version(cp_addr);
+	if (!cp_page_2)
+		goto invalid_cp1;
 
 	cp = (struct f2fs_checkpoint *)cp_page_2;
-	if (verify_checksum_chksum(cp))
-		goto invalid_cp2;
-
 	cur_version = get_cp(checkpoint_ver);
 
 	if (cur_version == pre_version) {
@@ -824,7 +831,6 @@ void *validate_checkpoint(struct f2fs_sb_info *sbi, block_t cp_addr,
 		return cp_page_1;
 	}
 
-invalid_cp2:
 	free(cp_page_2);
 invalid_cp1:
 	free(cp_page_1);
