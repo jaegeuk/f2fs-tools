@@ -601,38 +601,117 @@ static int verify_sb_chksum(struct f2fs_super_block *sb)
 int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 {
 	unsigned int blocksize;
+	unsigned int segment_count, segs_per_sec, secs_per_zone;
+	unsigned int total_sections, blocks_per_seg;
 
 	if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) &&
 					verify_sb_chksum(sb))
 		return -1;
 
-	if (F2FS_SUPER_MAGIC != get_sb(magic))
+	if (F2FS_SUPER_MAGIC != get_sb(magic)) {
+		MSG(0, "Magic Mismatch, valid(0x%x) - read(0x%x)\n",
+			F2FS_SUPER_MAGIC, get_sb(magic));
 		return -1;
+	}
 
-	if (F2FS_BLKSIZE != PAGE_CACHE_SIZE)
+	if (F2FS_BLKSIZE != PAGE_CACHE_SIZE) {
+		MSG(0, "Invalid page_cache_size (%d), supports only 4KB\n",
+			PAGE_CACHE_SIZE);
 		return -1;
+	}
 
 	blocksize = 1 << get_sb(log_blocksize);
-	if (F2FS_BLKSIZE != blocksize)
+	if (F2FS_BLKSIZE != blocksize) {
+		MSG(0, "Invalid blocksize (%u), supports only 4KB\n",
+			blocksize);
 		return -1;
+	}
 
 	/* check log blocks per segment */
-	if (get_sb(log_blocks_per_seg) != 9)
+	if (get_sb(log_blocks_per_seg) != 9) {
+		MSG(0, "Invalid log blocks per segment (%u)\n",
+			get_sb(log_blocks_per_seg));
 		return -1;
+	}
 
 	/* Currently, support 512/1024/2048/4096 bytes sector size */
 	if (get_sb(log_sectorsize) > F2FS_MAX_LOG_SECTOR_SIZE ||
-			get_sb(log_sectorsize) < F2FS_MIN_LOG_SECTOR_SIZE)
+			get_sb(log_sectorsize) < F2FS_MIN_LOG_SECTOR_SIZE) {
+		MSG(0, "Invalid log sectorsize (%u)\n", get_sb(log_sectorsize));
 		return -1;
+	}
 
 	if (get_sb(log_sectors_per_block) + get_sb(log_sectorsize) !=
-						F2FS_MAX_LOG_SECTOR_SIZE)
+						F2FS_MAX_LOG_SECTOR_SIZE) {
+		MSG(0, "Invalid log sectors per block(%u) log sectorsize(%u)\n",
+			get_sb(log_sectors_per_block),
+			get_sb(log_sectorsize));
 		return -1;
+	}
+
+	segment_count = get_sb(segment_count);
+	segs_per_sec = get_sb(segs_per_sec);
+	secs_per_zone = get_sb(secs_per_zone);
+	total_sections = get_sb(section_count);
+
+	/* blocks_per_seg should be 512, given the above check */
+	blocks_per_seg = 1 << get_sb(log_blocks_per_seg);
+
+	if (segment_count > F2FS_MAX_SEGMENT ||
+			segment_count < F2FS_MIN_SEGMENTS) {
+		MSG(0, "\tInvalid segment count (%u)\n", segment_count);
+		return -1;
+	}
+
+	if (total_sections > segment_count ||
+			total_sections < F2FS_MIN_SEGMENTS ||
+			segs_per_sec > segment_count || !segs_per_sec) {
+		MSG(0, "\tInvalid segment/section count (%u, %u x %u)\n",
+			segment_count, total_sections, segs_per_sec);
+		return 1;
+	}
+
+	if ((segment_count / segs_per_sec) < total_sections) {
+		MSG(0, "Small segment_count (%u < %u * %u)\n",
+			segment_count, segs_per_sec, total_sections);
+		return 1;
+	}
+
+	if (segment_count > (get_sb(block_count) >> 9)) {
+		MSG(0, "Wrong segment_count / block_count (%u > %llu)\n",
+			segment_count, get_sb(block_count));
+		return 1;
+	}
+
+	if (secs_per_zone > total_sections || !secs_per_zone) {
+		MSG(0, "Wrong secs_per_zone / total_sections (%u, %u)\n",
+			secs_per_zone, total_sections);
+		return 1;
+	}
+	if (get_sb(extension_count) > F2FS_MAX_EXTENSION ||
+			sb->hot_ext_count > F2FS_MAX_EXTENSION ||
+			get_sb(extension_count) +
+			sb->hot_ext_count > F2FS_MAX_EXTENSION) {
+		MSG(0, "Corrupted extension count (%u + %u > %u)\n",
+			get_sb(extension_count),
+			sb->hot_ext_count,
+			F2FS_MAX_EXTENSION);
+		return 1;
+	}
+
+	if (get_sb(cp_payload) > (blocks_per_seg - F2FS_CP_PACKS)) {
+		MSG(0, "Insane cp_payload (%u > %u)\n",
+			get_sb(cp_payload), blocks_per_seg - F2FS_CP_PACKS);
+		return 1;
+	}
 
 	/* check reserved ino info */
 	if (get_sb(node_ino) != 1 || get_sb(meta_ino) != 2 ||
-					get_sb(root_ino) != 3)
+						get_sb(root_ino) != 3) {
+		MSG(0, "Invalid Fs Meta Ino: node(%u) meta(%u) root(%u)\n",
+			get_sb(node_ino), get_sb(meta_ino), get_sb(root_ino));
 		return -1;
+	}
 
 	/* Check zoned block device feature */
 	if (c.devices[0].zoned_model == F2FS_ZONED_HM &&
@@ -640,9 +719,6 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		MSG(0, "\tMissing zoned block device feature\n");
 		return -1;
 	}
-
-	if (get_sb(segment_count) > F2FS_MAX_SEGMENT)
-		return -1;
 
 	if (sanity_check_area_boundary(sb, sb_addr))
 		return -1;
