@@ -64,6 +64,7 @@ static void mkfs_usage()
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -V print the version number and exit\n");
 	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
+	MSG(0, "  -C [encoding:flag1,flag2] Support casefolding with optional flags\n");
 	exit(1);
 }
 
@@ -107,8 +108,10 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:d:e:E:g:il:mo:O:R:s:S:z:t:fw:V";
+	static const char *option_string = "qa:c:C:d:e:E:g:il:mo:O:R:s:S:z:t:Vfw:";
 	int32_t option=0;
+	int val;
+	char *token;
 
 	while ((option = getopt(argc,argv,option_string)) != EOF) {
 		switch (option) {
@@ -192,6 +195,22 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'V':
 			show_version("mkfs.f2fs");
 			exit(0);
+		case 'C':
+			token = strtok(optarg, ":");
+			val = f2fs_str2encoding(token);
+			if (val < 0) {
+				MSG(0, "\tError: Unknown encoding %s\n", token);
+				mkfs_usage();
+			}
+			c.s_encoding = val;
+			token = strtok(NULL, "");
+			val = f2fs_str2encoding_flags(&token, &c.s_encoding_flags);
+			if (val) {
+				MSG(0, "\tError: Unknown flag %s\n",token);
+				mkfs_usage();
+			}
+			c.feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
+			break;
 		default:
 			MSG(0, "\tError: Unknown option %c\n",option);
 			mkfs_usage();

@@ -465,6 +465,9 @@ void print_sb_state(struct f2fs_super_block *sb)
 	if (f & cpu_to_le32(F2FS_FEATURE_SB_CHKSUM)) {
 		MSG(0, "%s", " sb_checksum");
 	}
+	if (f & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+		MSG(0, "%s", " casefold");
+	}
 	MSG(0, "\n");
 	MSG(0, "Info: superblock encrypt level = %d, salt = ",
 					sb->encryption_level);
@@ -2762,10 +2765,16 @@ static int check_sector_size(struct f2fs_super_block *sb)
 	return 0;
 }
 
-static void tune_sb_features(struct f2fs_sb_info *sbi)
+static int tune_sb_features(struct f2fs_sb_info *sbi)
 {
 	int sb_changed = 0;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT) &&
+		c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+		ERR_MSG("ERROR: Cannot set both encrypt and casefold. Skipping.\n");
+		return -1;
+	}
 
 	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) &&
 			c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
@@ -2773,13 +2782,24 @@ static void tune_sb_features(struct f2fs_sb_info *sbi)
 		MSG(0, "Info: Set Encryption feature\n");
 		sb_changed = 1;
 	}
+	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) &&
+		c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+		if (!c.s_encoding) {
+			ERR_MSG("ERROR: Must specify encoding to enable casefolding.\n");
+			return -1;
+		}
+		sb->feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
+		MSG(0, "Info: Set Casefold feature\n");
+		sb_changed = 1;
+	}
 	/* TODO: quota needs to allocate inode numbers */
 
 	c.feature = sb->feature;
 	if (!sb_changed)
-		return;
+		return 0;
 
 	update_superblock(sb, SB_MASK_ALL);
+	return 0;
 }
 
 int f2fs_do_mount(struct f2fs_sb_info *sbi)
@@ -2826,7 +2846,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	c.bug_on = 0;
 
-	tune_sb_features(sbi);
+	if (tune_sb_features(sbi))
+		return -1;
 
 	/* precompute checksum seed for metadata */
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))

@@ -516,6 +516,15 @@ static int f2fs_prepare_super_block(void)
 	memcpy(sb->version, c.version, VERSION_LEN);
 	memcpy(sb->init_version, c.version, VERSION_LEN);
 
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+		if (c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
+			MSG(0, "\tError: Casefolding and encryption are not compatible\n");
+			return -1;
+		}
+		set_sb(s_encoding, c.s_encoding);
+		set_sb(s_encoding_flags, c.s_encoding_flags);
+	}
+
 	sb->feature = c.feature;
 
 	if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) {
@@ -1548,7 +1557,7 @@ static int f2fs_add_default_dentry_root(void)
 
 	if (c.lpf_ino) {
 		int len = strlen(LPF);
-		f2fs_hash_t hash = f2fs_dentry_hash((unsigned char *)LPF, len);
+		f2fs_hash_t hash = f2fs_dentry_hash(0, 0, (unsigned char *)LPF, len);
 
 		dent_blk->dentry[2].hash_code = cpu_to_le32(hash);
 		dent_blk->dentry[2].ino = cpu_to_le32(c.lpf_ino);

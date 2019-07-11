@@ -54,6 +54,7 @@ void fsck_usage()
 	MSG(0, "\nUsage: fsck.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
+	MSG(0, "  -C encoding[:flag1,flag2] Set options for enabling casefolding\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -g add default options\n");
@@ -186,8 +187,9 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":ad:fg:O:p:q:StyV";
-		int opt = 0;
+		const char *option_string = ":aC:d:fg:O:p:q:StyV";
+		int opt = 0, val;
+		char *token;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
 			{0, 0, 0, 0}
@@ -277,6 +279,22 @@ void f2fs_parse_options(int argc, char *argv[])
 					err = ENEED_ARG;
 					break;
 				}
+				break;
+			case 'C':
+				token = strtok(optarg, ":");
+				val = f2fs_str2encoding(token);
+				if (val < 0) {
+					MSG(0, "\tError: Unknown encoding %s\n", token);
+					fsck_usage();
+				}
+				c.s_encoding = val;
+				token = strtok(NULL, "");
+				val = f2fs_str2encoding_flags(&token, &c.s_encoding_flags);
+				if (val) {
+					MSG(0, "\tError: Unknown flag %s\n", token);
+					fsck_usage();
+				}
+				c.feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
 				break;
 			case 'V':
 				show_version(prog);

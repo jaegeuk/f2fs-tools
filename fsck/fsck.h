@@ -148,10 +148,10 @@ extern int fsck_chk_idnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
 extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		enum FILE_TYPE, struct f2fs_node *, u32 *, struct child_info *);
-extern int fsck_chk_data_blk(struct f2fs_sb_info *sbi, u32, struct child_info *,
-		int, enum FILE_TYPE, u32, u16, u8, int);
-extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, u32, struct child_info *,
-		int, int);
+extern int fsck_chk_data_blk(struct f2fs_sb_info *, int,
+		u32, struct child_info *, int, enum FILE_TYPE, u32, u16, u8, int);
+extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, int,
+		u32, struct child_info *, int, int);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		struct child_info *);
 void fsck_chk_checkpoint(struct f2fs_sb_info *sbi);

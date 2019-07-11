@@ -106,7 +106,7 @@ static struct f2fs_dir_entry *find_in_block(void *block,
 	return find_target_dentry(name, len, namehash, max_slots, &d);
 }
 
-static int find_in_level(struct f2fs_sb_info *sbi,struct f2fs_node *dir,
+static int find_in_level(struct f2fs_sb_info *sbi, struct f2fs_node *dir,
 		unsigned int level, struct dentry *de)
 {
 	unsigned int nbucket, nblock;
@@ -120,7 +120,8 @@ static int find_in_level(struct f2fs_sb_info *sbi,struct f2fs_node *dir,
 	unsigned int dir_level = dir->i.i_dir_level;
 	int ret = 0;
 
-	namehash = f2fs_dentry_hash(de->name, de->len);
+	namehash = f2fs_dentry_hash(get_encoding(sbi), IS_CASEFOLDED(&dir->i),
+					de->name, de->len);
 
 	nbucket = dir_buckets(level, dir_level);
 	nblock = bucket_blocks(level);
@@ -223,7 +224,9 @@ int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 	int level = 0, current_depth, bit_pos;
 	int nbucket, nblock, bidx, block;
 	int slots = GET_DENTRY_SLOTS(name_len);
-	f2fs_hash_t dentry_hash = f2fs_dentry_hash(name, name_len);
+	f2fs_hash_t dentry_hash = f2fs_dentry_hash(get_encoding(sbi),
+						IS_CASEFOLDED(&parent->i),
+						name, name_len);
 	struct f2fs_dentry_block *dentry_blk;
 	struct f2fs_dentry_ptr d;
 	struct dnode_of_data dn;

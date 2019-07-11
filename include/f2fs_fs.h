@@ -356,6 +356,8 @@ struct f2fs_configuration {
 	__u8 sb_version[VERSION_LEN + 1];
 	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
+	u_int16_t s_encoding;
+	u_int16_t s_encoding_flags;
 	int heap;
 	int32_t kd;
 	int32_t dump_fd;
@@ -564,6 +566,9 @@ enum {
 
 #define FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
 
+#define F2FS_ENC_UTF8_12_1	1
+#define F2FS_ENC_STRICT_MODE_FL	(1 << 0)
+
 /* This flag is used by node and meta inodes, and by recovery */
 #define GFP_F2FS_ZERO	(GFP_NOFS | __GFP_ZERO)
 
@@ -589,6 +594,7 @@ enum {
 #define F2FS_FEATURE_LOST_FOUND		0x0200
 #define F2FS_FEATURE_VERITY		0x0400	/* reserved */
 #define F2FS_FEATURE_SB_CHKSUM		0x0800
+#define F2FS_FEATURE_CASEFOLD		0x1000
 
 #define MAX_VOLUME_NAME		512
 
@@ -642,7 +648,9 @@ struct f2fs_super_block {
 	struct f2fs_device devs[MAX_DEVICES];	/* device list */
 	__le32 qf_ino[F2FS_MAX_QUOTAS];	/* quota inode numbers */
 	__u8 hot_ext_count;		/* # of hot file extension */
-	__u8 reserved[310];		/* valid reserved region */
+	__le16  s_encoding;		/* Filename charset encoding */
+	__le16  s_encoding_flags;	/* Filename charset encoding flags */
+	__u8 reserved[306];		/* valid reserved region */
 	__le32 crc;			/* checksum of superblock */
 } __attribute__((packed));
 
@@ -796,6 +804,9 @@ struct f2fs_extent {
 
 #define file_is_encrypt(fi)      ((fi)->i_advise & FADVISE_ENCRYPT_BIT)
 #define file_enc_name(fi)        ((fi)->i_advise & FADVISE_ENC_NAME_BIT)
+
+#define F2FS_CASEFOLD_FL	0x40000000 /* Casefolded file */
+#define IS_CASEFOLDED(dir)     ((dir)->i_flags & F2FS_CASEFOLD_FL)
 
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
@@ -1188,7 +1199,7 @@ extern int dev_reada_block(__u64);
 extern int dev_read_version(void *, __u64, size_t);
 extern void get_kernel_version(__u8 *);
 extern void get_kernel_uname_version(__u8 *);
-f2fs_hash_t f2fs_dentry_hash(const unsigned char *, int);
+f2fs_hash_t f2fs_dentry_hash(int, int, const unsigned char *, int);
 
 static inline bool f2fs_has_extra_isize(struct f2fs_inode *inode)
 {
@@ -1373,6 +1384,7 @@ struct feature feature_table[] = {					\
 	{ "lost_found",			F2FS_FEATURE_LOST_FOUND },	\
 	{ "verity",			F2FS_FEATURE_VERITY },	/* reserved */ \
 	{ "sb_checksum",		F2FS_FEATURE_SB_CHKSUM },	\
+	{ "casefold",			F2FS_FEATURE_CASEFOLD },	\
 	{ NULL,				0x0},				\
 };
 
@@ -1445,5 +1457,26 @@ static inline int parse_root_owner(char *ids,
 	*root_gid = atoi(gid);
 	return 0;
 }
+
+/*
+ * NLS definitions
+ */
+struct f2fs_nls_table {
+	int version;
+	const struct f2fs_nls_ops *ops;
+};
+
+struct f2fs_nls_ops {
+	int (*casefold)(const struct f2fs_nls_table *charset,
+			const unsigned char *str, size_t len,
+			unsigned char *dest, size_t dlen);
+};
+
+extern const struct f2fs_nls_table *f2fs_load_nls_table(int encoding);
+#define F2FS_ENC_UTF8_12_0	1
+
+extern int f2fs_str2encoding(const char *string);
+extern int f2fs_get_encoding_flags(int encoding);
+extern int f2fs_str2encoding_flags(char **param, __u16 *flags);
 
 #endif	/*__F2FS_FS_H */

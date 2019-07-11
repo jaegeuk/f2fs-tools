@@ -441,7 +441,7 @@ static void str2hashbuf(const unsigned char *msg, int len,
  * @param len           name lenth
  * @return              return on success hash value, errno on failure
  */
-f2fs_hash_t f2fs_dentry_hash(const unsigned char *name, int len)
+static f2fs_hash_t __f2fs_dentry_hash(const unsigned char *name, int len)/* Need update */
 {
 	__u32 hash;
 	f2fs_hash_t	f2fs_hash;
@@ -472,6 +472,31 @@ f2fs_hash_t f2fs_dentry_hash(const unsigned char *name, int len)
 
 	f2fs_hash = cpu_to_le32(hash & ~F2FS_HASH_COL_BIT);
 	return f2fs_hash;
+}
+
+f2fs_hash_t f2fs_dentry_hash(int encoding, int casefolded,
+                             const unsigned char *name, int len)
+{
+	const struct f2fs_nls_table *table = f2fs_load_nls_table(encoding);
+	int r, dlen;
+	unsigned char *buff;
+
+	if (len && casefolded) {
+		buff = malloc(sizeof(char) * PATH_MAX);
+		if (!buff)
+			return -ENOMEM;
+		dlen = table->ops->casefold(table, name, len, buff, PATH_MAX);
+		if (dlen < 0) {
+			free(buff);
+			goto opaque_seq;
+		}
+		r = __f2fs_dentry_hash(buff, dlen);
+
+		free(buff);
+		return r;
+	}
+opaque_seq:
+	return __f2fs_dentry_hash(name, len);
 }
 
 unsigned int addrs_per_inode(struct f2fs_inode *i)
@@ -647,6 +672,8 @@ void f2fs_init_configuration(void)
 	c.trim = 1;
 	c.kd = -1;
 	c.fixed_time = -1;
+	c.s_encoding = 0;
+	c.s_encoding_flags = 0;
 
 	/* default root owner */
 	c.root_uid = getuid();
@@ -1219,4 +1246,86 @@ unsigned int calc_extra_isize(void)
 		size = offsetof(struct f2fs_inode, i_extra_end);
 
 	return size - F2FS_EXTRA_ISIZE_OFFSET;
+}
+
+#define ARRAY_SIZE(array)			\
+	(sizeof(array) / sizeof(array[0]))
+
+static const struct {
+	char *name;
+	__u16 encoding_magic;
+	__u16 default_flags;
+
+} f2fs_encoding_map[] = {
+	{
+		.encoding_magic = F2FS_ENC_UTF8_12_1,
+		.name = "utf8",
+		.default_flags = 0,
+	},
+};
+
+static const struct enc_flags {
+	__u16 flag;
+	char *param;
+} encoding_flags[] = {
+	{ F2FS_ENC_STRICT_MODE_FL, "strict" },
+};
+
+/* Return a positive number < 0xff indicating the encoding magic number
+ * or a negative value indicating error. */
+int f2fs_str2encoding(const char *string)
+{
+	int i;
+
+	for (i = 0 ; i < ARRAY_SIZE(f2fs_encoding_map); i++)
+		if (!strcmp(string, f2fs_encoding_map[i].name))
+			return f2fs_encoding_map[i].encoding_magic;
+
+	return -EINVAL;
+}
+
+int f2fs_get_encoding_flags(int encoding)
+{
+	int i;
+
+	for (i = 0 ; i < ARRAY_SIZE(f2fs_encoding_map); i++)
+		if (f2fs_encoding_map[i].encoding_magic == encoding)
+			return f2fs_encoding_map[encoding].default_flags;
+
+	return 0;
+}
+
+int f2fs_str2encoding_flags(char **param, __u16 *flags)
+{
+	char *f = strtok(*param, ",");
+	const struct enc_flags *fl;
+	int i, neg = 0;
+
+	while (f) {
+		neg = 0;
+		if (!strncmp("no", f, 2)) {
+			neg = 1;
+			f += 2;
+		}
+
+		for (i = 0; i < ARRAY_SIZE(encoding_flags); i++) {
+			fl = &encoding_flags[i];
+			if (!strcmp(fl->param, f)) {
+				if (neg) {
+					MSG(0, "Sub %s\n", fl->param);
+					*flags &= ~fl->flag;
+				} else {
+					MSG(0, "Add %s\n", fl->param);
+					*flags |= fl->flag;
+				}
+
+				goto next_flag;
+			}
+		}
+		*param = f;
+		return -EINVAL;
+	next_flag:
+		f = strtok(NULL, ":");
+	}
+	return 0;
 }

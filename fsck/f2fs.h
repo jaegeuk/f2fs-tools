@@ -513,4 +513,9 @@ static inline int is_dot_dotdot(const unsigned char *name, const int len)
 	return 0;
 }
 
+static inline int get_encoding(struct f2fs_sb_info *sbi)
+{
+	return le16_to_cpu(F2FS_RAW_SUPER(sbi)->s_encoding);
+}
+
 #endif /* _F2FS_H_ */
