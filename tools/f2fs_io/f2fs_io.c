@@ -141,6 +141,50 @@ static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define fallocate_desc "fallocate"
+#define fallocate_help						\
+"f2fs_io fallocate [keep_size] [offset] [length] [file]\n\n"	\
+"fallocate given the file\n"					\
+" [keep_size] : 1 or 0\n"					\
+
+static void do_fallocate(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd;
+	off_t offset, length;
+	struct stat sb;
+	int mode = 0;
+
+	if (argc != 5) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	if (!strcmp(argv[1], "1"))
+		mode |= FALLOC_FL_KEEP_SIZE;
+
+	offset = atoi(argv[2]);
+	length = atoi(argv[3]);
+
+	fd = open(argv[4], O_RDWR);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	if (fallocate(fd, mode, offset, length)) {
+		fputs("fallocate failed\n\n", stderr);
+		exit(1);
+	}
+	if (fstat(fd, &sb) == -1) {
+		fputs("Stat failed\n\n", stderr);
+		exit(1);
+	}
+	printf("fallocated a file: i_size=%"PRIu64", i_blocks=%"PRIu64"\n", sb.st_size, sb.st_blocks);
+	exit(0);
+}
+
 #define write_desc "write data into file"
 #define write_help					\
 "f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path]\n\n"	\
@@ -407,6 +451,7 @@ const struct cmd_desc cmd_list[] = {
 	_CMD(help),
 	CMD(shutdown),
 	CMD(pinfile),
+	CMD(fallocate),
 	CMD(write),
 	CMD(read),
 	CMD(fiemap),
