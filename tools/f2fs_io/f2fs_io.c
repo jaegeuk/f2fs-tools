@@ -194,9 +194,9 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 		exit(1);
 	}
 
-	if (!strcmp(argv[5], "buffered")) {
+	if (!strcmp(argv[5], "dio")) {
 		flags |= O_DIRECT;
-	} else if (strcmp(argv[5], "dio")) {
+	} else if (strcmp(argv[5], "buffered")) {
 		fputs("Wrong IO type\n\n", stderr);
 		exit(1);
 	}
@@ -263,9 +263,9 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 		exit(1);
 	}
 	count = atoi(argv[3]);
-	if (!strcmp(argv[4], "buffered")) {
+	if (!strcmp(argv[4], "dio")) {
 		flags |= O_DIRECT;
-	} else if (strcmp(argv[4], "dio")) {
+	} else if (strcmp(argv[4], "buffered")) {
 		fputs("Wrong IO type\n\n", stderr);
 		exit(1);
 	}
