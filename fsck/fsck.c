@@ -2127,6 +2127,16 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 }
 
+static void fix_checkpoints(struct f2fs_sb_info *sbi)
+{
+	/* copy valid checkpoint to its mirror position */
+	duplicate_checkpoint(sbi);
+
+	/* repair checkpoint at CP #0 position */
+	sbi->cur_cp = 1;
+	fix_checkpoint(sbi);
+}
+
 int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
@@ -2765,6 +2775,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		}
 	}
 #endif
+
 	/* fix global metadata */
 	if (force || (c.fix_on && f2fs_dev_is_writable())) {
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
@@ -2777,10 +2788,10 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			rewrite_sit_area_bitmap(sbi);
 			fix_curseg_info(sbi);
 			fix_checksum(sbi);
-			fix_checkpoint(sbi);
+			fix_checkpoints(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG) ||
 			is_set_ckpt_flags(cp, CP_QUOTA_NEED_FSCK_FLAG)) {
-			write_checkpoint(sbi);
+			write_checkpoints(sbi);
 		}
 	}
 	return ret;

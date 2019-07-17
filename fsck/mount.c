@@ -2229,7 +2229,7 @@ void flush_journal_entries(struct f2fs_sb_info *sbi)
 	int n_sits = flush_sit_journal_entries(sbi);
 
 	if (n_nats || n_sits)
-		write_checkpoint(sbi);
+		write_checkpoints(sbi);
 }
 
 void flush_sit_entries(struct f2fs_sb_info *sbi)
@@ -2478,6 +2478,47 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	free(nat_block);
 }
 
+void duplicate_checkpoint(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	unsigned long long dst, src;
+	void *buf;
+	unsigned int seg_size = 1 << get_sb(log_blocks_per_seg);
+	int ret;
+
+	if (sbi->cp_backuped)
+		return;
+
+	buf = malloc(F2FS_BLKSIZE * seg_size);
+	ASSERT(buf);
+
+	if (sbi->cur_cp == 1) {
+		src = get_sb(cp_blkaddr);
+		dst = src + seg_size;
+	} else {
+		dst = get_sb(cp_blkaddr);
+		src = dst + seg_size;
+	}
+
+	ret = dev_read(buf, src << F2FS_BLKSIZE_BITS,
+				seg_size << F2FS_BLKSIZE_BITS);
+	ASSERT(ret >= 0);
+
+	ret = dev_write(buf, dst << F2FS_BLKSIZE_BITS,
+				seg_size << F2FS_BLKSIZE_BITS);
+	ASSERT(ret >= 0);
+
+	free(buf);
+
+	ret = f2fs_fsync_device();
+	ASSERT(ret >= 0);
+
+	sbi->cp_backuped = 1;
+
+	MSG(0, "Info: Duplicate valid checkpoint to mirror position "
+		"%llu -> %llu\n", src, dst);
+}
+
 void write_checkpoint(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
@@ -2555,6 +2596,16 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 
 	ret = f2fs_fsync_device();
 	ASSERT(ret >= 0);
+}
+
+void write_checkpoints(struct f2fs_sb_info *sbi)
+{
+	/* copy valid checkpoint to its mirror position */
+	duplicate_checkpoint(sbi);
+
+	/* repair checkpoint at CP #0 position */
+	sbi->cur_cp = 1;
+	write_checkpoint(sbi);
 }
 
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
