@@ -818,7 +818,7 @@ void get_kernel_uname_version(__u8 *version)
 #ifndef ANDROID_WINDOWS_HOST
 static int open_check_fs(char *path, int flag)
 {
-	if (c.func != FSCK || c.fix_on || c.auto_fix)
+	if (c.func != DUMP && (c.func != FSCK || c.fix_on || c.auto_fix))
 		return -1;
 
 	/* allow to open ro */
@@ -864,7 +864,7 @@ int get_device_info(int i)
 			return -1;
 		}
 
-		if (S_ISBLK(stat_buf->st_mode) && !c.force) {
+		if (S_ISBLK(stat_buf->st_mode) && !c.force && c.func != DUMP) {
 			fd = open(dev->path, O_RDWR | O_EXCL);
 			if (fd < 0)
 				fd = open_check_fs(dev->path, O_EXCL);
