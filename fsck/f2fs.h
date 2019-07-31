@@ -11,7 +11,6 @@
 #ifndef _F2FS_H_
 #define _F2FS_H_
 
-#include <f2fs_fs.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -26,6 +25,8 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <assert.h>
+
+#include "f2fs_fs.h"
 
 #define EXIT_ERR_CODE		(-1)
 #define ver_after(a, b) (typecheck(unsigned long long, a) &&            \
