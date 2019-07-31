@@ -146,7 +146,7 @@ static void cure_extension_list(void)
 		ue = strtok(ext_str, ", ");
 		while (ue != NULL) {
 			name_len = strlen(ue);
-			if (name_len >= 8) {
+			if (name_len >= F2FS_EXTENSION_LEN) {
 				MSG(0, "\tWarn: Extension name (%s) is too long\n", ue);
 				goto next;
 			}

@@ -406,6 +406,55 @@ static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 	free(data_blk);
 }
 
+static inline int is_extension_exist(const char *s,
+					const char *sub)
+{
+	unsigned int slen = strlen(s);
+	unsigned int  sublen = strlen(sub);
+	int i;
+
+	/*
+	 * filename format of multimedia file should be defined as:
+	 * "filename + '.' + extension + (optional: '.' + temp extension)".
+	 */
+	if (slen < sublen + 2)
+		return 0;
+
+	for (i = 1; i < slen - sublen; i++) {
+		if (s[i] != '.')
+			continue;
+		if (!strncasecmp(s + i + 1, sub, sublen))
+			return 1;
+	}
+
+	return 0;
+}
+
+static void set_file_temperature(struct f2fs_sb_info *sbi,
+				struct f2fs_node *node_blk,
+				const unsigned char *name)
+{
+	__u8 (*extlist)[F2FS_EXTENSION_LEN] = sbi->raw_super->extension_list;
+	int i, cold_count, hot_count;
+
+	cold_count = le32_to_cpu(sbi->raw_super->extension_count);
+	hot_count = sbi->raw_super->hot_ext_count;
+
+	for (i = 0; i < cold_count + hot_count; i++) {
+		if (is_extension_exist((const char *)name,
+					(const char *)extlist[i]))
+			break;
+	}
+
+	if (i == cold_count + hot_count)
+		return;
+
+	if (i < cold_count)
+		node_blk->i.i_advise |= FADVISE_COLD_BIT;
+	else
+		node_blk->i.i_advise |= FADVISE_HOT_BIT;
+}
+
 static void init_inode_block(struct f2fs_sb_info *sbi,
 		struct f2fs_node *node_blk, struct dentry *de)
 {
@@ -463,6 +512,8 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 		node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
 		node_blk->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
+
+	set_file_temperature(sbi, node_blk, de->name);
 
 	node_blk->footer.ino = cpu_to_le32(de->ino);
 	node_blk->footer.nid = cpu_to_le32(de->ino);
