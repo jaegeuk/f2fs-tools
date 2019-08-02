@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <libgen.h>
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif
@@ -1186,7 +1187,11 @@ int f2fs_get_device_info(void)
 		c.segs_per_sec = c.zone_blocks / DEFAULT_BLOCKS_PER_SEGMENT;
 		c.secs_per_zone = 1;
 	} else {
-		c.zoned_mode = 0;
+		if(c.zoned_mode != 0) {
+			MSG(0, "\n Error: %s may not be a zoned block device \n",
+					c.devices[0].path);
+			return -1;
+		}
 	}
 
 	c.segs_per_zone = c.segs_per_sec * c.secs_per_zone;
