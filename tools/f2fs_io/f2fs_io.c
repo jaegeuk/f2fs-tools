@@ -45,6 +45,102 @@ struct cmd_desc {
 	int cmd_flags;
 };
 
+#define getflags_desc "getflags ioctl"
+#define getflags_help						\
+"f2fs_io getflags [file]\n\n"					\
+"get a flag given the file\n"					\
+"flag can show \n"						\
+"  casefold\n"							\
+"  compression\n"						\
+"  nocompression\n"
+
+static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	long flag;
+	int ret, fd;
+	int exist = 0;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = open(argv[1], O_RDONLY);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = ioctl(fd, F2FS_IOC_GETFLAGS, &flag);
+	printf("get a flag on %s ret=%d, flags=", argv[1], ret);
+	if (flag & FS_CASEFOLD_FL) {
+		printf("casefold");
+		exist = 1;
+	}
+	if (flag & FS_COMPR_FL) {
+		if (exist)
+			printf(",");
+		printf("compression");
+		exist = 1;
+	}
+	if (flag & FS_NOCOMP_FL) {
+		if (exist)
+			printf(",");
+		printf("nocompression");
+		exist = 1;
+	}
+	if (!exist)
+		printf("none");
+	printf("\n");
+	exit(0);
+}
+
+#define setflags_desc "setflags ioctl"
+#define setflags_help						\
+"f2fs_io setflags [flag] [file]\n\n"				\
+"set a flag given the file\n"					\
+"flag can be\n"							\
+"  casefold\n"							\
+"  compression\n"						\
+"  nocompression\n"
+
+static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	long flag;
+	int ret, fd;
+
+	if (argc != 3) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = open(argv[2], O_RDONLY);
+	if (fd == -1) {
+		fputs("Open failed\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = ioctl(fd, F2FS_IOC_GETFLAGS, &flag);
+	printf("get a flag on %s ret=%d, flags=%lx\n", argv[1], ret, flag);
+	if (ret)
+		exit(1);
+
+	if (!strcmp(argv[1], "casefold"))
+		flag |= FS_CASEFOLD_FL;
+	else if (!strcmp(argv[1], "compression"))
+		flag |= FS_COMPR_FL;
+	else if (!strcmp(argv[1], "nocompression"))
+		flag |= FS_NOCOMP_FL;
+
+	ret = ioctl(fd, F2FS_IOC_SETFLAGS, &flag);
+	printf("set a flag on %s ret=%d, flags=%s\n", argv[2], ret, argv[1]);
+	exit(0);
+}
+
 #define shutdown_desc "shutdown filesystem"
 #define shutdown_help					\
 "f2fs_io shutdown [level] [dir]\n\n"			\
@@ -488,6 +584,8 @@ static void do_defrag_file(int argc, char **argv, const struct cmd_desc *cmd)
 static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
 const struct cmd_desc cmd_list[] = {
 	_CMD(help),
+	CMD(getflags),
+	CMD(setflags),
 	CMD(shutdown),
 	CMD(pinfile),
 	CMD(fallocate),

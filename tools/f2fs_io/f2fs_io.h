@@ -41,9 +41,13 @@ typedef u32	__be32;
 #ifndef FS_IOC_GETFLAGS
 #define FS_IOC_GETFLAGS			_IOR('f', 1, long)
 #endif
+#ifndef FS_IOC_SETFLAGS
+#define FS_IOC_SETFLAGS			_IOW('f', 2, long)
+#endif
 
 #define F2FS_IOCTL_MAGIC		0xf5
 #define F2FS_IOC_GETFLAGS		FS_IOC_GETFLAGS
+#define F2FS_IOC_SETFLAGS		FS_IOC_SETFLAGS
 
 #define F2FS_IOC_START_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 1)
 #define F2FS_IOC_COMMIT_ATOMIC_WRITE	_IO(F2FS_IOCTL_MAGIC, 2)
@@ -97,6 +101,16 @@ typedef u32	__be32;
 
 #define F2FS_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
 #define F2FS_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
+
+#ifndef FS_NOCOMP_FL
+#define FS_NOCOMP_FL			0x00000400 /* Don't compress */
+#endif
+#ifndef FS_COMPR_FL
+#define FS_COMPR_FL			0x00000004 /* Compress file */
+#endif
+#ifndef FS_CASEFOLD_FL
+#define FS_CASEFOLD_FL			0x40000000 /* Folder is case insensitive */
+#endif
 
 struct f2fs_gc_range {
 	u32 sync;
