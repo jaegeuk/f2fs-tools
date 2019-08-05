@@ -240,8 +240,14 @@ static int build_directory(struct f2fs_sb_info *sbi, const char *full_path,
 		ret = set_selinux_xattr(sbi, dentries[i].path,
 					dentries[i].ino, dentries[i].mode);
 		if (ret)
-			return ret;
+			goto out_free;
 
+		free(dentries[i].path);
+		free(dentries[i].full_path);
+		free((void *)dentries[i].name);
+	}
+out_free:
+	for (; i < entries; i++) {
 		free(dentries[i].path);
 		free(dentries[i].full_path);
 		free((void *)dentries[i].name);
