@@ -58,8 +58,11 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 
 	if (old_blkaddr == NULL_ADDR) {
 		sbi->total_valid_block_count++;
-		if (c.func == FSCK)
+		if (c.func == FSCK) {
 			fsck->chk.valid_blk_cnt++;
+			if (IS_NODESEG(type))
+				fsck->chk.valid_node_cnt++;
+		}
 	}
 	se->dirty = 1;
 
