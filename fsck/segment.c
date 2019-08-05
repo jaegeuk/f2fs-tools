@@ -17,12 +17,13 @@
 #include "node.h"
 
 int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
-			struct f2fs_summary *sum, int type)
+			struct f2fs_summary *sum, int type, bool is_inode)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct seg_entry *se;
 	u64 blkaddr, offset;
 	u64 old_blkaddr = *to;
+	bool is_node = IS_NODESEG(type);
 
 	if (old_blkaddr == NULL_ADDR) {
 		if (c.func == FSCK) {
@@ -30,10 +31,20 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 				ERR_MSG("Not enough space");
 				return -ENOSPC;
 			}
+			if (is_node && fsck->chk.valid_node_cnt >=
+					sbi->total_valid_node_count) {
+				ERR_MSG("Not enough space for node block");
+				return -ENOSPC;
+			}
 		} else {
 			if (sbi->total_valid_block_count >=
 						sbi->user_block_count) {
 				ERR_MSG("Not enough space");
+				return -ENOSPC;
+			}
+			if (is_node && sbi->total_valid_node_count >=
+						sbi->total_node_count) {
+				ERR_MSG("Not enough space for node block");
 				return -ENOSPC;
 			}
 		}
@@ -58,10 +69,18 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 
 	if (old_blkaddr == NULL_ADDR) {
 		sbi->total_valid_block_count++;
+		if (is_node) {
+			sbi->total_valid_node_count++;
+			if (is_inode)
+				sbi->total_valid_inode_count++;
+		}
 		if (c.func == FSCK) {
 			fsck->chk.valid_blk_cnt++;
-			if (IS_NODESEG(type))
+			if (is_node) {
 				fsck->chk.valid_node_cnt++;
+				if (is_inode)
+					fsck->chk.valid_inode_cnt++;
+			}
 		}
 	}
 	se->dirty = 1;
@@ -92,7 +111,7 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
-	ret = reserve_new_block(sbi, &dn->data_blkaddr, &sum, type);
+	ret = reserve_new_block(sbi, &dn->data_blkaddr, &sum, type, 0);
 	if (ret) {
 		c.alloc_failed = 1;
 		return ret;

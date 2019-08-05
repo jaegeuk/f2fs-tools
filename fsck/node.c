@@ -16,11 +16,10 @@
 #include "fsck.h"
 #include "node.h"
 
-void f2fs_alloc_nid(struct f2fs_sb_info *sbi, nid_t *nid, int inode)
+void f2fs_alloc_nid(struct f2fs_sb_info *sbi, nid_t *nid)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
-	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
-	nid_t i, inode_cnt, node_cnt;
+	nid_t i;
 
 	for (i = 0; i < nm_i->max_nid; i++)
 		if(f2fs_test_bit(i, nm_i->nid_bitmap) == 0)
@@ -29,12 +28,6 @@ void f2fs_alloc_nid(struct f2fs_sb_info *sbi, nid_t *nid, int inode)
 	ASSERT(i < nm_i->max_nid);
 	f2fs_set_bit(i, nm_i->nid_bitmap);
 	*nid = i;
-
-	inode_cnt = get_cp(valid_inode_count);
-	node_cnt = get_cp(valid_node_count);
-	if (inode)
-		set_cp(valid_inode_count, inode_cnt + 1);
-	set_cp(valid_node_count, node_cnt + 1);
 }
 
 void set_data_blkaddr(struct dnode_of_data *dn)
@@ -87,7 +80,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, 0, ni.version);
-	ret = reserve_new_block(sbi, &blkaddr, &sum, type);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, type, !ofs);
 	if (ret) {
 		free(node_blk);
 		return 0;
@@ -216,7 +209,7 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 				c.alloc_failed = 1;
 				return -EINVAL;
 			}
-			f2fs_alloc_nid(sbi, &nids[i], 0);
+			f2fs_alloc_nid(sbi, &nids[i]);
 
 			dn->nid = nids[i];
 

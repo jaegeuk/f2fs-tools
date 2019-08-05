@@ -2673,7 +2673,17 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	}
 
 	set_cp(free_segment_count, get_free_segments(sbi));
-	set_cp(valid_block_count, sbi->total_valid_block_count);
+	if (c.func == FSCK) {
+		struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+		set_cp(valid_block_count, fsck->chk.valid_blk_cnt);
+		set_cp(valid_node_count, fsck->chk.valid_node_cnt);
+		set_cp(valid_inode_count, fsck->chk.valid_inode_cnt);
+	} else {
+		set_cp(valid_block_count, sbi->total_valid_block_count);
+		set_cp(valid_node_count, sbi->total_valid_node_count);
+		set_cp(valid_inode_count, sbi->total_valid_inode_count);
+	}
 	set_cp(cp_pack_total_block_count, 8 + orphan_blks + get_sb(cp_payload));
 
 	flags = update_nat_bits_flags(sb, cp, flags);

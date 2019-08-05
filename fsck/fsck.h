@@ -242,11 +242,11 @@ int f2fs_sload(struct f2fs_sb_info *);
 
 /* segment.c */
 int reserve_new_block(struct f2fs_sb_info *, block_t *,
-					struct f2fs_summary *, int);
+					struct f2fs_summary *, int, bool);
 int new_data_block(struct f2fs_sb_info *, void *,
 					struct dnode_of_data *, int);
 int f2fs_build_file(struct f2fs_sb_info *, struct dentry *);
-void f2fs_alloc_nid(struct f2fs_sb_info *, nid_t *, int);
+void f2fs_alloc_nid(struct f2fs_sb_info *, nid_t *);
 void set_data_blkaddr(struct dnode_of_data *);
 block_t new_node_block(struct f2fs_sb_info *,
 					struct dnode_of_data *, unsigned int);
