@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #ifndef ANDROID_WINDOWS_HOST
 #include <sys/ioctl.h>
 #endif
@@ -110,13 +111,61 @@ static int trim_device(int i)
 	return 0;
 }
 
+static bool is_wiped_device(int i)
+{
+#ifdef WITH_ANDROID
+	struct device_info *dev = c.devices + i;
+	int fd = dev->fd;
+	char *buf, *zero_buf;
+	bool wiped = true;
+	int nblocks = 4096;	/* 16MB size */
+	int j;
+
+	buf = malloc(F2FS_BLKSIZE);
+	if (buf == NULL) {
+		MSG(1, "\tError: Malloc Failed for buf!!!\n");
+		return false;
+	}
+	zero_buf = calloc(1, F2FS_BLKSIZE);
+	if (zero_buf == NULL) {
+		MSG(1, "\tError: Calloc Failed for zero buf!!!\n");
+		free(buf);
+		return false;
+	}
+
+	if (lseek(fd, 0, SEEK_SET) < 0) {
+		free(zero_buf);
+		free(buf);
+		return false;
+	}
+
+	/* check first n blocks */
+	for (j = 0; j < nblocks; j++) {
+		if (read(fd, buf, F2FS_BLKSIZE) != F2FS_BLKSIZE ||
+				memcmp(buf, zero_buf, F2FS_BLKSIZE)) {
+			wiped = false;
+			break;
+		}
+	}
+	free(zero_buf);
+	free(buf);
+
+	if (wiped)
+		MSG(0, "Info: Found all zeros in first %d blocks\n", nblocks);
+	return wiped;
+#else
+	return false;
+#endif
+}
+
 int f2fs_trim_devices(void)
 {
 	int i;
 
-	for (i = 0; i < c.ndevs; i++)
-		if (trim_device(i))
+	for (i = 0; i < c.ndevs; i++) {
+		if (!is_wiped_device(i) && trim_device(i))
 			return -1;
+	}
 	c.trimmed = 1;
 	return 0;
 }
