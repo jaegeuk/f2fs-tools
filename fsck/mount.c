@@ -1407,6 +1407,7 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	unsigned int sit_segs;
 	int start;
 	char *src_bitmap, *dst_bitmap;
+	unsigned char *bitmap;
 	unsigned int bitmap_size;
 
 	sit_i = malloc(sizeof(struct sit_info));
@@ -1423,13 +1424,19 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 		goto free_sit_info;
 	}
 
+	bitmap_size = TOTAL_SEGS(sbi) * SIT_VBLOCK_MAP_SIZE;
+
+	sit_i->bitmap = calloc(bitmap_size, 1);
+	if (!sit_i->bitmap) {
+		MSG(1, "\tError: Calloc failed for build_sit_info!!\n");
+		goto free_sentries;
+	}
+
+	bitmap = sit_i->bitmap;
+
 	for (start = 0; start < TOTAL_SEGS(sbi); start++) {
-		sit_i->sentries[start].cur_valid_map
-			= calloc(SIT_VBLOCK_MAP_SIZE, 1);
-		if (!sit_i->sentries[start].cur_valid_map) {
-			MSG(1, "\tError: Calloc failed for build_sit_info!!\n");
-			goto free_validity_maps;
-		}
+		sit_i->sentries[start].cur_valid_map = bitmap;
+		bitmap += SIT_VBLOCK_MAP_SIZE;
 	}
 
 	sit_segs = get_sb(segment_count_sit) >> 1;
@@ -1455,10 +1462,9 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	return 0;
 
 free_validity_maps:
-	for (--start ; start >= 0; --start)
-		free(sit_i->sentries[start].cur_valid_map);
+	free(sit_i->bitmap);
+free_sentries:
 	free(sit_i->sentries);
-
 free_sit_info:
 	free(sit_i);
 
@@ -2906,9 +2912,7 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 	free(sbi->nm_info);
 
 	/* free sit_info */
-	for (i = 0; i < TOTAL_SEGS(sbi); i++)
-		free(sit_i->sentries[i].cur_valid_map);
-
+	free(sit_i->bitmap);
 	free(sit_i->sit_bitmap);
 	free(sit_i->sentries);
 	free(sm_i->sit_info);
