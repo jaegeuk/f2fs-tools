@@ -1703,13 +1703,12 @@ static inline void check_seg_range(struct f2fs_sb_info *sbi, unsigned int segno)
 	ASSERT(segno <= end_segno);
 }
 
-void get_current_sit_page(struct f2fs_sb_info *sbi,
-			unsigned int segno, struct f2fs_sit_block *sit_blk)
+static inline block_t current_sit_addr(struct f2fs_sb_info *sbi,
+						unsigned int segno)
 {
 	struct sit_info *sit_i = SIT_I(sbi);
 	unsigned int offset = SIT_BLOCK_OFFSET(sit_i, segno);
 	block_t blk_addr = sit_i->sit_base_addr + offset;
-	int ret;
 
 	check_seg_range(sbi, segno);
 
@@ -1717,24 +1716,23 @@ void get_current_sit_page(struct f2fs_sb_info *sbi,
 	if (f2fs_test_bit(offset, sit_i->sit_bitmap))
 		blk_addr += sit_i->sit_blocks;
 
-	ret = dev_read_block(sit_blk, blk_addr);
-	ASSERT(ret >= 0);
+	return blk_addr;
+}
+
+void get_current_sit_page(struct f2fs_sb_info *sbi,
+			unsigned int segno, struct f2fs_sit_block *sit_blk)
+{
+	block_t blk_addr = current_sit_addr(sbi, segno);
+
+	ASSERT(dev_read_block(sit_blk, blk_addr) >= 0);
 }
 
 void rewrite_current_sit_page(struct f2fs_sb_info *sbi,
 			unsigned int segno, struct f2fs_sit_block *sit_blk)
 {
-	struct sit_info *sit_i = SIT_I(sbi);
-	unsigned int offset = SIT_BLOCK_OFFSET(sit_i, segno);
-	block_t blk_addr = sit_i->sit_base_addr + offset;
-	int ret;
+	block_t blk_addr = current_sit_addr(sbi, segno);
 
-	/* calculate sit block address */
-	if (f2fs_test_bit(offset, sit_i->sit_bitmap))
-		blk_addr += sit_i->sit_blocks;
-
-	ret = dev_write_block(sit_blk, blk_addr);
-	ASSERT(ret >= 0);
+	ASSERT(dev_write_block(sit_blk, blk_addr) >= 0);
 }
 
 void check_block_count(struct f2fs_sb_info *sbi,
