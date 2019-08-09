@@ -28,23 +28,23 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	if (old_blkaddr == NULL_ADDR) {
 		if (c.func == FSCK) {
 			if (fsck->chk.valid_blk_cnt >= sbi->user_block_count) {
-				ERR_MSG("Not enough space");
+				ERR_MSG("Not enough space\n");
 				return -ENOSPC;
 			}
 			if (is_node && fsck->chk.valid_node_cnt >=
 					sbi->total_valid_node_count) {
-				ERR_MSG("Not enough space for node block");
+				ERR_MSG("Not enough space for node block\n");
 				return -ENOSPC;
 			}
 		} else {
 			if (sbi->total_valid_block_count >=
 						sbi->user_block_count) {
-				ERR_MSG("Not enough space");
+				ERR_MSG("Not enough space\n");
 				return -ENOSPC;
 			}
 			if (is_node && sbi->total_valid_node_count >=
 						sbi->total_node_count) {
-				ERR_MSG("Not enough space for node block");
+				ERR_MSG("Not enough space for node block\n");
 				return -ENOSPC;
 			}
 		}
