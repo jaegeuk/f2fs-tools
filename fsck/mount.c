@@ -2910,6 +2910,7 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 		free(sit_i->sentries[i].cur_valid_map);
 
 	free(sit_i->sit_bitmap);
+	free(sit_i->sentries);
 	free(sm_i->sit_info);
 
 	/* free sm_info */
