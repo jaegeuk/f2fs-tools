@@ -2396,6 +2396,20 @@ int relocate_curseg_offset(struct f2fs_sb_info *sbi, int type)
 	return 0;
 }
 
+void set_section_type(struct f2fs_sb_info *sbi, unsigned int segno, int type)
+{
+	struct seg_entry *se;
+	unsigned int i;
+
+	if (sbi->segs_per_sec == 1)
+		return;
+
+	for (i = 0; i < sbi->segs_per_sec; i++) {
+		se = get_seg_entry(sbi, segno + i);
+		se->type = type;
+	}
+}
+
 int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
@@ -2439,8 +2453,11 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left, int type)
 				if (se2->valid_blocks)
 					break;
 			}
-			if (i == sbi->segs_per_sec)
+
+			if (i == sbi->segs_per_sec) {
+				set_section_type(sbi, segno, type);
 				return 0;
+			}
 		}
 
 		if (se->type == type &&
