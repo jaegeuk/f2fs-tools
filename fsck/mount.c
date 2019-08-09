@@ -476,6 +476,94 @@ void print_sb_state(struct f2fs_super_block *sb)
 	MSG(0, "\n");
 }
 
+bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
+					block_t blkaddr, int type)
+{
+	switch (type) {
+	case META_NAT:
+		break;
+	case META_SIT:
+		if (blkaddr >= SIT_BLK_CNT(sbi))
+			return 0;
+		break;
+	case META_SSA:
+		if (blkaddr >= MAIN_BLKADDR(sbi) ||
+			blkaddr < SM_I(sbi)->ssa_blkaddr)
+			return 0;
+		break;
+	case META_CP:
+		if (blkaddr >= SIT_I(sbi)->sit_base_addr ||
+			blkaddr < __start_cp_addr(sbi))
+			return 0;
+		break;
+	case META_POR:
+		if (blkaddr >= MAX_BLKADDR(sbi) ||
+			blkaddr < MAIN_BLKADDR(sbi))
+			return 0;
+		break;
+	default:
+		ASSERT(0);
+	}
+
+	return 1;
+}
+
+static inline block_t current_sit_addr(struct f2fs_sb_info *sbi,
+						unsigned int start);
+
+/*
+ * Readahead CP/NAT/SIT/SSA pages
+ */
+int f2fs_ra_meta_pages(struct f2fs_sb_info *sbi, block_t start, int nrpages,
+							int type)
+{
+	block_t blkno = start;
+	block_t blkaddr, start_blk = 0, len = 0;
+
+	for (; nrpages-- > 0; blkno++) {
+
+		if (!f2fs_is_valid_blkaddr(sbi, blkno, type))
+			goto out;
+
+		switch (type) {
+		case META_NAT:
+			if (blkno >= NAT_BLOCK_OFFSET(NM_I(sbi)->max_nid))
+				blkno = 0;
+			/* get nat block addr */
+			blkaddr = current_nat_addr(sbi,
+					blkno * NAT_ENTRY_PER_BLOCK, NULL);
+			break;
+		case META_SIT:
+			/* get sit block addr */
+			blkaddr = current_sit_addr(sbi,
+					blkno * SIT_ENTRY_PER_BLOCK);
+			break;
+		case META_SSA:
+		case META_CP:
+		case META_POR:
+			blkaddr = blkno;
+			break;
+		default:
+			ASSERT(0);
+		}
+
+		if (!len) {
+			start_blk = blkaddr;
+			len = 1;
+		} else if (start_blk + len == blkaddr) {
+			len++;
+		} else {
+			dev_readahead(start_blk << F2FS_BLKSIZE_BITS,
+						len << F2FS_BLKSIZE_BITS);
+		}
+	}
+out:
+	if (len)
+		dev_readahead(start_blk << F2FS_BLKSIZE_BITS,
+					len << F2FS_BLKSIZE_BITS);
+	return blkno - start;
+}
+
 void update_superblock(struct f2fs_super_block *sb, int sb_mask)
 {
 	int addr, ret;
@@ -1135,6 +1223,9 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 		free(nm_i->nid_bitmap);
 		return -ENOMEM;
 	}
+
+	f2fs_ra_meta_pages(sbi, 0, NAT_BLOCK_OFFSET(nm_i->max_nid),
+							META_NAT);
 
 	for (nid = 0; nid < nm_i->max_nid; nid++) {
 		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
@@ -1986,7 +2077,9 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	struct f2fs_sit_block *sit_blk;
 	struct seg_entry *se;
 	struct f2fs_sit_entry sit;
-	unsigned int i, segno;
+	int sit_blk_cnt = SIT_BLK_CNT(sbi);
+	unsigned int i, segno, end;
+	unsigned int readed, start_blk = 0;
 
 	sit_blk = calloc(BLOCK_SZ, 1);
 	if (!sit_blk) {
@@ -1994,15 +2087,25 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 		return -ENOMEM;
 	}
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
-		se = &sit_i->sentries[segno];
+	do {
+		readed = f2fs_ra_meta_pages(sbi, start_blk, MAX_RA_BLOCKS,
+								META_SIT);
 
-		get_current_sit_page(sbi, segno, sit_blk);
-		sit = sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
+		segno = start_blk * sit_i->sents_per_block;
+		end = (start_blk + readed) * sit_i->sents_per_block;
 
-		check_block_count(sbi, segno, &sit);
-		seg_info_from_raw_sit(se, &sit);
-	}
+		for (; segno < end && segno < TOTAL_SEGS(sbi); segno++) {
+			se = &sit_i->sentries[segno];
+
+			get_current_sit_page(sbi, segno, sit_blk);
+			sit = sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno)];
+
+			check_block_count(sbi, segno, &sit);
+			seg_info_from_raw_sit(se, &sit);
+		}
+		start_blk += readed;
+	} while (start_blk < sit_blk_cnt);
+
 
 	free(sit_blk);
 

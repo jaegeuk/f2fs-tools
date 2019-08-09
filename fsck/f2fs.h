@@ -37,6 +37,20 @@ struct list_head {
 	struct list_head *next, *prev;
 };
 
+/*
+ * indicate meta/data type
+ */
+enum {
+	META_CP,
+	META_NAT,
+	META_SIT,
+	META_SSA,
+	META_MAX,
+	META_POR,
+};
+
+#define MAX_RA_BLOCKS	64
+
 enum {
 	NAT_BITMAP,
 	SIT_BITMAP
@@ -329,6 +343,13 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 	((t == CURSEG_HOT_NODE) || (t == CURSEG_COLD_NODE) ||           \
 	 (t == CURSEG_WARM_NODE))
 
+#define MAIN_BLKADDR(sbi)						\
+	(SM_I(sbi) ? SM_I(sbi)->main_blkaddr :				\
+		le32_to_cpu(F2FS_RAW_SUPER(sbi)->main_blkaddr))
+#define SEG0_BLKADDR(sbi)						\
+	(SM_I(sbi) ? SM_I(sbi)->seg0_blkaddr :				\
+		le32_to_cpu(F2FS_RAW_SUPER(sbi)->segment0_blkaddr))
+
 #define GET_SUM_BLKADDR(sbi, segno)					\
 	((sbi->sm_info->ssa_blkaddr) + segno)
 
@@ -345,8 +366,15 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 	GET_SEGNO_FROM_SEG0(sbi, SM_I(sbi)->main_blkaddr)
 #define GET_R2L_SEGNO(sbi, segno)	(segno + FREE_I_START_SEGNO(sbi))
 
+#define MAIN_SEGS(sbi)	(SM_I(sbi)->main_segments)
+#define TOTAL_BLKS(sbi)	(TOTAL_SEGS(sbi) << (sbi)->log_blocks_per_seg)
+#define MAX_BLKADDR(sbi)	(SEG0_BLKADDR(sbi) + TOTAL_BLKS(sbi))
+
 #define START_BLOCK(sbi, segno)	(SM_I(sbi)->main_blkaddr +		\
 	((segno) << sbi->log_blocks_per_seg))
+
+#define SIT_BLK_CNT(sbi)						\
+	((MAIN_SEGS(sbi) + SIT_ENTRY_PER_BLOCK - 1) / SIT_ENTRY_PER_BLOCK)
 
 static inline struct curseg_info *CURSEG_I(struct f2fs_sb_info *sbi, int type)
 {

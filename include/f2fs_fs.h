@@ -1186,6 +1186,11 @@ extern int f2fs_finalize_device(void);
 extern int f2fs_fsync_device(void);
 
 extern int dev_read(void *, __u64, size_t);
+#ifdef POSIX_FADV_WILLNEED
+extern int dev_readahead(__u64, size_t);
+#else
+extern int dev_readahead(__u64, size_t UNUSED(len));
+#endif
 extern int dev_write(void *, __u64, size_t);
 extern int dev_write_block(void *, __u64);
 extern int dev_write_dump(void *, __u64, size_t);

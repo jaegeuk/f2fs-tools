@@ -1673,6 +1673,8 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 	start_blk = __start_cp_addr(sbi) + 1 + get_sb(cp_payload);
 	orphan_blkaddr = __start_sum_addr(sbi) - 1 - get_sb(cp_payload);
 
+	f2fs_ra_meta_pages(sbi, start_blk, orphan_blkaddr, META_CP);
+
 	orphan_blk = calloc(BLOCK_SZ, 1);
 	ASSERT(orphan_blk);
 
