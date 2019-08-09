@@ -1404,7 +1404,8 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	struct sit_info *sit_i;
-	unsigned int sit_segs, start;
+	unsigned int sit_segs;
+	int start;
 	char *src_bitmap, *dst_bitmap;
 	unsigned int bitmap_size;
 
