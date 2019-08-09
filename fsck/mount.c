@@ -2962,6 +2962,12 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 	cp = F2FS_CKPT(sbi);
 
+	if (c.func != FSCK && c.func != DUMP &&
+		!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG)) {
+		ERR_MSG("Mount unclean image to replay log first\n");
+		return -1;
+	}
+
 	print_ckpt_info(sbi);
 
 	if (c.quota_fix) {
