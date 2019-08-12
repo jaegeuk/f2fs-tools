@@ -1026,16 +1026,15 @@ skip_blkcnt_fix:
 
 	free(en);
 
-	if (ftype == F2FS_FT_SYMLINK && i_blocks && i_size == 0) {
+	if (ftype == F2FS_FT_SYMLINK && i_size == 0 &&
+			i_blocks == (i_xattr_nid ? 3 : 2)) {
 		ASSERT_MSG("ino: 0x%x i_blocks: %lu with zero i_size\n",
 						nid, (unsigned long)i_blocks);
 		if (c.fix_on) {
-			u64 i_size = i_blocks * F2FS_BLKSIZE;
-
-			node_blk->i.i_size = cpu_to_le64(i_size);
+			node_blk->i.i_size = cpu_to_le64(F2FS_BLKSIZE);
 			need_fix = 1;
 			FIX_MSG("Symlink: recover 0x%x with i_size=%lu",
-						nid, (unsigned long)i_size);
+					nid, (unsigned long)F2FS_BLKSIZE);
 		}
 	}
 
