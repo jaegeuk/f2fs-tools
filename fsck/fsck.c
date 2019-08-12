@@ -659,6 +659,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
+	nid_t i_xattr_nid = le32_to_cpu(node_blk->i.i_xattr_nid);
 	int ofs;
 	char *en;
 	u32 namelen;
@@ -709,15 +710,14 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	/* readahead xattr node block */
-	fsck_reada_node_block(sbi, le32_to_cpu(node_blk->i.i_xattr_nid));
+	fsck_reada_node_block(sbi, i_xattr_nid);
 
-	if (fsck_chk_xattr_blk(sbi, nid,
-			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt)) {
+	if (fsck_chk_xattr_blk(sbi, nid, i_xattr_nid, blk_cnt)) {
 		if (c.fix_on) {
 			node_blk->i.i_xattr_nid = 0;
 			need_fix = 1;
 			FIX_MSG("Remove xattr block: 0x%x, x_nid = 0x%x",
-					nid, le32_to_cpu(node_blk->i.i_xattr_nid));
+							nid, i_xattr_nid);
 		}
 	}
 
