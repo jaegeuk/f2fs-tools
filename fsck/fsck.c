@@ -712,12 +712,13 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	fsck_reada_node_block(sbi, le32_to_cpu(node_blk->i.i_xattr_nid));
 
 	if (fsck_chk_xattr_blk(sbi, nid,
-			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt) &&
-			c.fix_on) {
-		node_blk->i.i_xattr_nid = 0;
-		need_fix = 1;
-		FIX_MSG("Remove xattr block: 0x%x, x_nid = 0x%x",
-				nid, le32_to_cpu(node_blk->i.i_xattr_nid));
+			le32_to_cpu(node_blk->i.i_xattr_nid), blk_cnt)) {
+		if (c.fix_on) {
+			node_blk->i.i_xattr_nid = 0;
+			need_fix = 1;
+			FIX_MSG("Remove xattr block: 0x%x, x_nid = 0x%x",
+					nid, le32_to_cpu(node_blk->i.i_xattr_nid));
+		}
 	}
 
 	if (ftype == F2FS_FT_CHRDEV || ftype == F2FS_FT_BLKDEV ||
@@ -730,24 +731,31 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	if (f2fs_has_extra_isize(&node_blk->i)) {
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
-			if (node_blk->i.i_extra_isize >
-						4 * DEF_ADDRS_PER_INODE) {
-				FIX_MSG("ino[0x%x] recover i_extra_isize "
-					"from %u to %u",
-					nid,
-					le16_to_cpu(node_blk->i.i_extra_isize),
-					calc_extra_isize());
-				node_blk->i.i_extra_isize =
-					cpu_to_le16(calc_extra_isize());
-				need_fix = 1;
+			unsigned int isize =
+				le16_to_cpu(node_blk->i.i_extra_isize);
+			if (isize > 4 * DEF_ADDRS_PER_INODE) {
+				ASSERT_MSG("[0x%x] wrong i_extra_isize=0x%x",
+						nid, isize);
+				if (c.fix_on) {
+					FIX_MSG("ino[0x%x] recover i_extra_isize "
+						"from %u to %u",
+						nid, isize,
+						calc_extra_isize());
+					node_blk->i.i_extra_isize =
+						cpu_to_le16(calc_extra_isize());
+					need_fix = 1;
+				}
 			}
 		} else {
-			FIX_MSG("ino[0x%x] remove F2FS_EXTRA_ATTR "
-				"flag in i_inline:%u",
-				nid, node_blk->i.i_inline);
-			/* we don't support tuning F2FS_FEATURE_EXTRA_ATTR now */
-			node_blk->i.i_inline &= ~F2FS_EXTRA_ATTR;
-			need_fix = 1;
+			ASSERT_MSG("[0x%x] wrong extra_attr flag", nid);
+			if (c.fix_on) {
+				FIX_MSG("ino[0x%x] remove F2FS_EXTRA_ATTR "
+					"flag in i_inline:%u",
+					nid, node_blk->i.i_inline);
+				/* we don't support tuning F2FS_FEATURE_EXTRA_ATTR now */
+				node_blk->i.i_inline &= ~F2FS_EXTRA_ATTR;
+				need_fix = 1;
+			}
 		}
 
 		if ((c.feature &
@@ -758,13 +766,17 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 			if (!inline_size ||
 					inline_size > MAX_INLINE_XATTR_SIZE) {
-				FIX_MSG("ino[0x%x] recover inline xattr size "
-					"from %u to %u",
-					nid, inline_size,
-					DEFAULT_INLINE_XATTR_ADDRS);
-				node_blk->i.i_inline_xattr_size =
-					cpu_to_le16(DEFAULT_INLINE_XATTR_ADDRS);
-				need_fix = 1;
+				ASSERT_MSG("[0x%x] wrong inline_xattr_size:%u",
+						nid, inline_size);
+				if (c.fix_on) {
+					FIX_MSG("ino[0x%x] recover inline xattr size "
+						"from %u to %u",
+						nid, inline_size,
+						DEFAULT_INLINE_XATTR_ADDRS);
+					node_blk->i.i_inline_xattr_size =
+						cpu_to_le16(DEFAULT_INLINE_XATTR_ADDRS);
+					need_fix = 1;
+				}
 			}
 		}
 	}
@@ -772,20 +784,28 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		unsigned int inline_size = MAX_INLINE_DATA(node_blk);
+		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs]);
 
-		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
-			/* should fix this bug all the time */
-			FIX_MSG("inline_data has wrong 0'th block = %x",
-					le32_to_cpu(node_blk->i.i_addr[ofs]));
-			node_blk->i.i_addr[ofs] = 0;
-			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
-			need_fix = 1;
+		if (blkaddr != 0) {
+			ASSERT_MSG("[0x%x] wrong inline reserve blkaddr:%u",
+					nid, blkaddr);
+			if (c.fix_on) {
+				FIX_MSG("inline_data has wrong 0'th block = %x",
+								blkaddr);
+				node_blk->i.i_addr[ofs] = 0;
+				node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+				need_fix = 1;
+			}
 		}
 		if (i_size > inline_size) {
-			node_blk->i.i_size = cpu_to_le64(inline_size);
-			FIX_MSG("inline_data has wrong i_size %lu",
-						(unsigned long)i_size);
-			need_fix = 1;
+			ASSERT_MSG("[0x%x] wrong inline size:%lu",
+					nid, (unsigned long)i_size);
+			if (c.fix_on) {
+				node_blk->i.i_size = cpu_to_le64(inline_size);
+				FIX_MSG("inline_data has wrong i_size %lu",
+							(unsigned long)i_size);
+				need_fix = 1;
+			}
 		}
 		if (!(node_blk->i.i_inline & F2FS_DATA_EXIST)) {
 			char buf[MAX_INLINE_DATA(node_blk)];
@@ -793,9 +813,12 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 			if (memcmp(buf, inline_data_addr(node_blk),
 						MAX_INLINE_DATA(node_blk))) {
-				FIX_MSG("inline_data has DATA_EXIST");
-				node_blk->i.i_inline |= F2FS_DATA_EXIST;
-				need_fix = 1;
+				ASSERT_MSG("[0x%x] junk inline data", nid);
+				if (c.fix_on) {
+					FIX_MSG("inline_data has DATA_EXIST");
+					node_blk->i.i_inline |= F2FS_DATA_EXIST;
+					need_fix = 1;
+				}
 			}
 		}
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
@@ -804,20 +827,25 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
+		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs]);
+
 		DBG(3, "ino[0x%x] has inline dentry!\n", nid);
-		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
-			/* should fix this bug all the time */
-			FIX_MSG("inline_dentry has wrong 0'th block = %x",
-					le32_to_cpu(node_blk->i.i_addr[ofs]));
-			node_blk->i.i_addr[ofs] = 0;
-			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
-			need_fix = 1;
+		if (blkaddr != 0) {
+			ASSERT_MSG("[0x%x] wrong inline reserve blkaddr:%u",
+								nid, blkaddr);
+			if (c.fix_on) {
+				FIX_MSG("inline_dentry has wrong 0'th block = %x",
+								blkaddr);
+				node_blk->i.i_addr[ofs] = 0;
+				node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+				need_fix = 1;
+			}
 		}
 
 		ret = fsck_chk_inline_dentries(sbi, node_blk, &child);
 		if (ret < 0) {
-			/* should fix this bug all the time */
-			need_fix = 1;
+			if (c.fix_on)
+				need_fix = 1;
 		}
 		child.state |= FSCK_INLINE_INODE;
 		goto check;
@@ -999,7 +1027,7 @@ skip_blkcnt_fix:
 	free(en);
 
 	if (ftype == F2FS_FT_SYMLINK && i_blocks && i_size == 0) {
-		DBG(1, "ino: 0x%x i_blocks: %lu with zero i_size",
+		ASSERT_MSG("ino: 0x%x i_blocks: %lu with zero i_size\n",
 						nid, (unsigned long)i_blocks);
 		if (c.fix_on) {
 			u64 i_size = i_blocks * F2FS_BLKSIZE;
@@ -1012,7 +1040,7 @@ skip_blkcnt_fix:
 	}
 
 	if (ftype == F2FS_FT_ORPHAN && i_links) {
-		MSG(0, "ino: 0x%x is orphan inode, but has i_links: %u",
+		ASSERT_MSG("ino: 0x%x is orphan inode, but has i_links: %u",
 				nid, i_links);
 		if (c.fix_on) {
 			node_blk->i.i_links = 0;
