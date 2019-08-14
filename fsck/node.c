@@ -30,6 +30,16 @@ void f2fs_alloc_nid(struct f2fs_sb_info *sbi, nid_t *nid)
 	*nid = i;
 }
 
+void f2fs_release_nid(struct f2fs_sb_info *sbi, nid_t nid)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+
+	ASSERT(nid < nm_i->max_nid);
+	ASSERT(f2fs_test_bit(nid, nm_i->nid_bitmap));
+
+	f2fs_clear_bit(nid, nm_i->nid_bitmap);
+}
+
 void set_data_blkaddr(struct dnode_of_data *dn)
 {
 	__le32 *addr_array;
@@ -203,12 +213,6 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 
 	for (i = 1; i <= level; i++) {
 		if (!nids[i] && mode == ALLOC_NODE) {
-			struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
-
-			if (!is_set_ckpt_flags(cp, CP_UMOUNT_FLAG)) {
-				c.alloc_failed = 1;
-				return -EINVAL;
-			}
 			f2fs_alloc_nid(sbi, &nids[i]);
 
 			dn->nid = nids[i];
@@ -216,7 +220,11 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			/* Function new_node_blk get a new f2fs_node blk and update*/
 			/* We should make sure that dn->node_blk == NULL*/
 			nblk[i] = new_node_block(sbi, dn, noffset[i]);
-			ASSERT(nblk[i]);
+			if (!nblk[i]) {
+				f2fs_release_nid(sbi, nids[i]);
+				c.alloc_failed = 1;
+				return -EINVAL;
+			}
 
 			set_nid(parent, offset[i - 1], nids[i], i == 1);
 		} else {

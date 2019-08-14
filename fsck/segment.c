@@ -62,6 +62,11 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	se->type = type;
 	se->valid_blocks++;
 	f2fs_set_bit(offset, (char *)se->cur_valid_map);
+	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG)) {
+		se->ckpt_type = type;
+		se->ckpt_valid_blocks++;
+		f2fs_set_bit(offset, (char *)se->ckpt_valid_map);
+	}
 	if (c.func == FSCK) {
 		f2fs_set_main_bitmap(sbi, blkaddr, type);
 		f2fs_set_sit_bitmap(sbi, blkaddr);
@@ -98,13 +103,7 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 	struct f2fs_summary sum;
 	struct node_info ni;
 	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
-	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	int ret;
-
-	if (!is_set_ckpt_flags(cp, CP_UMOUNT_FLAG)) {
-		c.alloc_failed = 1;
-		return -EINVAL;
-	}
 
 	ASSERT(dn->node_blk);
 	memset(block, 0, BLOCK_SZ);

@@ -33,9 +33,62 @@
 		typecheck(unsigned long long, b) &&                     \
 		((long long)((a) - (b)) > 0))
 
+#define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#define container_of(ptr, type, member) ({			\
+	const typeof(((type *)0)->member) * __mptr = (ptr);	\
+	(type *)((char *)__mptr - offsetof(type, member)); })
+
 struct list_head {
 	struct list_head *next, *prev;
 };
+
+static inline void __list_add(struct list_head *new,
+				struct list_head *prev,
+				struct list_head *next)
+{
+	next->prev = new;
+	new->next = next;
+	new->prev = prev;
+	prev->next = new;
+}
+
+static inline void __list_del(struct list_head * prev, struct list_head * next)
+{
+	next->prev = prev;
+	prev->next = next;
+}
+
+static inline void list_del(struct list_head *entry)
+{
+	__list_del(entry->prev, entry->next);
+}
+
+static inline void list_add_tail(struct list_head *new, struct list_head *head)
+{
+	__list_add(new, head->prev, head);
+}
+
+#define LIST_HEAD_INIT(name) { &(name), &(name) }
+
+#define list_entry(ptr, type, member)					\
+		container_of(ptr, type, member)
+
+#define list_first_entry(ptr, type, member)				\
+		list_entry((ptr)->next, type, member)
+
+#define list_next_entry(pos, member)					\
+		list_entry((pos)->member.next, typeof(*(pos)), member)
+
+#define list_for_each_entry(pos, head, member)				\
+	for (pos = list_first_entry(head, typeof(*pos), member);	\
+		&pos->member != (head);					\
+		pos = list_next_entry(pos, member))
+
+#define list_for_each_entry_safe(pos, n, head, member)			\
+	for (pos = list_first_entry(head, typeof(*pos), member),	\
+		n = list_next_entry(pos, member);			\
+		&pos->member != (head);					\
+		pos = n, n = list_next_entry(n, member))
 
 /*
  * indicate meta/data type
@@ -80,9 +133,12 @@ struct f2fs_nm_info {
 
 struct seg_entry {
 	unsigned short valid_blocks;    /* # of valid blocks */
+	unsigned short ckpt_valid_blocks;	/* # of valid blocks last cp, for recovered data/node */
 	unsigned char *cur_valid_map;   /* validity bitmap of blocks */
+	unsigned char *ckpt_valid_map;	/* validity bitmap of blocks last cp, for recovered data/node */
 	unsigned char type;             /* segment type like CURSEG_XXX_TYPE */
 	unsigned char orig_type;        /* segment type like CURSEG_XXX_TYPE */
+	unsigned char ckpt_type;        /* segment type like CURSEG_XXX_TYPE , for recovered data/node */
 	unsigned long long mtime;       /* modification time of the segment */
 	int dirty;
 };
@@ -258,6 +314,17 @@ static inline unsigned int ofs_of_node(struct f2fs_node *node_blk)
 	return flag >> OFFSET_BIT_SHIFT;
 }
 
+static inline unsigned long long cur_cp_version(struct f2fs_checkpoint *cp)
+{
+	return le64_to_cpu(cp->checkpoint_ver);
+}
+
+static inline __u64 cur_cp_crc(struct f2fs_checkpoint *cp)
+{
+	size_t crc_offset = le32_to_cpu(cp->checksum_offset);
+	return le32_to_cpu(*((__le32 *)((unsigned char *)cp + crc_offset)));
+}
+
 static inline bool is_set_ckpt_flags(struct f2fs_checkpoint *cp, unsigned int f)
 {
 	unsigned int ckpt_flags = le32_to_cpu(cp->ckpt_flags);
@@ -373,6 +440,9 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 #define START_BLOCK(sbi, segno)	(SM_I(sbi)->main_blkaddr +		\
 	((segno) << sbi->log_blocks_per_seg))
 
+#define NEXT_FREE_BLKADDR(sbi, curseg)					\
+	(START_BLOCK(sbi, (curseg)->segno) + (curseg)->next_blkoff)
+
 #define SIT_BLK_CNT(sbi)						\
 	((MAIN_SEGS(sbi) + SIT_ENTRY_PER_BLOCK - 1) / SIT_ENTRY_PER_BLOCK)
 
@@ -391,6 +461,14 @@ static inline block_t sum_blk_addr(struct f2fs_sb_info *sbi, int base, int type)
 	return __start_cp_addr(sbi) + le32_to_cpu(F2FS_CKPT(sbi)->cp_pack_total_block_count)
 		- (base + 1) + type;
 }
+
+/* for the list of fsync inodes, used only during recovery */
+struct fsync_inode_entry {
+	struct list_head list;	/* list head */
+	nid_t ino;		/* inode number */
+	block_t blkaddr;	/* block address locating the last fsync */
+	block_t last_dentry;	/* block address locating the last dentry */
+};
 
 #define nats_in_cursum(jnl)             (le16_to_cpu(jnl->n_nats))
 #define sits_in_cursum(jnl)             (le16_to_cpu(jnl->n_sits))

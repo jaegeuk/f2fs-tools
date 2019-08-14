@@ -103,4 +103,43 @@ static inline int IS_DNODE(struct f2fs_node *node_page)
 	return 1;
 }
 
+static inline nid_t ino_of_node(struct f2fs_node *node_blk)
+{
+	return le32_to_cpu(node_blk->footer.ino);
+}
+
+static inline __u64 cpver_of_node(struct f2fs_node *node_blk)
+{
+	return le64_to_cpu(node_blk->footer.cp_ver);
+}
+
+static inline bool is_recoverable_dnode(struct f2fs_sb_info *sbi,
+						struct f2fs_node *node_blk)
+{
+	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
+	__u64 cp_ver = cur_cp_version(ckpt);
+
+	/* Don't care crc part, if fsck.f2fs sets it. */
+	if (is_set_ckpt_flags(ckpt, CP_NOCRC_RECOVERY_FLAG))
+		return (cp_ver << 32) == (cpver_of_node(node_blk) << 32);
+
+	if (is_set_ckpt_flags(ckpt, CP_CRC_RECOVERY_FLAG))
+		cp_ver |= (cur_cp_crc(ckpt) << 32);
+
+	return cp_ver == cpver_of_node(node_blk);
+}
+
+static inline block_t next_blkaddr_of_node(struct f2fs_node *node_blk)
+{
+	return le32_to_cpu(node_blk->footer.next_blkaddr);
+}
+
+static inline int is_node(struct f2fs_node *node_blk, int type)
+{
+	return le32_to_cpu(node_blk->footer.flag) & (1 << type);
+}
+
+#define is_fsync_dnode(node_blk)	is_node(node_blk, FSYNC_BIT_SHIFT)
+#define is_dent_dnode(node_blk)		is_node(node_blk, DENT_BIT_SHIFT)
+
 #endif
