@@ -771,12 +771,20 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	ofs = get_extra_isize(node_blk);
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
+		unsigned int inline_size = MAX_INLINE_DATA(node_blk);
+
 		if (le32_to_cpu(node_blk->i.i_addr[ofs]) != 0) {
 			/* should fix this bug all the time */
 			FIX_MSG("inline_data has wrong 0'th block = %x",
 					le32_to_cpu(node_blk->i.i_addr[ofs]));
 			node_blk->i.i_addr[ofs] = 0;
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
+			need_fix = 1;
+		}
+		if (i_size > inline_size) {
+			node_blk->i.i_size = cpu_to_le64(inline_size);
+			FIX_MSG("inline_data has wrong i_size %lu",
+						(unsigned long)i_size);
 			need_fix = 1;
 		}
 		if (!(node_blk->i.i_inline & F2FS_DATA_EXIST)) {
