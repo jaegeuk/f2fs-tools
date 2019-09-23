@@ -782,6 +782,21 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return 1;
 	}
 
+	if (sb->devs[0].path[0]) {
+		unsigned int dev_segs = le32_to_cpu(sb->devs[0].total_segments);
+		int i = 1;
+
+		while (i < MAX_DEVICES && sb->devs[i].path[0]) {
+			dev_segs += le32_to_cpu(sb->devs[i].total_segments);
+			i++;
+		}
+		if (segment_count != dev_segs) {
+			MSG(0, "Segment count (%u) mismatch with total segments from devices (%u)",
+				segment_count, dev_segs);
+			return 1;
+		}
+	}
+
 	if (secs_per_zone > total_sections || !secs_per_zone) {
 		MSG(0, "Wrong secs_per_zone / total_sections (%u, %u)\n",
 			secs_per_zone, total_sections);
