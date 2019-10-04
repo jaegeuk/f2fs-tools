@@ -21,7 +21,9 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <getopt.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -29,6 +31,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <termios.h>
@@ -103,6 +107,27 @@ static int xopen(const char *pathname, int flags, mode_t mode)
 	if (fd < 0)
 		die_errno("Failed to open %s", pathname);
 	return fd;
+}
+
+static ssize_t xread(int fd, void *buf, size_t count)
+{
+	ssize_t ret = read(fd, buf, count);
+
+	if (ret < 0)
+		die_errno("read failed");
+	return ret;
+}
+
+static void full_write(int fd, const void *buf, size_t count)
+{
+	while (count) {
+		ssize_t ret = write(fd, buf, count);
+
+		if (ret < 0)
+			die_errno("write failed");
+		buf = (char *)buf + ret;
+		count -= ret;
+	}
 }
 
 #define getflags_desc "getflags ioctl"
@@ -563,6 +588,88 @@ static void do_defrag_file(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define copy_desc "copy a file"
+#define copy_help							\
+"f2fs_io copy [-d] [-m] [-s] src_path dst_path\n\n"			\
+"  src_path  : path to source file\n"					\
+"  dst_path  : path to destination file\n"				\
+"  -d        : use direct I/O\n"					\
+"  -m        : mmap the source file\n"					\
+"  -s        : use sendfile\n"						\
+
+static void do_copy(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int c;
+	int src_fd;
+	int dst_fd;
+	int open_flags = 0;
+	bool mmap_source_file = false;
+	bool use_sendfile = false;
+	ssize_t ret;
+
+	while ((c = getopt(argc, argv, "dms")) != -1) {
+		switch (c) {
+		case 'd':
+			open_flags |= O_DIRECT;
+			break;
+		case 'm':
+			mmap_source_file = true;
+			break;
+		case 's':
+			use_sendfile = true;
+			break;
+		default:
+			fputs(cmd->cmd_help, stderr);
+			exit(2);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 2) {
+		fputs("Wrong number of arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(2);
+	}
+	if (mmap_source_file && use_sendfile)
+		die("-m and -s are mutually exclusive");
+
+	src_fd = xopen(argv[0], O_RDONLY | open_flags, 0);
+	dst_fd = xopen(argv[1], O_WRONLY | O_CREAT | O_TRUNC | open_flags, 0644);
+
+	if (mmap_source_file) {
+		struct stat stbuf;
+		void *src_addr;
+
+		if (fstat(src_fd, &stbuf) != 0)
+			die_errno("fstat of source file failed");
+
+		if ((size_t)stbuf.st_size != stbuf.st_size)
+			die("Source file is too large");
+
+		src_addr = mmap(NULL, stbuf.st_size, PROT_READ, MAP_SHARED,
+				src_fd, 0);
+		if (src_addr == MAP_FAILED)
+			die("mmap of source file failed");
+
+		full_write(dst_fd, src_addr, stbuf.st_size);
+
+		munmap(src_addr, stbuf.st_size);
+	} else if (use_sendfile) {
+		while ((ret = sendfile(dst_fd, src_fd, NULL, INT_MAX)) > 0)
+			;
+		if (ret < 0)
+			die_errno("sendfile failed");
+	} else {
+		char *buf = aligned_xalloc(4096, 4096);
+
+		while ((ret = xread(src_fd, buf, 4096)) > 0)
+			full_write(dst_fd, buf, ret);
+		free(buf);
+	}
+	close(src_fd);
+	close(dst_fd);
+}
+
 
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
@@ -581,6 +688,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(fiemap),
 	CMD(gc_urgent),
 	CMD(defrag_file),
+	CMD(copy),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
