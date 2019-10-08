@@ -320,7 +320,7 @@ static void do_fallocate(int argc, char **argv, const struct cmd_desc *cmd)
 		mode |= FALLOC_FL_KEEP_SIZE;
 
 	offset = atoi(argv[2]);
-	length = atoi(argv[3]);
+	length = atoll(argv[3]);
 
 	fd = xopen(argv[4], O_RDWR, 0);
 
