@@ -375,6 +375,7 @@ struct f2fs_configuration {
 	int func;
 	void *private;
 	int dry_run;
+	int no_kernel_check;
 	int fix_on;
 	int force;
 	int defset;

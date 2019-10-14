@@ -66,6 +66,8 @@ void fsck_usage()
 	MSG(0, "  -y fix all the time\n");
 	MSG(0, "  -V print the version number and exit\n");
 	MSG(0, "  --dry-run do not really fix corruptions\n");
+	MSG(0, "  --no-kernel-check skips detecting kernel change\n");
+	MSG(0, "  --kernel-check checks kernel change\n");
 	exit(1);
 }
 
@@ -192,6 +194,8 @@ void f2fs_parse_options(int argc, char *argv[])
 		char *token;
 		struct option long_opt[] = {
 			{"dry-run", no_argument, 0, 1},
+			{"no-kernel-check", no_argument, 0, 2},
+			{"kernel-check", no_argument, 0, 3},
 			{0, 0, 0, 0}
 		};
 
@@ -202,6 +206,14 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 1:
 				c.dry_run = 1;
 				MSG(0, "Info: Dry run\n");
+				break;
+			case 2:
+				c.no_kernel_check = 1;
+				MSG(0, "Info: No Kernel Check\n");
+				break;
+			case 3:
+				c.no_kernel_check = 0;
+				MSG(0, "Info: Do Kernel Check\n");
 				break;
 			case 'a':
 				c.auto_fix = 1;
