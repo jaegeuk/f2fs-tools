@@ -98,7 +98,8 @@ static void write_all_xattrs(struct f2fs_sb_info *sbi,
 		xattr_node = calloc(BLOCK_SZ, 1);
 		ASSERT(xattr_node);
 		ret = dev_read_block(xattr_node, ni.blk_addr);
-		ASSERT(ret >= 0);
+		if (ret < 0)
+			goto free_xattr_node;
 	}
 
 	/* write to xattr node block */
@@ -107,10 +108,10 @@ static void write_all_xattrs(struct f2fs_sb_info *sbi,
 			PAGE_SIZE - sizeof(struct node_footer));
 
 	ret = dev_write_block(xattr_node, blkaddr);
-	ASSERT(ret >= 0);
 
-	if (xnid)
-		free(xattr_node);
+free_xattr_node:
+	free(xattr_node);
+	ASSERT(ret >= 0);
 }
 
 int f2fs_setxattr(struct f2fs_sb_info *sbi, nid_t ino, int index, const char *name,

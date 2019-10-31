@@ -773,11 +773,14 @@ int main(int argc, char **argv)
 	f2fs_parse_options(argc, argv);
 
 	if (c.func != DUMP && f2fs_devs_are_umounted() < 0) {
-		if (errno == EBUSY)
-			return -1;
+		if (errno == EBUSY) {
+			ret = -1;
+			goto quick_err;
+		}
 		if (!c.ro || c.func == DEFRAG) {
 			MSG(0, "\tError: Not available on mounted device!\n");
-			return -1;
+			ret = -1;
+			goto quick_err;
 		}
 
 		/* allow ro-mounted partition */
@@ -791,8 +794,10 @@ int main(int argc, char **argv)
 	}
 
 	/* Get device */
-	if (f2fs_get_device_info() < 0)
-		return -1;
+	if (f2fs_get_device_info() < 0) {
+		ret = -1;
+		goto quick_err;
+	}
 
 fsck_again:
 	memset(&gfsck, 0, sizeof(gfsck));
@@ -883,5 +888,7 @@ out_err:
 		free(sbi->ckpt);
 	if (sbi->raw_super)
 		free(sbi->raw_super);
+quick_err:
+	f2fs_release_sparse_resource();
 	return ret;
 }

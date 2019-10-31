@@ -311,6 +311,8 @@ int f2fs_init_sparse_file(void)
 #ifdef WITH_ANDROID
 	if (c.func == MKFS) {
 		f2fs_sparse_file = sparse_file_new(F2FS_BLKSIZE, c.device_size);
+		if (!f2fs_sparse_file)
+			return -1;
 	} else {
 		f2fs_sparse_file = sparse_file_import(c.devices[0].fd,
 							true, false);
@@ -343,6 +345,26 @@ int f2fs_init_sparse_file(void)
 #else
 	MSG(0, "\tError: Sparse mode is only supported for android\n");
 	return -1;
+#endif
+}
+
+void f2fs_release_sparse_resource(void)
+{
+#ifdef WITH_ANDROID
+	int j;
+
+	if (c.sparse_mode) {
+		if (f2fs_sparse_file != NULL) {
+			sparse_file_destroy(f2fs_sparse_file);
+			f2fs_sparse_file = NULL;
+		}
+		for (j = 0; j < blocks_count; j++)
+			free(blocks[j]);
+		free(blocks);
+		blocks = NULL;
+		free(zeroed_block);
+		zeroed_block = NULL;
+	}
 #endif
 }
 
@@ -412,14 +434,7 @@ int f2fs_finalize_device(void)
 		sparse_file_write(f2fs_sparse_file, c.devices[0].fd,
 				/*gzip*/0, /*sparse*/1, /*crc*/0);
 
-		sparse_file_destroy(f2fs_sparse_file);
-		for (j = 0; j < blocks_count; j++)
-			free(blocks[j]);
-		free(blocks);
-		blocks = NULL;
-		free(zeroed_block);
-		zeroed_block = NULL;
-		f2fs_sparse_file = NULL;
+		f2fs_release_sparse_resource();
 	}
 #endif
 	/*
