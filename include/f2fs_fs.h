@@ -3,6 +3,8 @@
  *
  * Copyright (c) 2012 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
+ * Copyright (c) 2019 Google Inc.
+ *             http://www.google.com/
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  *
@@ -332,6 +334,16 @@ struct device_info {
 	size_t zone_blocks;
 };
 
+typedef struct {
+	/* Value 0 means no cache, minimum 1024 */
+	long num_cache_entry;
+
+	/* Value 0 means always overwrite (no collision allowed). maximum 16 */
+	unsigned max_hash_collision;
+
+	bool dbg_en;
+} dev_cache_config_t;
+
 struct f2fs_configuration {
 	u_int32_t reserved_segments;
 	u_int32_t new_reserved_segments;
@@ -423,6 +435,9 @@ struct f2fs_configuration {
 
 	/* precomputed fs UUID checksum for seeding other checksums */
 	u_int32_t chksum_seed;
+
+	/* cache parameters */
+	dev_cache_config_t cache_config;
 };
 
 #ifdef CONFIG_64BIT
@@ -1189,6 +1204,9 @@ extern int f2fs_init_sparse_file(void);
 extern void f2fs_release_sparse_resource(void);
 extern int f2fs_finalize_device(void);
 extern int f2fs_fsync_device(void);
+
+extern void dcache_init(void);
+extern void dcache_release(void);
 
 extern int dev_read(void *, __u64, size_t);
 #ifdef POSIX_FADV_WILLNEED
