@@ -3052,12 +3052,6 @@ static int tune_sb_features(struct f2fs_sb_info *sbi)
 	int sb_changed = 0;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT) &&
-		c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
-		ERR_MSG("ERROR: Cannot set both encrypt and casefold. Skipping.\n");
-		return -1;
-	}
-
 	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) &&
 			c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
 		sb->feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);

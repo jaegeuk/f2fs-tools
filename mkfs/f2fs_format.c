@@ -517,10 +517,6 @@ static int f2fs_prepare_super_block(void)
 	memcpy(sb->init_version, c.version, VERSION_LEN);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
-			MSG(0, "\tError: Casefolding and encryption are not compatible\n");
-			return -1;
-		}
 		set_sb(s_encoding, c.s_encoding);
 		set_sb(s_encoding_flags, c.s_encoding_flags);
 	}

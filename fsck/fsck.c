@@ -1303,6 +1303,10 @@ static int f2fs_check_hash_code(int encoding, int casefolded,
 			struct f2fs_dir_entry *dentry,
 			const unsigned char *name, u32 len, int enc_name)
 {
+	/* Casefolded Encrypted names require a key to compute siphash */
+	if (enc_name && casefolded)
+		return 0;
+
 	f2fs_hash_t hash_code = f2fs_dentry_hash(encoding, casefolded, name, len);
 	/* fix hash_code made by old buggy code */
 	if (dentry->hash_code != hash_code) {
