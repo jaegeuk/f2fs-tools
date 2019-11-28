@@ -2756,6 +2756,122 @@ out:
 	return cnt;
 }
 
+#ifdef HAVE_LINUX_BLKZONED_H
+
+struct write_pointer_check_data {
+	struct f2fs_sb_info *sbi;
+	int dev_index;
+};
+
+static int chk_and_fix_wp_with_sit(int i, void *blkzone, void *opaque)
+{
+	struct blk_zone *blkz = (struct blk_zone *)blkzone;
+	struct write_pointer_check_data *wpd = opaque;
+	struct f2fs_sb_info *sbi = wpd->sbi;
+	struct device_info *dev = c.devices + wpd->dev_index;
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	block_t zone_block, wp_block, wp_blkoff;
+	unsigned int zone_segno, wp_segno;
+	struct curseg_info *cs;
+	int cs_index, ret, last_valid_blkoff;
+	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
+	unsigned int segs_per_zone = sbi->segs_per_sec * sbi->secs_per_zone;
+
+	if (blk_zone_conv(blkz))
+		return 0;
+
+	zone_block = dev->start_blkaddr
+		+ (blk_zone_sector(blkz) >> log_sectors_per_block);
+	zone_segno = GET_SEGNO(sbi, zone_block);
+	if (zone_segno >= MAIN_SEGS(sbi))
+		return 0;
+
+	wp_block = dev->start_blkaddr
+		+ (blk_zone_wp_sector(blkz) >> log_sectors_per_block);
+	wp_segno = GET_SEGNO(sbi, wp_block);
+	wp_blkoff = wp_block - START_BLOCK(sbi, wp_segno);
+
+	/* if a curseg points to the zone, skip the check */
+	for (cs_index = 0; cs_index < NO_CHECK_TYPE; cs_index++) {
+		cs = &SM_I(sbi)->curseg_array[cs_index];
+		if (zone_segno <= cs->segno &&
+		    cs->segno < zone_segno + segs_per_zone)
+			return 0;
+	}
+
+	last_valid_blkoff = last_vblk_off_in_zone(sbi, zone_segno);
+
+	/*
+	 * When there is no valid block in the zone, check write pointer is
+	 * at zone start. If not, reset the write pointer.
+	 */
+	if (last_valid_blkoff < 0 &&
+	    blk_zone_wp_sector(blkz) != blk_zone_sector(blkz)) {
+		if (!c.fix_on) {
+			MSG(0, "Inconsistent write pointer: wp[0x%x,0x%x]\n",
+			    wp_segno, wp_blkoff);
+			fsck->chk.wp_inconsistent_zones++;
+			return 0;
+		}
+
+		FIX_MSG("Reset write pointer of zone at segment 0x%x",
+			zone_segno);
+		ret = f2fs_reset_zone(wpd->dev_index, blkz);
+		if (ret) {
+			printf("[FSCK] Write pointer reset failed: %s\n",
+			       dev->path);
+			return ret;
+		}
+		fsck->chk.wp_fixed = 1;
+		return 0;
+	}
+
+	/*
+	 * If valid blocks exist in the zone beyond the write pointer, it
+	 * is a bug. No need to fix because the zone is not selected for the
+	 * write. Just report it.
+	 */
+	if (last_valid_blkoff + zone_block > wp_block) {
+		MSG(0, "Unexpected invalid write pointer: wp[0x%x,0x%x]\n",
+		    wp_segno, wp_blkoff);
+		return 0;
+	}
+
+	return 0;
+}
+
+static void fix_wp_sit_alignment(struct f2fs_sb_info *sbi)
+{
+	unsigned int i;
+	struct write_pointer_check_data wpd = {	sbi, 0 };
+
+	if (c.zoned_model != F2FS_ZONED_HM)
+		return;
+
+	for (i = 0; i < MAX_DEVICES; i++) {
+		if (!c.devices[i].path)
+			break;
+		if (c.devices[i].zoned_model != F2FS_ZONED_HM)
+			break;
+
+		wpd.dev_index = i;
+		if (f2fs_report_zones(i, chk_and_fix_wp_with_sit, &wpd)) {
+			printf("[FSCK] Write pointer check failed: %s\n",
+			       c.devices[i].path);
+			return;
+		}
+	}
+}
+
+#else
+
+static void fix_wp_sit_alignment(struct f2fs_sb_info *sbi)
+{
+	return;
+}
+
+#endif
+
 /*
  * Check and fix consistency with write pointers at the beginning of
  * fsck so that following writes by fsck do not fail.
@@ -2771,6 +2887,8 @@ void fsck_chk_and_fix_write_pointers(struct f2fs_sb_info *sbi)
 		fix_curseg_info(sbi);
 		fsck->chk.wp_fixed = 1;
 	}
+
+	fix_wp_sit_alignment(sbi);
 }
 
 int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
@@ -2989,6 +3107,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
+			fix_wp_sit_alignment(sbi);
 			fix_curseg_info(sbi);
 			fix_checksum(sbi);
 			fix_checkpoints(sbi);
