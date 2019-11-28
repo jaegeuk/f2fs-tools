@@ -2181,6 +2181,130 @@ static void fix_checkpoints(struct f2fs_sb_info *sbi)
 	fix_checkpoint(sbi);
 }
 
+#ifdef HAVE_LINUX_BLKZONED_H
+
+/*
+ * Refer valid block map and return offset of the last valid block in the zone.
+ * Obtain valid block map from SIT and fsync data.
+ * If there is no valid block in the zone, return -1.
+ */
+static int last_vblk_off_in_zone(struct f2fs_sb_info *sbi,
+				 unsigned int zone_segno)
+{
+	int s, b;
+	unsigned int segs_per_zone = sbi->segs_per_sec * sbi->secs_per_zone;
+	struct seg_entry *se;
+
+	for (s = segs_per_zone - 1; s >= 0; s--) {
+		se = get_seg_entry(sbi, zone_segno + s);
+
+		/*
+		 * Refer not cur_valid_map but ckpt_valid_map which reflects
+		 * fsync data.
+		 */
+		ASSERT(se->ckpt_valid_map);
+		for (b = sbi->blocks_per_seg - 1; b >= 0; b--)
+			if (f2fs_test_bit(b, (const char*)se->ckpt_valid_map))
+				return b + (s << sbi->log_blocks_per_seg);
+	}
+
+	return -1;
+}
+
+static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, type);
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct blk_zone blkz;
+	block_t cs_block, wp_block, zone_last_vblock;
+	u_int64_t cs_sector, wp_sector;
+	int i, ret;
+	unsigned int zone_segno;
+	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
+
+	/* get the device the curseg points to */
+	cs_block = START_BLOCK(sbi, curseg->segno) + curseg->next_blkoff;
+	for (i = 0; i < MAX_DEVICES; i++) {
+		if (!c.devices[i].path)
+			break;
+		if (c.devices[i].start_blkaddr <= cs_block &&
+		    cs_block <= c.devices[i].end_blkaddr)
+			break;
+	}
+
+	if (i >= MAX_DEVICES)
+		return -EINVAL;
+
+	/* get write pointer position of the zone the curseg points to */
+	cs_sector = (cs_block - c.devices[i].start_blkaddr)
+		<< log_sectors_per_block;
+	ret = f2fs_report_zone(i, cs_sector, &blkz);
+	if (ret)
+		return ret;
+
+	if (blk_zone_type(&blkz) != BLK_ZONE_TYPE_SEQWRITE_REQ)
+		return 0;
+
+	/* check consistency between the curseg and the write pointer */
+	wp_block = c.devices[i].start_blkaddr +
+		(blk_zone_wp_sector(&blkz) >> log_sectors_per_block);
+	wp_sector = blk_zone_wp_sector(&blkz);
+
+	if (cs_sector == wp_sector)
+		return 0;
+
+	if (cs_sector > wp_sector) {
+		MSG(0, "Inconsistent write pointer with curseg %d: "
+		    "curseg %d[0x%x,0x%x] > wp[0x%x,0x%x]\n",
+		    type, type, curseg->segno, curseg->next_blkoff,
+		    GET_SEGNO(sbi, wp_block), OFFSET_IN_SEG(sbi, wp_block));
+		fsck->chk.wp_inconsistent_zones++;
+		return -EINVAL;
+	}
+
+	MSG(0, "Write pointer goes advance from curseg %d: "
+	    "curseg %d[0x%x,0x%x] wp[0x%x,0x%x]\n",
+	    type, type, curseg->segno, curseg->next_blkoff,
+	    GET_SEGNO(sbi, wp_block), OFFSET_IN_SEG(sbi, wp_block));
+
+	zone_segno = GET_SEG_FROM_SEC(sbi,
+				      GET_SEC_FROM_SEG(sbi, curseg->segno));
+	zone_last_vblock = START_BLOCK(sbi, zone_segno) +
+		last_vblk_off_in_zone(sbi, zone_segno);
+
+	/*
+	 * If valid blocks exist between the curseg position and the write
+	 * pointer, they are fsync data. This is not an error to fix. Leave it
+	 * for kernel to recover later.
+	 * If valid blocks exist between the curseg's zone start and the curseg
+	 * position, or if there is no valid block in the curseg's zone, fix
+	 * the inconsistency between the curseg and the writ pointer.
+	 * Of Note is that if there is no valid block in the curseg's zone,
+	 * last_vblk_off_in_zone() returns -1 and zone_last_vblock is always
+	 * smaller than cs_block.
+	 */
+	if (cs_block <= zone_last_vblock && zone_last_vblock < wp_block) {
+		MSG(0, "Curseg has fsync data: curseg %d[0x%x,0x%x] "
+		    "last valid block in zone[0x%x,0x%x]\n",
+		    type, curseg->segno, curseg->next_blkoff,
+		    GET_SEGNO(sbi, zone_last_vblock),
+		    OFFSET_IN_SEG(sbi, zone_last_vblock));
+		return 0;
+	}
+
+	fsck->chk.wp_inconsistent_zones++;
+	return -EINVAL;
+}
+
+#else
+
+static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
+{
+	return 0;
+}
+
+#endif
+
 int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
@@ -2209,6 +2333,10 @@ int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 			return -EINVAL;
 		}
 	}
+
+	if (c.zoned_model == F2FS_ZONED_HM)
+		return check_curseg_write_pointer(sbi, type);
+
 	return 0;
 }
 
@@ -2628,6 +2756,23 @@ out:
 	return cnt;
 }
 
+/*
+ * Check and fix consistency with write pointers at the beginning of
+ * fsck so that following writes by fsck do not fail.
+ */
+void fsck_chk_and_fix_write_pointers(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+	if (c.zoned_model != F2FS_ZONED_HM)
+		return;
+
+	if (check_curseg_offsets(sbi) && c.fix_on) {
+		fix_curseg_info(sbi);
+		fsck->chk.wp_fixed = 1;
+	}
+}
+
 int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg;
@@ -2677,6 +2822,20 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	struct hard_link_node *node = NULL;
 
 	printf("\n");
+
+	if (c.zoned_model == F2FS_ZONED_HM) {
+		printf("[FSCK] Write pointers consistency                    ");
+		if (fsck->chk.wp_inconsistent_zones == 0x0) {
+			printf(" [Ok..]\n");
+		} else {
+			printf(" [Fail] [0x%x]\n",
+			       fsck->chk.wp_inconsistent_zones);
+			c.bug_on = 1;
+		}
+
+		if (fsck->chk.wp_fixed && c.fix_on)
+			force = 1;
+	}
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
 		for (i = 0; i < fsck->nr_nat_entries; i++)
