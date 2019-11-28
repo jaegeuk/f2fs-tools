@@ -77,7 +77,7 @@ int f2fs_defragment(struct f2fs_sb_info *sbi, u64 from, u64 len, u64 to, int lef
 		if (!f2fs_test_bit(offset, (const char *)se->cur_valid_map))
 			continue;
 
-		if (find_next_free_block(sbi, &target, left, se->type)) {
+		if (find_next_free_block(sbi, &target, left, se->type, false)) {
 			MSG(0, "Not enough space to migrate blocks");
 			return -1;
 		}
