@@ -2126,7 +2126,7 @@ void get_node_info(struct f2fs_sb_info *sbi, nid_t nid, struct node_info *ni)
 	struct f2fs_nat_entry raw_nat;
 
 	ni->nid = nid;
-	if (c.func == FSCK) {
+	if (c.func == FSCK && F2FS_FSCK(sbi)->nr_nat_entries) {
 		node_info_from_raw_nat(ni, &(F2FS_FSCK(sbi)->entries[nid]));
 		if (ni->blk_addr)
 			return;
