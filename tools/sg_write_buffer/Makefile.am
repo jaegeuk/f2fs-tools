@@ -1,7 +1,7 @@
 ## Makefile.am
 
 if LINUX
-AM_CPPFLAGS = -I./include
+AM_CPPFLAGS = -I$(srcdir)/include
 AM_CFLAGS = -Wall
 sbin_PROGRAMS = sg_write_buffer
 sg_write_buffer_SOURCES = sg_write_buffer.c \
