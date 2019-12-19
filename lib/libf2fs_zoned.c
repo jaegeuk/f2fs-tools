@@ -474,13 +474,14 @@ out:
 
 #else
 
-int f2fs_report_zone(int i, u_int64_t sector, void *blkzone)
+int f2fs_report_zone(int i, u_int64_t UNUSED(sector), void *UNUSED(blkzone))
 {
 	ERR_MSG("%d: Unsupported zoned block device\n", i);
 	return -1;
 }
 
-int f2fs_report_zones(int i, report_zones_cb_t *report_zones_cb, void *opaque)
+int f2fs_report_zones(int i, report_zones_cb_t *UNUSED(report_zones_cb),
+					void *UNUSED(opaque))
 {
 	ERR_MSG("%d: Unsupported zoned block device\n", i);
 	return -1;
@@ -513,7 +514,7 @@ int f2fs_check_zones(int i)
 	return -1;
 }
 
-int f2fs_reset_zone(int i, void *blkzone)
+int f2fs_reset_zone(int i, void *UNUSED(blkzone))
 {
 	ERR_MSG("%d: Unsupported zoned block device\n", i);
 	return -1;

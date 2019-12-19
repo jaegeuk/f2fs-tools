@@ -2519,8 +2519,8 @@ static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 
 #else
 
-static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
-					unsigned int zone_segno)
+static bool write_pointer_at_zone_start(struct f2fs_sb_info *UNUSED(sbi),
+					unsigned int UNUSED(zone_segno))
 {
 	return true;
 }

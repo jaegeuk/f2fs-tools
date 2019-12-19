@@ -2298,7 +2298,8 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
 
 #else
 
-static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
+static int check_curseg_write_pointer(struct f2fs_sb_info *UNUSED(sbi),
+					int UNUSED(type))
 {
 	return 0;
 }
@@ -2865,7 +2866,7 @@ static void fix_wp_sit_alignment(struct f2fs_sb_info *sbi)
 
 #else
 
-static void fix_wp_sit_alignment(struct f2fs_sb_info *sbi)
+static void fix_wp_sit_alignment(struct f2fs_sb_info *UNUSED(sbi))
 {
 	return;
 }
