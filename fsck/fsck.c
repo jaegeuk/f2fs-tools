@@ -3024,7 +3024,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		c.bug_on = 1;
 	}
 
-	printf("[FSCK] valid_node_count matcing with CP (de lookup)  ");
+	printf("[FSCK] valid_node_count matching with CP (de lookup) ");
 	if (sbi->total_valid_node_count == fsck->chk.valid_node_cnt) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.valid_node_cnt);
 	} else {
@@ -3033,7 +3033,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		c.bug_on = 1;
 	}
 
-	printf("[FSCK] valid_node_count matcing with CP (nat lookup) ");
+	printf("[FSCK] valid_node_count matching with CP (nat lookup)");
 	if (sbi->total_valid_node_count == fsck->chk.valid_nat_entry_cnt) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.valid_nat_entry_cnt);
 	} else {
