@@ -97,8 +97,9 @@ int f2fs_get_zoned_model(int i)
 	/* Check that this is a zoned block device */
 	res = get_sysfs_path(dev, "queue/zoned", str, sizeof(str));
 	if (res != 0) {
-		MSG(0, "\tError: Failed to get device sysfs path\n");
-		return -1;
+		MSG(0, "\tInfo: can't find /sys, assuming normal block device\n");
+		dev->zoned_model = F2FS_ZONED_NONE;
+		return 0;
 	}
 
 	file = fopen(str, "r");
