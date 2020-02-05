@@ -20,7 +20,7 @@
 #include "quotaio_tree.h"
 
 static int v2_check_file(struct quota_handle *h, int type);
-static int v2_init_io(struct quota_handle *h);
+static int v2_init_io(struct quota_handle *h, enum quota_type qtype);
 static int v2_new_io(struct quota_handle *h);
 static int v2_write_info(struct quota_handle *h);
 static struct dquot *v2_read_dquot(struct quota_handle *h, qid_t id);
@@ -170,19 +170,64 @@ static int v2_check_file(struct quota_handle *h, int type)
 /*
  * Open quotafile
  */
-static int v2_init_io(struct quota_handle *h)
+static int v2_init_io(struct quota_handle *h, enum quota_type qtype)
 {
 	struct v2_disk_dqinfo ddqinfo;
+	struct v2_mem_dqinfo *info;
+	u64 filesize;
+	struct quota_file *qf = &h->qh_qf;
+	u32 last_blkofs = qf_last_blkofs[qtype];
 
 	h->qh_info.u.v2_mdqi.dqi_qtree.dqi_entry_size =
 		sizeof(struct v2r1_disk_dqblk);
 	h->qh_info.u.v2_mdqi.dqi_qtree.dqi_ops = &v2r1_fmt_ops;
 
 	/* Read information about quotafile */
-	if (h->read(&h->qh_qf, V2_DQINFOOFF, &ddqinfo,
-			 sizeof(ddqinfo)) != sizeof(ddqinfo))
+	if (h->read(qf, V2_DQINFOOFF, &ddqinfo,
+			sizeof(ddqinfo)) != sizeof(ddqinfo))
 		return -1;
 	v2_disk2memdqinfo(&h->qh_info, &ddqinfo);
+
+	/* Check to make sure quota file info is sane */
+	info = &h->qh_info.u.v2_mdqi;
+	filesize = qf->filesize = f2fs_quota_size(qf);
+	if (qf_szchk_type[qtype] == QF_SZCHK_REGFILE &&
+			((filesize + F2FS_BLKSIZE - 1) >> F2FS_BLKSIZE_BITS <
+			last_blkofs + 1 || filesize > qf_maxsize[qtype])) {
+		/*
+		 * reqular: qf_szchk is now the last block index,
+		 * including the hole's index
+		 */
+		log_err("Quota inode %u corrupted: file size %" PRIu64
+			" does not match page offset %" PRIu32,
+			h->qh_qf.ino,
+			filesize,
+			last_blkofs);
+		filesize = (last_blkofs + 1) << F2FS_BLKSIZE_BITS;
+		f2fs_filesize_update(qf->sbi, qf->ino, filesize);
+	}
+
+	if ((info->dqi_qtree.dqi_blocks >
+			(filesize + QT_BLKSIZE - 1) >> QT_BLKSIZE_BITS)) {
+		log_err("Quota inode %u corrupted: file size %" PRId64 "; "
+				"dqi_blocks %u", h->qh_qf.ino,
+				filesize, info->dqi_qtree.dqi_blocks);
+		return -1;
+	}
+	if (info->dqi_qtree.dqi_free_blk >= info->dqi_qtree.dqi_blocks) {
+		log_err("Quota inode %u corrupted: free_blk %u;"
+				" dqi_blocks %u",
+				h->qh_qf.ino, info->dqi_qtree.dqi_free_blk,
+				info->dqi_qtree.dqi_blocks);
+		return -1;
+	}
+	if (info->dqi_qtree.dqi_free_entry >= info->dqi_qtree.dqi_blocks) {
+		log_err("Quota inode %u corrupted: free_entry %u; "
+				"dqi_blocks %u", h->qh_qf.ino,
+				info->dqi_qtree.dqi_free_entry,
+				info->dqi_qtree.dqi_blocks);
+		return -1;
+	}
 	return 0;
 }
 

@@ -378,6 +378,7 @@ errcode_t quota_compare_and_update(struct f2fs_sb_info *sbi,
 	err = quota_file_open(sbi, &qh, qtype, 0);
 	if (err) {
 		log_debug("Open quota file failed");
+		*usage_inconsistent = 1;
 		goto out;
 	}
 

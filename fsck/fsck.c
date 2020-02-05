@@ -792,6 +792,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		unsigned int inline_size = MAX_INLINE_DATA(node_blk);
+		if (cur_qtype != -1)
+			qf_szchk_type[cur_qtype] = QF_SZCHK_INLINE;
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs]);
 
 		if (blkaddr != 0) {
@@ -860,6 +862,15 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	/* check data blocks in inode */
+	if (cur_qtype != -1) {
+		qf_szchk_type[cur_qtype] = QF_SZCHK_REGFILE;
+		qf_maxsize[cur_qtype] = (ADDRS_PER_INODE(&node_blk->i) +
+				2 * ADDRS_PER_BLOCK(&node_blk->i) +
+				2 * ADDRS_PER_BLOCK(&node_blk->i) *
+				NIDS_PER_BLOCK +
+				(u64) ADDRS_PER_BLOCK(&node_blk->i) *
+				NIDS_PER_BLOCK * NIDS_PER_BLOCK) * F2FS_BLKSIZE;
+	}
 	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i);
 						idx++, child.pgofs++) {
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs + idx]);
@@ -884,6 +895,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 					file_is_encrypt(&node_blk->i));
 			if (!ret) {
 				*blk_cnt = *blk_cnt + 1;
+				if (cur_qtype != -1 && blkaddr != NEW_ADDR)
+					qf_last_blkofs[cur_qtype] = child.pgofs;
 			} else if (c.fix_on) {
 				node_blk->i.i_addr[ofs + idx] = 0;
 				need_fix = 1;
@@ -1126,6 +1139,8 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			file_is_encrypt(inode));
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
+			if (cur_qtype != -1 && blkaddr != NEW_ADDR)
+				qf_last_blkofs[cur_qtype] = child->pgofs;
 		} else if (c.fix_on) {
 			node_blk->dn.addr[idx] = 0;
 			need_fix = 1;
@@ -1794,6 +1809,7 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 	u32 blk_cnt = 0;
 
 	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
+		cur_qtype = qtype;
 		if (sb->qf_ino[qtype] == 0)
 			continue;
 		nid_t ino = QUOTA_INO(sb, qtype);
@@ -1811,10 +1827,13 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 		}
 		ret = fsck_chk_node_blk(sbi, NULL, ino,
 				F2FS_FT_REG_FILE, TYPE_INODE, &blk_cnt, NULL);
-		if (ret)
+		if (ret) {
 			ASSERT_MSG("wrong quota inode, qtype [%d] ino [0x%x]",
 								qtype, ino);
+			qf_szchk_type[qtype] = QF_SZCHK_ERR;
+		}
 	}
+	cur_qtype = -1;
 	return ret;
 }
 

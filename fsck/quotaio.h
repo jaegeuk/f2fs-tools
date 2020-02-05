@@ -46,6 +46,17 @@ enum quota_type {
 #error "cannot have more than 32 quota types to fit in qtype_bits"
 #endif
 
+enum qf_szchk_type_t {
+	QF_SZCHK_NONE,
+	QF_SZCHK_ERR,
+	QF_SZCHK_INLINE,
+	QF_SZCHK_REGFILE,
+};
+
+extern int cur_qtype;
+extern u32 qf_last_blkofs[];
+extern enum qf_szchk_type_t qf_szchk_type[];
+extern u64 qf_maxsize[];
 
 #define QUOTA_USR_BIT (1 << USRQUOTA)
 #define QUOTA_GRP_BIT (1 << GRPQUOTA)
@@ -154,7 +165,7 @@ struct quotafile_ops {
 	/* Check whether quotafile is in our format */
 	int (*check_file) (struct quota_handle *h, int type);
 	/* Open quotafile */
-	int (*init_io) (struct quota_handle *h);
+	int (*init_io) (struct quota_handle *h, enum quota_type qtype);
 	/* Create new quotafile */
 	int (*new_io) (struct quota_handle *h);
 	/* Write all changes and close quotafile */

@@ -568,7 +568,7 @@ static int report_block(struct dquot *dquot, unsigned int blk, char *bitmap,
 	int entries, i;
 
 	if (!buf)
-		return 0;
+		return -1;
 
 	set_bit(bitmap, blk);
 	read_blk(dquot->dq_h, blk, buf);
@@ -593,9 +593,7 @@ static int report_block(struct dquot *dquot, unsigned int blk, char *bitmap,
 static int check_reference(struct quota_handle *h, unsigned int blk)
 {
 	if (blk >= h->qh_info.u.v2_mdqi.dqi_qtree.dqi_blocks) {
-		log_err("Illegal reference (%u >= %u) in %s quota file. "
-			"Quota file is probably corrupted.\n"
-			"Please run fsck (8) to fix it.",
+		log_err("Illegal reference (%u >= %u) in %s quota file",
 			blk,
 			h->qh_info.u.v2_mdqi.dqi_qtree.dqi_blocks,
 			quota_type2name(h->qh_type));
@@ -627,9 +625,13 @@ static int report_tree(struct dquot *dquot, unsigned int blk, int depth,
 			break;
 
 		if (depth == QT_TREEDEPTH - 1) {
-			if (!get_bit(bitmap, blk))
-				*entries += report_block(dquot, blk, bitmap,
+			if (!get_bit(bitmap, blk)) {
+				int num_entry = report_block(dquot, blk, bitmap,
 							process_dquot, data);
+				if (num_entry < 0)
+					break;
+				*entries += num_entry;
+			}
 		} else {
 			if (report_tree(dquot, blk, depth + 1, bitmap, entries,
 						process_dquot, data))

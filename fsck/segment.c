@@ -15,6 +15,7 @@
  */
 #include "fsck.h"
 #include "node.h"
+#include "quotaio.h"
 
 int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 			struct f2fs_summary *sum, int type, bool is_inode)
@@ -122,6 +123,25 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 		dn->idirty = 1;
 	set_data_blkaddr(dn);
 	return 0;
+}
+
+u64 f2fs_quota_size(struct quota_file *qf)
+{
+	struct node_info ni;
+	struct f2fs_node *inode;
+	u64 filesize;
+
+	inode = (struct f2fs_node *) calloc(BLOCK_SZ, 1);
+	ASSERT(inode);
+
+	/* Read inode */
+	get_node_info(qf->sbi, qf->ino, &ni);
+	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
+	ASSERT(S_ISREG(le16_to_cpu(inode->i.i_mode)));
+
+	filesize = le64_to_cpu(inode->i.i_size);
+	free(inode);
+	return filesize;
 }
 
 u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,

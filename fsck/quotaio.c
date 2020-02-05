@@ -33,6 +33,14 @@ struct disk_dqheader {
 	__le32 dqh_version;
 } __attribute__ ((packed));
 
+int cur_qtype = -1;
+u32 qf_last_blkofs[MAXQUOTAS] = {0, 0, 0};
+enum qf_szchk_type_t qf_szchk_type[MAXQUOTAS] =
+{
+	QF_SZCHK_NONE, QF_SZCHK_NONE, QF_SZCHK_NONE
+};
+u64 qf_maxsize[MAXQUOTAS];
+
 /**
  * Convert type of quota to written representation
  */
@@ -140,7 +148,7 @@ errcode_t quota_file_open(struct f2fs_sb_info *sbi, struct quota_handle *h,
 		goto errout;
 	}
 
-	if (h->qh_ops->init_io && (h->qh_ops->init_io(h) < 0)) {
+	if (h->qh_ops->init_io && (h->qh_ops->init_io(h, qtype) < 0)) {
 		log_err("qh_ops->init_io failed");
 		err = EIO;
 		goto errout;
