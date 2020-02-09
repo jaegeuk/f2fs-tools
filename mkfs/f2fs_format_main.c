@@ -58,6 +58,7 @@ static void mkfs_usage()
 	MSG(0, "  -o overprovision percentage [default:auto]\n");
 	MSG(0, "  -O feature1[,feature2,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -C [encoding[:flag1,...]] Support casefolding with optional flags\n");
+	MSG(0, "  -p number of pinned segments (2MB) [default:0]\n");
 	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -r set checkpointing seed (srand()) to 0\n");
 	MSG(0, "  -R root_owner [default: 0:0]\n");
@@ -134,7 +135,7 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:C:d:e:E:g:hil:mo:O:rR:s:S:z:t:T:U:Vfw:";
+	static const char *option_string = "qa:c:C:d:e:E:g:hil:mo:O:p:rR:s:S:z:t:T:U:Vfw:";
 	static const struct option long_opts[] = {
 		{ .name = "help", .has_arg = 0, .flag = NULL, .val = 'h' },
 		{ .name = NULL, .has_arg = 0, .flag = NULL, .val = 0 }
@@ -200,6 +201,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'O':
 			if (parse_feature(feature_table, optarg))
 				mkfs_usage();
+			break;
+		case 'p':
+			c.pinned_segments = atof(optarg);
 			break;
 		case 'r':
 			c.fake_seed = 1;

@@ -411,10 +411,13 @@ static int f2fs_prepare_super_block(void)
 
 	set_sb(segment_count_ssa, SEG_ALIGN(blocks_for_ssa));
 
+	set_sb(segment_count_pin, c.pinned_segments);
+
 	total_meta_segments = get_sb(segment_count_ckpt) +
 		get_sb(segment_count_sit) +
 		get_sb(segment_count_nat) +
-		get_sb(segment_count_ssa);
+		get_sb(segment_count_ssa) +
+		get_sb(segment_count_pin);
 	diff = total_meta_segments % (c.segs_per_zone);
 	if (diff)
 		set_sb(segment_count_ssa, get_sb(segment_count_ssa) +

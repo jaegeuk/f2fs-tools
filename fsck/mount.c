@@ -714,6 +714,7 @@ static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
 	u32 segment_count_sit = get_sb(segment_count_sit);
 	u32 segment_count_nat = get_sb(segment_count_nat);
 	u32 segment_count_ssa = get_sb(segment_count_ssa);
+	u32 segment_count_pin = get_sb(segment_count_pin);
 	u32 segment_count_main = get_sb(segment_count_main);
 	u32 segment_count = get_sb(segment_count);
 	u32 log_blocks_per_seg = get_sb(log_blocks_per_seg);
@@ -752,8 +753,8 @@ static inline int sanity_check_area_boundary(struct f2fs_super_block *sb,
 		return -1;
 	}
 
-	if (ssa_blkaddr + (segment_count_ssa << log_blocks_per_seg) !=
-							main_blkaddr) {
+	if (ssa_blkaddr + ((segment_count_ssa + segment_count_pin) <<
+				log_blocks_per_seg) != main_blkaddr) {
 		MSG(0, "\tWrong SSA boundary, start(%u) end(%u) blocks(%u)\n",
 			ssa_blkaddr, main_blkaddr,
 			segment_count_ssa << log_blocks_per_seg);
