@@ -907,7 +907,8 @@ int get_device_info(int i)
 			return -1;
 		}
 
-		if (S_ISBLK(stat_buf->st_mode) && !c.force && c.func != DUMP) {
+		if (S_ISBLK(stat_buf->st_mode) &&
+				!c.force && c.func != DUMP && !c.dry_run) {
 			fd = open(dev->path, O_RDWR | O_EXCL);
 			if (fd < 0)
 				fd = open_check_fs(dev->path, O_EXCL);
