@@ -34,6 +34,7 @@ static fs_config_f fs_config_func = NULL;
 #include <selinux/android.h>
 #include <private/android_filesystem_config.h>
 #include <private/canned_fs_config.h>
+#include <private/fs_config.h>
 #endif
 
 static int filter_dot(const struct dirent *d)
