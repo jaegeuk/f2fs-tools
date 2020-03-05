@@ -860,8 +860,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		check_extent_info(&child, blkaddr, 0);
 
 		if (blkaddr == COMPRESS_ADDR) {
-			fsck->chk.valid_blk_cnt++;
-			*blk_cnt = *blk_cnt + 1;
+			if (node_blk->i.i_compr_blocks) {
+				fsck->chk.valid_blk_cnt++;
+				*blk_cnt = *blk_cnt + 1;
+			}
 			continue;
 		}
 
@@ -1103,8 +1105,10 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (blkaddr == 0x0)
 			continue;
 		if (blkaddr == COMPRESS_ADDR) {
-			F2FS_FSCK(sbi)->chk.valid_blk_cnt++;
-			*blk_cnt = *blk_cnt + 1;
+			if (inode->i_compr_blocks) {
+				F2FS_FSCK(sbi)->chk.valid_blk_cnt++;
+				*blk_cnt = *blk_cnt + 1;
+			}
 			continue;
 		}
 		ret = fsck_chk_data_blk(sbi, IS_CASEFOLDED(inode),
