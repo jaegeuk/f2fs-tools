@@ -697,6 +697,81 @@ static void do_copy(int argc, char **argv, const struct cmd_desc *cmd)
 	close(dst_fd);
 }
 
+#define get_cblocks_desc "get number of reserved blocks on compress inode"
+#define get_cblocks_help "f2fs_io get_cblocks [file]\n\n"
+
+static void do_get_cblocks(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	unsigned long long blkcnt;
+	int ret, fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_RDONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_GET_COMPRESS_BLOCKS, &blkcnt);
+	if (ret < 0)
+		die_errno("F2FS_IOC_GET_COMPRESS_BLOCKS failed");
+
+	printf("%llu\n", blkcnt);
+
+	exit(0);
+}
+
+#define release_cblocks_desc "release reserved blocks on compress inode"
+#define release_cblocks_help "f2fs_io release_cblocks [file]\n\n"
+
+static void do_release_cblocks(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	unsigned long long blkcnt;
+	int ret, fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_RDONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_RELEASE_COMPRESS_BLOCKS, &blkcnt);
+	if (ret < 0)
+		die_errno("F2FS_IOC_RELEASE_COMPRESS_BLOCKS failed");
+
+	printf("%llu\n", blkcnt);
+
+	exit(0);
+}
+
+#define reserve_cblocks_desc "reserve blocks on compress inode"
+#define reserve_cblocks_help "f2fs_io reserve_cblocks [file]\n\n"
+
+static void do_reserve_cblocks(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	unsigned long long blkcnt;
+	int ret, fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_RDONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_RESERVE_COMPRESS_BLOCKS, &blkcnt);
+	if (ret < 0)
+		die_errno("F2FS_IOC_RESERVE_COMPRESS_BLOCKS failed");
+
+	printf("%llu\n", blkcnt);
+
+	exit(0);
+}
+
 
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
@@ -717,6 +792,9 @@ const struct cmd_desc cmd_list[] = {
 	CMD(gc_urgent),
 	CMD(defrag_file),
 	CMD(copy),
+	CMD(get_cblocks),
+	CMD(release_cblocks),
+	CMD(reserve_cblocks),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
