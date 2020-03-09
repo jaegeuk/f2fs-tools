@@ -801,11 +801,18 @@ static int do_sload(struct f2fs_sb_info *sbi)
 	return f2fs_sload(sbi);
 }
 
+static u64 get_boottime_ns() {
+	struct timespec t;
+	t.tv_sec = t.tv_nsec = 0;
+	clock_gettime(CLOCK_BOOTTIME, &t);
+	return (u64)t.tv_sec * 1000000000LL + t.tv_nsec;
+}
+
 int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
 	int ret = 0;
-	clock_t start = clock();
+	u64 start = get_boottime_ns();
 
 	f2fs_init_configuration();
 
@@ -919,7 +926,7 @@ retry:
 	if (ret < 0)
 		return ret;
 
-	printf("\nDone: %lf secs\n", (clock() - start) / (double)CLOCKS_PER_SEC);
+	printf("\nDone: %lf secs\n", (get_boottime_ns() - start) / 1000000000.0);
 	return 0;
 
 out_err:
