@@ -171,7 +171,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	unsigned int i = 0;
 	u32 namelen = le32_to_cpu(inode->i_namelen);
 	int enc_name = file_enc_name(inode);
-	int ofs = __get_extra_isize(inode);
+	int ofs = get_extra_isize(node);
 
 	pretty_print_filename(inode->i_name, namelen, en, enc_name);
 	if (name && en[0]) {
@@ -236,8 +236,8 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 		}
 	}
 
-	for (i = ofs; i < ADDRS_PER_INODE(inode); i++) {
-		block_t blkaddr = le32_to_cpu(inode->i_addr[i]);
+	for (i = 0; i < ADDRS_PER_INODE(inode); i++) {
+		block_t blkaddr = le32_to_cpu(inode->i_addr[i + ofs]);
 		char *flag = "";
 
 		if (blkaddr == 0x0)
@@ -246,7 +246,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 			flag = "cluster flag";
 		else if (blkaddr == NEW_ADDR)
 			flag = "reserved flag";
-		printf("i_addr[0x%x] %-16s\t\t[0x%8x : %u]\n", i, flag,
+		printf("i_addr[0x%x] %-16s\t\t[0x%8x : %u]\n", i + ofs, flag,
 				blkaddr, blkaddr);
 	}
 
