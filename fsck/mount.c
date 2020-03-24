@@ -429,6 +429,8 @@ void print_cp_state(u32 flag)
 		MSG(0, "%s", " orphan_inodes");
 	if (flag & CP_DISABLED_FLAG)
 		MSG(0, "%s", " disabled");
+	if (flag & CP_RESIZEFS_FLAG)
+		MSG(0, "%s", " resizefs");
 	if (flag & CP_UMOUNT_FLAG)
 		MSG(0, "%s", " unmount");
 	else
@@ -1123,11 +1125,31 @@ fail_no_cp:
 	return -EINVAL;
 }
 
+/*
+ * For a return value of 1, caller should further check for c.fix_on state
+ * and take appropriate action.
+ */
+static int f2fs_should_proceed(struct f2fs_super_block *sb, u32 flag)
+{
+	if (!c.fix_on && (c.auto_fix || c.preen_mode)) {
+		if (flag & CP_FSCK_FLAG ||
+			flag & CP_QUOTA_NEED_FSCK_FLAG ||
+			(exist_qf_ino(sb) && (flag & CP_ERROR_FLAG))) {
+			c.fix_on = 1;
+		} else if (!c.preen_mode) {
+			print_cp_state(flag);
+			return 0;
+		}
+	}
+	return 1;
+}
+
 int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 {
 	unsigned int total, fsmeta;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+	unsigned int flag = get_cp(ckpt_flags);
 	unsigned int ovp_segments, reserved_segments;
 	unsigned int main_segs, blocks_per_seg;
 	unsigned int sit_segs, nat_segs;
@@ -1164,8 +1186,34 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	log_blocks_per_seg = get_sb(log_blocks_per_seg);
 	if (!user_block_count || user_block_count >=
 			segment_count_main << log_blocks_per_seg) {
-		MSG(0, "\tWrong user_block_count(%u)\n", user_block_count);
-		return 1;
+		ASSERT_MSG("\tWrong user_block_count(%u)\n", user_block_count);
+
+		if (!f2fs_should_proceed(sb, flag))
+			return 1;
+		if (!c.fix_on)
+			return 1;
+
+		if (flag & (CP_FSCK_FLAG | CP_RESIZEFS_FLAG)) {
+			u32 valid_user_block_cnt;
+			u32 seg_cnt_main = get_sb(segment_count) -
+					(get_sb(segment_count_ckpt) +
+					 get_sb(segment_count_sit) +
+					 get_sb(segment_count_nat) +
+					 get_sb(segment_count_ssa));
+
+			/* validate segment_count_main in sb first */
+			if (seg_cnt_main != get_sb(segment_count_main)) {
+				MSG(0, "Inconsistent segment_cnt_main %u in sb\n",
+						segment_count_main << log_blocks_per_seg);
+				return 1;
+			}
+			valid_user_block_cnt = ((get_sb(segment_count_main) -
+						get_cp(overprov_segment_count)) * c.blks_per_seg);
+			MSG(0, "Info: Fix wrong user_block_count in CP: (%u) -> (%u)\n",
+					user_block_count, valid_user_block_cnt);
+			set_cp(user_block_count, valid_user_block_cnt);
+			c.bug_on = 1;
+		}
 	}
 
 	main_segs = get_sb(segment_count_main);
@@ -3355,6 +3403,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
+	c.bug_on = 0;
+
 	if (sanity_check_ckpt(sbi)) {
 		ERR_MSG("Checkpoint is polluted\n");
 		return -1;
@@ -3373,8 +3423,6 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		if (get_cp(ckpt_flags) & CP_QUOTA_NEED_FSCK_FLAG)
 			c.fix_on = 1;
 	}
-
-	c.bug_on = 0;
 
 	if (tune_sb_features(sbi))
 		return -1;
@@ -3405,18 +3453,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
-	if (!c.fix_on && (c.auto_fix || c.preen_mode)) {
-		u32 flag = get_cp(ckpt_flags);
-
-		if (flag & CP_FSCK_FLAG ||
-			flag & CP_QUOTA_NEED_FSCK_FLAG ||
-			(exist_qf_ino(sb) && (flag & CP_ERROR_FLAG))) {
-			c.fix_on = 1;
-		} else if (!c.preen_mode) {
-			print_cp_state(flag);
-			return 1;
-		}
-	}
+	if (!f2fs_should_proceed(sb, get_cp(ckpt_flags)))
+		return 1;
 
 	/* Check nat_bits */
 	if (c.func == FSCK && is_set_ckpt_flags(cp, CP_NAT_BITS_FLAG)) {
