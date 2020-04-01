@@ -22,6 +22,9 @@
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif
+#ifdef HAVE_MACH_TIME_H
+#include <mach/mach_time.h>
+#endif
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>

@@ -801,12 +801,24 @@ static int do_sload(struct f2fs_sb_info *sbi)
 	return f2fs_sload(sbi);
 }
 
-static u64 get_boottime_ns() {
+#if defined(__APPLE__)
+static u64 get_boottime_ns()
+{
+#ifdef HAVE_MACH_TIME_H
+	return mach_absolute_time();
+#else
+	return 0;
+#endif
+}
+#else
+static u64 get_boottime_ns()
+{
 	struct timespec t;
 	t.tv_sec = t.tv_nsec = 0;
 	clock_gettime(CLOCK_BOOTTIME, &t);
 	return (u64)t.tv_sec * 1000000000LL + t.tv_nsec;
 }
+#endif
 
 int main(int argc, char **argv)
 {
