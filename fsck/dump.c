@@ -309,6 +309,8 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 	int ret;
 
 	xattr = read_all_xattrs(sbi, node_blk);
+	if (!xattr)
+		return;
 
 	list_for_each_xattr(ent, xattr) {
 		char *name = strndup(ent->e_name, ent->e_name_len);

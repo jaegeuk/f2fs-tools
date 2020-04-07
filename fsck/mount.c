@@ -257,10 +257,12 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	DISP_u32(inode, i_nid[4]);	/* double indirect */
 
 	xattr_addr = read_all_xattrs(sbi, node);
-	list_for_each_xattr(ent, xattr_addr) {
-		print_xattr_entry(ent);
+	if (xattr_addr) {
+		list_for_each_xattr(ent, xattr_addr) {
+			print_xattr_entry(ent);
+		}
+		free(xattr_addr);
 	}
-	free(xattr_addr);
 
 	printf("\n");
 }

@@ -487,6 +487,14 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	return 0;
 }
 
+int fsck_sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
+			struct f2fs_node *node_blk,
+			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
+			struct node_info *ni)
+{
+	return sanity_check_nid(sbi, nid, node_blk, ftype, ntype, ni);
+}
+
 static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 					u32 x_nid, u32 *blk_cnt)
 {
