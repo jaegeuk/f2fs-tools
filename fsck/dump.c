@@ -486,10 +486,15 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 	DBG(1, "nat_entry.version     [0x%x]\n", ni.version);
 	DBG(1, "nat_entry.ino         [0x%x]\n", ni.ino);
 
+	if (!IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+		MSG(force, "Invalid node blkaddr: %u\n\n", ni.blk_addr);
+		goto out;
+	}
+
 	if (ni.blk_addr == 0x0)
 		MSG(force, "Invalid nat entry\n\n");
 	else if (!is_sit_bitmap_set(sbi, ni.blk_addr))
-		MSG(force, "Invalid node blk addr\n\n");
+		MSG(force, "Invalid sit bitmap, %u\n\n", ni.blk_addr);
 
 	DBG(1, "node_blk.footer.ino [0x%x]\n", le32_to_cpu(node_blk->footer.ino));
 	DBG(1, "node_blk.footer.nid [0x%x]\n", le32_to_cpu(node_blk->footer.nid));
@@ -504,7 +509,7 @@ void dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 		print_node_info(sbi, node_blk, force);
 		MSG(force, "Invalid (i)node block\n\n");
 	}
-
+out:
 	free(node_blk);
 }
 
