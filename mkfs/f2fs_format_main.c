@@ -44,17 +44,18 @@ static void mkfs_usage()
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a heap-based allocation [default:0]\n");
-	MSG(0, "  -c [device path] up to 7 devices excepts meta device\n");
+	MSG(0, "  -c device1[,device2,...] up to 7 additional devices, except meta device\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [cold file ext list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -E [hot file ext list] e.g. \"db\"\n");
-	MSG(0, "  -f force overwrite the exist filesystem\n");
+	MSG(0, "  -f force overwrite of the existing filesystem\n");
 	MSG(0, "  -g add default options\n");
 	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -m support zoned block device [default:0]\n");
-	MSG(0, "  -o overprovision ratio [default:5]\n");
-	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
+	MSG(0, "  -o overprovision percentage [default:auto]\n");
+	MSG(0, "  -O feature1[,feature2,...] e.g. \"encrypt\"\n");
+	MSG(0, "  -C [encoding[:flag1,...]] Support casefolding with optional flags\n");
 	MSG(0, "  -q quiet mode\n");
 	MSG(0, "  -R root_owner [default: 0:0]\n");
 	MSG(0, "  -s # of segments per section [default:1]\n");
@@ -63,8 +64,7 @@ static void mkfs_usage()
 	MSG(0, "  -w wanted sector size\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -V print the version number and exit\n");
-	MSG(0, "sectors: number of sectors. [default: determined by device size]\n");
-	MSG(0, "  -C [encoding:flag1,flag2] Support casefolding with optional flags\n");
+	MSG(0, "sectors: number of sectors [default: determined by device size]\n");
 	exit(1);
 }
 
