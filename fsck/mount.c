@@ -237,8 +237,13 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	}
 
 	for (i = 0; i < ADDRS_PER_INODE(inode); i++) {
-		block_t blkaddr = le32_to_cpu(inode->i_addr[i + ofs]);
+		block_t blkaddr;
 		char *flag = "";
+
+		if (i + ofs >= DEF_ADDRS_PER_INODE)
+			break;
+
+		blkaddr = le32_to_cpu(inode->i_addr[i + ofs]);
 
 		if (blkaddr == 0x0)
 			continue;
