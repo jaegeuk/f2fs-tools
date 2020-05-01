@@ -186,6 +186,10 @@ static void do_set_verity(int argc, char **argv, const struct cmd_desc *cmd)
 "f2fs_io getflags [file]\n\n"					\
 "get a flag given the file\n"					\
 "flag can show \n"						\
+"  encryption\n"						\
+"  nocow(pinned)\n"						\
+"  inline_data\n"						\
+"  verity\n"							\
 "  casefold\n"							\
 "  compression\n"						\
 "  nocompression\n"
@@ -220,6 +224,30 @@ static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 		if (exist)
 			printf(",");
 		printf("nocompression");
+		exist = 1;
+	}
+	if (flag & FS_ENCRYPT_FL) {
+		if (exist)
+			printf(",");
+		printf("encrypt");
+		exist = 1;
+	}
+	if (flag & FS_VERITY_FL) {
+		if (exist)
+			printf(",");
+		printf("verity");
+		exist = 1;
+	}
+	if (flag & FS_INLINE_DATA_FL) {
+		if (exist)
+			printf(",");
+		printf("inline_data");
+		exist = 1;
+	}
+	if (flag & FS_NOCOW_FL) {
+		if (exist)
+			printf(",");
+		printf("nocow(pinned)");
 		exist = 1;
 	}
 	if (!exist)

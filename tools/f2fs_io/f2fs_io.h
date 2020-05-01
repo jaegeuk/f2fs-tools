@@ -110,6 +110,18 @@ typedef u32	__be32;
 #define F2FS_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
 #define F2FS_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
 
+#ifndef FS_ENCRYPT_FL
+#define FS_ENCRYPT_FL			0x00000800 /* Encrypted file */
+#endif
+#ifndef FS_VERITY_FL
+#define FS_VERITY_FL			0x00100000 /* Verity protected inode */
+#endif
+#ifndef FS_INLINE_DATA_FL
+#define FS_INLINE_DATA_FL		0x10000000 /* Inline data for regular/symlink files */
+#endif
+#ifndef FS_NOCOW_FL
+#define FS_NOCOW_FL			0x00800000 /* Do not cow file */
+#endif
 #ifndef FS_NOCOMP_FL
 #define FS_NOCOMP_FL			0x00000400 /* Don't compress */
 #endif
