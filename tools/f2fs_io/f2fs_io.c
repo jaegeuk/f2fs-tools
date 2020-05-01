@@ -192,7 +192,7 @@ static void do_set_verity(int argc, char **argv, const struct cmd_desc *cmd)
 
 static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
-	long flag;
+	long flag = 0;
 	int ret, fd;
 	int exist = 0;
 
@@ -239,7 +239,7 @@ static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 
 static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
-	long flag;
+	long flag = 0;
 	int ret, fd;
 
 	if (argc != 3) {
