@@ -130,6 +130,30 @@ static void full_write(int fd, const void *buf, size_t count)
 	}
 }
 
+#define fsync_desc "fsync"
+#define fsync_help						\
+"f2fs_io fsync [file]\n\n"					\
+"fsync given the file\n"					\
+
+static void do_fsync(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	if (fsync(fd) != 0)
+		die_errno("fsync failed");
+
+	printf("fsync a file\n");
+	exit(0);
+}
+
 #define set_verity_desc "Set fs-verity"
 #define set_verity_help					\
 "f2fs_io set_verity [file]\n\n"				\
@@ -780,6 +804,7 @@ static void do_reserve_cblocks(int argc, char **argv, const struct cmd_desc *cmd
 static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
 const struct cmd_desc cmd_list[] = {
 	_CMD(help),
+	CMD(fsync),
 	CMD(set_verity),
 	CMD(getflags),
 	CMD(setflags),
