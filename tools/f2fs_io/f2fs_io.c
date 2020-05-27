@@ -551,6 +551,69 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define randread_desc "random read data from file"
+#define randread_help					\
+"f2fs_io randread [chunk_size in 4kb] [count] [IO] [file_path]\n\n"	\
+"Do random read data in file_path\n"		\
+"IO can be\n"						\
+"  buffered : buffered IO\n"				\
+"  dio      : direct IO\n"				\
+
+static void do_randread(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	u64 buf_size = 0, ret = 0, read_cnt = 0;
+	u64 idx, end_idx, aligned_size;
+	char *buf = NULL;
+	unsigned bs, count, i;
+	int flags = 0;
+	int fd;
+	time_t t;
+	struct stat stbuf;
+
+	if (argc != 5) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	bs = atoi(argv[1]);
+	if (bs > 1024)
+		die("Too big chunk size - limit: 4MB");
+	buf_size = bs * 4096;
+
+	buf = aligned_xalloc(4096, buf_size);
+
+	count = atoi(argv[2]);
+	if (!strcmp(argv[3], "dio"))
+		flags |= O_DIRECT;
+	else if (strcmp(argv[3], "buffered"))
+		die("Wrong IO type");
+
+	fd = xopen(argv[4], O_RDONLY | flags, 0);
+
+	if (fstat(fd, &stbuf) != 0)
+		die_errno("fstat of source file failed");
+
+	aligned_size = (u64)stbuf.st_size & ~((u64)(4096 - 1));
+	if (aligned_size < buf_size)
+		die("File is too small to random read");
+	end_idx = (u64)(aligned_size - buf_size) / (u64)4096 + 1;
+
+	srand((unsigned) time(&t));
+
+	for (i = 0; i < count; i++) {
+		idx = rand() % end_idx;
+
+		ret = pread(fd, buf, buf_size, 4096 * idx);
+		if (ret != buf_size)
+			break;
+
+		read_cnt += ret;
+	}
+	printf("Read %"PRIu64" bytes\n", read_cnt);
+	exit(0);
+}
+
 struct file_ext {
 	__u32 f_pos;
 	__u32 start_blk;
@@ -841,6 +904,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(fallocate),
 	CMD(write),
 	CMD(read),
+	CMD(randread),
 	CMD(fiemap),
 	CMD(gc_urgent),
 	CMD(defrag_file),
