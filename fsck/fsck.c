@@ -1348,11 +1348,10 @@ static int __get_current_level(int dir_level, u32 pgofs)
 	return i;
 }
 
-static int f2fs_check_dirent_position(int encoding, int casefolded,
-						u8 *name, u16 name_len, u32 pgofs,
-						u8 dir_level, u32 pino)
+static int f2fs_check_dirent_position(const struct f2fs_dir_entry *dentry,
+				      const char *printable_name,
+				      u32 pgofs, u8 dir_level, u32 pino)
 {
-	f2fs_hash_t namehash = f2fs_dentry_hash(encoding, casefolded, name, name_len);
 	unsigned int nbucket, nblock;
 	unsigned int bidx, end_block;
 	int level;
@@ -1363,7 +1362,7 @@ static int f2fs_check_dirent_position(int encoding, int casefolded,
 	nblock = bucket_blocks(level);
 
 	bidx = dir_block_index(level, dir_level,
-					le32_to_cpu(namehash) % nbucket);
+			       le32_to_cpu(dentry->hash_code) % nbucket);
 	end_block = bidx + nblock;
 
 	if (pgofs >= bidx && pgofs < end_block)
@@ -1371,7 +1370,8 @@ static int f2fs_check_dirent_position(int encoding, int casefolded,
 
 	ASSERT_MSG("Wrong position of dirent pino:%u, name:%s, level:%d, "
 		"dir_level:%d, pgofs:%u, correct range:[%u, %u]\n",
-		pino, name, level, dir_level, pgofs, bidx, end_block - 1);
+		pino, printable_name, level, dir_level, pgofs, bidx,
+		end_block - 1);
 	return 1;
 }
 
@@ -1552,10 +1552,12 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 		if (f2fs_check_hash_code(get_encoding(sbi), casefolded, dentry + i, name, name_len, enc_name))
 			fixed = 1;
 
+		pretty_print_filename(name, name_len, en, enc_name);
+
 		if (max == NR_DENTRY_IN_BLOCK) {
-			ret = f2fs_check_dirent_position(get_encoding(sbi), casefolded,
-					name, name_len,	child->pgofs,
-					child->dir_level, child->p_ino);
+			ret = f2fs_check_dirent_position(dentry + i, en,
+					child->pgofs, child->dir_level,
+					child->p_ino);
 			if (ret) {
 				if (c.fix_on) {
 					FIX_MSG("Clear bad dentry 0x%x", i);
@@ -1568,7 +1570,6 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 			}
 		}
 
-		pretty_print_filename(name, name_len, en, enc_name);
 		DBG(1, "[%3u]-[0x%x] name[%s] len[0x%x] ino[0x%x] type[0x%x]\n",
 				fsck->dentry_depth, i, en, name_len,
 				le32_to_cpu(dentry[i].ino),
