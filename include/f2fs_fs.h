@@ -1178,6 +1178,10 @@ enum FILE_TYPE {
 	F2FS_FT_LAST_FILE_TYPE = F2FS_FT_XATTR,
 };
 
+#define LINUX_S_IFMT  00170000
+#define LINUX_S_IFREG  0100000
+#define LINUX_S_ISREG(m)	(((m) & LINUX_S_IFMT) == LINUX_S_IFREG)
+
 /* from f2fs/segment.h */
 enum {
 	LFS = 0,
