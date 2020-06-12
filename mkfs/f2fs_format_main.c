@@ -18,7 +18,7 @@
 #include <sys/mount.h>
 #endif
 #include <time.h>
-#include <uuid/uuid.h>
+#include <uuid.h>
 #include <errno.h>
 
 #include "config.h"

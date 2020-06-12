@@ -18,7 +18,7 @@
 #include <sys/mount.h>
 #endif
 #include <time.h>
-#include <uuid/uuid.h>
+#include <uuid.h>
 
 #include "f2fs_fs.h"
 #include "quota.h"
