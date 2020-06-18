@@ -79,6 +79,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 	node_blk->footer.ino = f2fs_inode->footer.ino;
 	node_blk->footer.flag = cpu_to_le32(ofs << OFFSET_BIT_SHIFT);
 	node_blk->footer.cp_ver = ckpt->checkpoint_ver;
+	set_cold_node(node_blk, S_ISDIR(le16_to_cpu(f2fs_inode->i.i_mode)));
 
 	type = CURSEG_COLD_NODE;
 	if (IS_DNODE(node_blk)) {
