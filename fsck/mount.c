@@ -1288,15 +1288,14 @@ pgoff_t current_nat_addr(struct f2fs_sb_info *sbi, nid_t start, int *pack)
 	return block_addr;
 }
 
-static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
+/* will not init nid_bitmap from nat */
+static int f2fs_early_init_nid_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
 	int nid_bitmap_size = (nm_i->max_nid + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_summary_block *sum = curseg->sum_blk;
 	struct f2fs_journal *journal = &sum->journal;
-	struct f2fs_nat_block *nat_block;
-	block_t start_blk;
 	nid_t nid;
 	int i;
 
@@ -1309,28 +1308,6 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 
 	/* arbitrarily set 0 bit */
 	f2fs_set_bit(0, nm_i->nid_bitmap);
-
-	nat_block = malloc(F2FS_BLKSIZE);
-	if (!nat_block) {
-		free(nm_i->nid_bitmap);
-		return -ENOMEM;
-	}
-
-	f2fs_ra_meta_pages(sbi, 0, NAT_BLOCK_OFFSET(nm_i->max_nid),
-							META_NAT);
-
-	for (nid = 0; nid < nm_i->max_nid; nid++) {
-		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
-			int ret;
-
-			start_blk = current_nat_addr(sbi, nid, NULL);
-			ret = dev_read_block(nat_block, start_blk);
-			ASSERT(ret >= 0);
-		}
-
-		if (nat_block->entries[nid % NAT_ENTRY_PER_BLOCK].block_addr)
-			f2fs_set_bit(nid, nm_i->nid_bitmap);
-	}
 
 	if (nats_in_cursum(journal) > NAT_JOURNAL_ENTRIES) {
 		MSG(0, "\tError: f2fs_init_nid_bitmap truncate n_nats(%u) to "
@@ -1361,6 +1338,41 @@ static int f2fs_init_nid_bitmap(struct f2fs_sb_info *sbi)
 		if (addr != NULL_ADDR)
 			f2fs_set_bit(nid, nm_i->nid_bitmap);
 	}
+	return 0;
+}
+
+/* will init nid_bitmap from nat */
+static int f2fs_late_init_nid_bitmap(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct f2fs_nat_block *nat_block;
+	block_t start_blk;
+	nid_t nid;
+
+	if (!(c.func == SLOAD || c.func == FSCK))
+		return 0;
+
+	nat_block = malloc(F2FS_BLKSIZE);
+	if (!nat_block) {
+		free(nm_i->nid_bitmap);
+		return -ENOMEM;
+	}
+
+	f2fs_ra_meta_pages(sbi, 0, NAT_BLOCK_OFFSET(nm_i->max_nid),
+							META_NAT);
+	for (nid = 0; nid < nm_i->max_nid; nid++) {
+		if (!(nid % NAT_ENTRY_PER_BLOCK)) {
+			int ret;
+
+			start_blk = current_nat_addr(sbi, nid, NULL);
+			ret = dev_read_block(nat_block, start_blk);
+			ASSERT(ret >= 0);
+		}
+
+		if (nat_block->entries[nid % NAT_ENTRY_PER_BLOCK].block_addr)
+			f2fs_set_bit(nid, nm_i->nid_bitmap);
+	}
+
 	free(nat_block);
 	return 0;
 }
@@ -1565,7 +1577,7 @@ int init_node_manager(struct f2fs_sb_info *sbi)
 
 	/* copy version bitmap */
 	memcpy(nm_i->nat_bitmap, version_bitmap, nm_i->bitmap_size);
-	return f2fs_init_nid_bitmap(sbi);
+	return f2fs_early_init_nid_bitmap(sbi);
 }
 
 int build_node_manager(struct f2fs_sb_info *sbi)
@@ -3462,6 +3474,11 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	if (!f2fs_should_proceed(sb, get_cp(ckpt_flags)))
 		return 1;
+
+	if (f2fs_late_init_nid_bitmap(sbi)) {
+		ERR_MSG("f2fs_late_init_nid_bitmap failed\n");
+		return -1;
+	}
 
 	/* Check nat_bits */
 	if (c.func == FSCK && is_set_ckpt_flags(cp, CP_NAT_BITS_FLAG)) {
