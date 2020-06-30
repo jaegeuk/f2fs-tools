@@ -424,7 +424,8 @@ static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
 		return;
 	}
 
-	if (!S_ISREG(imode) || namelen == 0 || namelen > F2FS_NAME_LEN) {
+	if ((!S_ISREG(imode) && !S_ISLNK(imode)) ||
+				namelen == 0 || namelen > F2FS_NAME_LEN) {
 		MSG(force, "Not a regular file or wrong name info\n\n");
 		return;
 	}
