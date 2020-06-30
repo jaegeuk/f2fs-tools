@@ -104,10 +104,15 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 int new_data_block(struct f2fs_sb_info *sbi, void *block,
 				struct dnode_of_data *dn, int type)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_summary sum;
 	struct node_info ni;
 	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 	int ret;
+
+	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+					type != CURSEG_HOT_DATA)
+		type = CURSEG_HOT_DATA;
 
 	ASSERT(dn->node_blk);
 	memset(block, 0, BLOCK_SZ);

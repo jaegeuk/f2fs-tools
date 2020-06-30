@@ -144,12 +144,16 @@ static int find_and_dec_hard_link_list(struct f2fs_sb_info *sbi, u32 nid)
 static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 							u32 blk_addr)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_summary_block *sum_blk;
 	struct f2fs_summary *sum_entry;
 	struct seg_entry * se;
 	u32 segno, offset;
 	int need_fix = 0, ret = 0;
 	int type;
+
+	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))
+		return 0;
 
 	segno = GET_SEGNO(sbi, blk_addr);
 	offset = OFFSET_IN_SEG(sbi, blk_addr);
@@ -261,12 +265,16 @@ out:
 static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		u32 parent_nid, u16 idx_in_node, u8 version)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_summary_block *sum_blk;
 	struct f2fs_summary *sum_entry;
 	struct seg_entry * se;
 	u32 segno, offset;
 	int need_fix = 0, ret = 0;
 	int type;
+
+	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))
+		return 0;
 
 	segno = GET_SEGNO(sbi, blk_addr);
 	offset = OFFSET_IN_SEG(sbi, blk_addr);
@@ -2372,9 +2380,14 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *UNUSED(sbi),
 
 int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, type);
 	struct seg_entry *se;
 	int j, nblocks;
+
+	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO) &&
+			type != CURSEG_HOT_DATA && type != CURSEG_HOT_NODE)
+		return 0;
 
 	if ((curseg->next_blkoff >> 3) >= SIT_VBLOCK_MAP_SIZE) {
 		ASSERT_MSG("Next block offset:%u is invalid, type:%d",
@@ -2958,6 +2971,7 @@ void fsck_chk_and_fix_write_pointers(struct f2fs_sb_info *sbi)
 
 int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct curseg_info *curseg;
 	struct seg_entry *se;
 	struct f2fs_summary_block *sum_blk;
@@ -2967,6 +2981,10 @@ int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
 		curseg = CURSEG_I(sbi, i);
 		se = get_seg_entry(sbi, curseg->segno);
 		sum_blk = curseg->sum_blk;
+
+		if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+			(i != CURSEG_HOT_DATA && i != CURSEG_HOT_NODE))
+			continue;
 
 		if (se->type != i) {
 			ASSERT_MSG("Incorrect curseg [%d]: segno [0x%x] "
@@ -3050,7 +3068,10 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		}
 		c.bug_on = 1;
 	}
-
+	printf("[FSCK] Max image size: %"PRIu64" MB, Free space: %u MB\n",
+		c.max_size >> 20,
+		(sbi->user_block_count - sbi->total_valid_block_count) >>
+		(20 - F2FS_BLKSIZE_BITS));
 	printf("[FSCK] Unreachable nat entries                       ");
 	if (nr_unref_nid == 0x0) {
 		printf(" [Ok..] [0x%x]\n", nr_unref_nid);

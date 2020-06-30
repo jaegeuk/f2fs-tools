@@ -212,7 +212,7 @@ static int f2fs_prepare_super_block(void)
 	u_int64_t total_meta_zones, total_meta_segments;
 	u_int32_t sit_bitmap_size, max_sit_bitmap_size;
 	u_int32_t max_nat_bitmap_size, max_nat_segments;
-	u_int32_t total_zones;
+	u_int32_t total_zones, avail_zones;
 	enum quota_type qtype;
 	int i;
 
@@ -249,6 +249,9 @@ static int f2fs_prepare_super_block(void)
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
 		(u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+		zone_align_start_offset = 8192;
 
 	if (c.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
 		MSG(1, "\t%s: Align start sector number to the page unit\n",
@@ -400,7 +403,10 @@ static int f2fs_prepare_super_block(void)
 			get_sb(segment_count_nat))) *
 			c.blks_per_seg;
 
-	blocks_for_ssa = total_valid_blks_available /
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+		blocks_for_ssa = 0;
+	else
+		blocks_for_ssa = total_valid_blks_available /
 				c.blks_per_seg + 1;
 
 	set_sb(segment_count_ssa, SEG_ALIGN(blocks_for_ssa));
@@ -457,7 +463,13 @@ static int f2fs_prepare_super_block(void)
 			(2 * (100 / c.overprovision + 1) + NR_CURSEG_TYPE) *
 			round_up(f2fs_get_usable_segments(sb), get_sb(section_count));
 
-	if (c.overprovision == 0 || c.total_segments < F2FS_MIN_SEGMENTS ||
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+		c.overprovision = 0;
+		c.reserved_segments = 0;
+	}
+	if ((!(c.feature & cpu_to_le32(F2FS_FEATURE_RO)) &&
+		c.overprovision == 0) ||
+		c.total_segments < F2FS_MIN_SEGMENTS ||
 		(c.devices[0].total_sectors *
 			c.sector_size < zone_align_start_offset) ||
 		(get_sb(segment_count_main) - NR_CURSEG_TYPE) <
@@ -503,13 +515,25 @@ static int f2fs_prepare_super_block(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_LOST_FOUND))
 		c.lpf_ino = c.next_free_nid++;
 
-	if (total_zones <= 6) {
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+		avail_zones = 2;
+	else
+		avail_zones = 6;
+
+	if (total_zones <= avail_zones) {
 		MSG(1, "\tError: %d zones: Need more zones "
 			"by shrinking zone size\n", total_zones);
 		return -1;
 	}
 
-	if (c.heap) {
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+		c.cur_seg[CURSEG_HOT_NODE] = 0;
+		c.cur_seg[CURSEG_WARM_NODE] = 0;
+		c.cur_seg[CURSEG_COLD_NODE] = 0;
+		c.cur_seg[CURSEG_HOT_DATA] = 1;
+		c.cur_seg[CURSEG_COLD_DATA] = 0;
+		c.cur_seg[CURSEG_WARM_DATA] = 0;
+	} else if (c.heap) {
 		c.cur_seg[CURSEG_HOT_NODE] =
 				last_section(last_zone(total_zones));
 		c.cur_seg[CURSEG_WARM_NODE] = prev_zone(CURSEG_HOT_NODE);
@@ -538,7 +562,8 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	/* if there is redundancy, reassign it */
-	verify_cur_segs();
+	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_RO)))
+		verify_cur_segs();
 
 	cure_extension_list();
 
@@ -731,9 +756,15 @@ static int f2fs_write_check_point_pack(void)
 					c.reserved_segments);
 
 	/* main segments - reserved segments - (node + data segments) */
-	set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 6);
-	set_cp(user_block_count, ((get_cp(free_segment_count) + 6 -
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+		set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 2);
+		set_cp(user_block_count, ((get_cp(free_segment_count) + 2 -
 			get_cp(overprov_segment_count)) * c.blks_per_seg));
+	} else {
+		set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 6);
+		set_cp(user_block_count, ((get_cp(free_segment_count) + 6 -
+			get_cp(overprov_segment_count)) * c.blks_per_seg));
+	}
 	/* cp page (2), data summaries (1), node summaries (3) */
 	set_cp(cp_pack_total_block_count, 6 + get_sb(cp_payload));
 	flags = CP_UMOUNT_FLAG | CP_COMPACT_SUM_FLAG;
@@ -847,8 +878,13 @@ static int f2fs_write_check_point_pack(void)
 	sum_compact_p += SUM_JOURNAL_SIZE;
 
 	memset(sum, 0, sizeof(struct f2fs_summary_block));
+
 	/* inode sit for root */
-	journal->n_sits = cpu_to_le16(6);
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+		journal->n_sits = cpu_to_le16(2);
+	else
+		journal->n_sits = cpu_to_le16(6);
+
 	journal->sit_j.entries[0].segno = cp->cur_node_segno[0];
 	journal->sit_j.entries[0].se.vblocks =
 				cpu_to_le16((CURSEG_HOT_NODE << 10) |
@@ -859,30 +895,43 @@ static int f2fs_write_check_point_pack(void)
 	if (c.lpf_inum)
 		f2fs_set_bit(i, (char *)journal->sit_j.entries[0].se.valid_map);
 
-	journal->sit_j.entries[1].segno = cp->cur_node_segno[1];
-	journal->sit_j.entries[1].se.vblocks =
-				cpu_to_le16((CURSEG_WARM_NODE << 10));
-	journal->sit_j.entries[2].segno = cp->cur_node_segno[2];
-	journal->sit_j.entries[2].se.vblocks =
-				cpu_to_le16((CURSEG_COLD_NODE << 10));
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+		/* data sit for root */
+		journal->sit_j.entries[1].segno = cp->cur_data_segno[0];
+		journal->sit_j.entries[1].se.vblocks =
+					cpu_to_le16((CURSEG_HOT_DATA << 10) |
+							(1 + c.quota_dnum + c.lpf_dnum));
+		f2fs_set_bit(0, (char *)journal->sit_j.entries[1].se.valid_map);
+		for (i = 1; i <= c.quota_dnum; i++)
+			f2fs_set_bit(i, (char *)journal->sit_j.entries[1].se.valid_map);
+		if (c.lpf_dnum)
+			f2fs_set_bit(i, (char *)journal->sit_j.entries[1].se.valid_map);
+	} else {
+		journal->sit_j.entries[1].segno = cp->cur_node_segno[1];
+		journal->sit_j.entries[1].se.vblocks =
+					cpu_to_le16((CURSEG_WARM_NODE << 10));
+		journal->sit_j.entries[2].segno = cp->cur_node_segno[2];
+		journal->sit_j.entries[2].se.vblocks =
+					cpu_to_le16((CURSEG_COLD_NODE << 10));
 
-	/* data sit for root */
-	journal->sit_j.entries[3].segno = cp->cur_data_segno[0];
-	journal->sit_j.entries[3].se.vblocks =
-				cpu_to_le16((CURSEG_HOT_DATA << 10) |
-						(1 + c.quota_dnum + c.lpf_dnum));
-	f2fs_set_bit(0, (char *)journal->sit_j.entries[3].se.valid_map);
-	for (i = 1; i <= c.quota_dnum; i++)
-		f2fs_set_bit(i, (char *)journal->sit_j.entries[3].se.valid_map);
-	if (c.lpf_dnum)
-		f2fs_set_bit(i, (char *)journal->sit_j.entries[3].se.valid_map);
+		/* data sit for root */
+		journal->sit_j.entries[3].segno = cp->cur_data_segno[0];
+		journal->sit_j.entries[3].se.vblocks =
+					cpu_to_le16((CURSEG_HOT_DATA << 10) |
+							(1 + c.quota_dnum + c.lpf_dnum));
+		f2fs_set_bit(0, (char *)journal->sit_j.entries[3].se.valid_map);
+		for (i = 1; i <= c.quota_dnum; i++)
+			f2fs_set_bit(i, (char *)journal->sit_j.entries[3].se.valid_map);
+		if (c.lpf_dnum)
+			f2fs_set_bit(i, (char *)journal->sit_j.entries[3].se.valid_map);
 
-	journal->sit_j.entries[4].segno = cp->cur_data_segno[1];
-	journal->sit_j.entries[4].se.vblocks =
-				cpu_to_le16((CURSEG_WARM_DATA << 10));
-	journal->sit_j.entries[5].segno = cp->cur_data_segno[2];
-	journal->sit_j.entries[5].se.vblocks =
-				cpu_to_le16((CURSEG_COLD_DATA << 10));
+		journal->sit_j.entries[4].segno = cp->cur_data_segno[1];
+		journal->sit_j.entries[4].se.vblocks =
+					cpu_to_le16((CURSEG_WARM_DATA << 10));
+		journal->sit_j.entries[5].segno = cp->cur_data_segno[2];
+		journal->sit_j.entries[5].se.vblocks =
+					cpu_to_le16((CURSEG_COLD_DATA << 10));
+	}
 
 	memcpy(sum_compact_p, &journal->n_sits, SUM_JOURNAL_SIZE);
 	sum_compact_p += SUM_JOURNAL_SIZE;
@@ -1090,7 +1139,7 @@ static int f2fs_discard_obsolete_dnode(void)
 	u_int64_t start_inode_pos = get_sb(main_blkaddr);
 	u_int64_t last_inode_pos;
 
-	if (c.zoned_mode)
+	if (c.zoned_mode || c.feature & cpu_to_le32(F2FS_FEATURE_RO))
 		return 0;
 
 	raw_node = calloc(sizeof(struct f2fs_node), 1);

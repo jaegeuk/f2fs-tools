@@ -458,6 +458,7 @@ struct f2fs_configuration {
 	u_int64_t wanted_total_sectors;
 	u_int64_t wanted_sector_size;
 	u_int64_t target_sectors;
+	u_int64_t max_size;
 	u_int32_t sectors_per_blk;
 	u_int32_t blks_per_seg;
 	__u8 init_version[VERSION_LEN + 1];
@@ -716,7 +717,8 @@ enum {
 #define F2FS_FEATURE_VERITY		0x0400	/* reserved */
 #define F2FS_FEATURE_SB_CHKSUM		0x0800
 #define F2FS_FEATURE_CASEFOLD		0x1000
- #define F2FS_FEATURE_COMPRESSION	0x2000
+#define F2FS_FEATURE_COMPRESSION	0x2000
+#define F2FS_FEATURE_RO			0x4000
 
 #define MAX_VOLUME_NAME		512
 
@@ -1566,6 +1568,7 @@ struct feature feature_table[] = {					\
 	{ "sb_checksum",		F2FS_FEATURE_SB_CHKSUM },	\
 	{ "casefold",			F2FS_FEATURE_CASEFOLD },	\
 	{ "compression",		F2FS_FEATURE_COMPRESSION },	\
+	{ "ro",				F2FS_FEATURE_RO},		\
 	{ NULL,				0x0},				\
 };
 

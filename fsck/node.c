@@ -61,6 +61,7 @@ void set_data_blkaddr(struct dnode_of_data *dn)
 block_t new_node_block(struct f2fs_sb_info *sbi,
 				struct dnode_of_data *dn, unsigned int ofs)
 {
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_node *f2fs_inode;
 	struct f2fs_node *node_blk;
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
@@ -88,6 +89,10 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 		else
 			type = CURSEG_WARM_NODE;
 	}
+
+	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+					type != CURSEG_HOT_NODE)
+		type = CURSEG_HOT_NODE;
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, 0, ni.version);

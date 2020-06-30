@@ -915,6 +915,11 @@ static int do_defrag(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
+	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) {
+		MSG(0, "Not support on readonly image.\n");
+		return -1;
+	}
+
 	if (c.defrag_start > get_sb(block_count))
 		goto out_range;
 	if (c.defrag_start < SM_I(sbi)->main_blkaddr)
