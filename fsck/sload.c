@@ -313,6 +313,9 @@ int f2fs_sload(struct f2fs_sb_info *sbi)
 {
 	int ret = 0;
 
+	/* this requires for the below sanity checks */
+	fsck_init(sbi);
+
 	ret = configure_files();
 	if (ret) {
 		ERR_MSG("Failed to configure files\n");
