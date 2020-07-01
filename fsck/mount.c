@@ -2284,7 +2284,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	return 0;
 }
 
-static int build_segment_manager(struct f2fs_sb_info *sbi)
+static int early_build_segment_manager(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
@@ -2306,8 +2306,22 @@ static int build_segment_manager(struct f2fs_sb_info *sbi)
 	sm_info->main_segments = get_sb(segment_count_main);
 	sm_info->ssa_blkaddr = get_sb(ssa_blkaddr);
 
-	if (build_sit_info(sbi) || build_curseg(sbi) || build_sit_entries(sbi)) {
+	if (build_sit_info(sbi) || build_curseg(sbi)) {
 		free(sm_info);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static int late_build_segment_manager(struct f2fs_sb_info *sbi)
+{
+	if (sbi->seg_manager_done)
+		return 1; /* this function was already called */
+
+	sbi->seg_manager_done = true;
+	if (build_sit_entries(sbi)) {
+		free (sbi->sm_info);
 		return -ENOMEM;
 	}
 
@@ -3387,6 +3401,12 @@ static int record_fsync_data(struct f2fs_sb_info *sbi)
 	if (ret)
 		goto out;
 
+	ret = late_build_segment_manager(sbi);
+	if (ret < 0) {
+		ERR_MSG("late_build_segment_manager failed\n");
+		goto out;
+	}
+
 	ret = traverse_dnodes(sbi, &inode_list);
 out:
 	destroy_fsync_dnodes(&inode_list);
@@ -3457,8 +3477,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	sbi->last_valid_block_count = sbi->total_valid_block_count;
 	sbi->alloc_valid_block_count = 0;
 
-	if (build_segment_manager(sbi)) {
-		ERR_MSG("build_segment_manager failed\n");
+	if (early_build_segment_manager(sbi)) {
+		ERR_MSG("early_build_segment_manager failed\n");
 		return -1;
 	}
 
@@ -3474,6 +3494,11 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 
 	if (!f2fs_should_proceed(sb, get_cp(ckpt_flags)))
 		return 1;
+
+	if (late_build_segment_manager(sbi) < 0) {
+		ERR_MSG("late_build_segment_manager failed\n");
+		return -1;
+	}
 
 	if (f2fs_late_init_nid_bitmap(sbi)) {
 		ERR_MSG("f2fs_late_init_nid_bitmap failed\n");

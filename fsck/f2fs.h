@@ -273,6 +273,9 @@ struct f2fs_sb_info {
 	u32 free_segments;
 
 	int cp_backuped;			/* backup valid checkpoint */
+
+	/* true if late_build_segment_manger() is called */
+	bool seg_manager_done;
 };
 
 static inline struct f2fs_super_block *F2FS_RAW_SUPER(struct f2fs_sb_info *sbi)
