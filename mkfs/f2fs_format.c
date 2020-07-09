@@ -442,7 +442,14 @@ static int f2fs_prepare_super_block(void)
 		return -1;
 	}
 
-	uuid_generate(sb->uuid);
+	if (c.vol_uuid) {
+		if (uuid_parse(c.vol_uuid, sb->uuid)) {
+			MSG(0, "\tError: supplied string is not a valid UUID\n");
+			return -1;
+		}
+	} else {
+		uuid_generate(sb->uuid);
+	}
 
 	/* precompute checksum seed for metadata */
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))

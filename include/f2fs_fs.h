@@ -371,6 +371,7 @@ struct f2fs_configuration {
 	__u8 sb_version[VERSION_LEN + 1];
 	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
+	char *vol_uuid;
 	u_int16_t s_encoding;
 	u_int16_t s_encoding_flags;
 	int heap;
