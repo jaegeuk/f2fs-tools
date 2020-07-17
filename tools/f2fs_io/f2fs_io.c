@@ -489,15 +489,18 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 "IO can be\n"						\
 "  buffered : buffered IO\n"				\
 "  dio      : direct IO\n"				\
+"  mmap     : mmap IO\n"				\
 
 static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 {
 	u64 buf_size = 0, ret = 0, read_cnt = 0;
 	u64 offset;
 	char *buf = NULL;
+	char *data;
 	char *print_buf = NULL;
 	unsigned bs, count, i, print_bytes;
 	int flags = 0;
+	int do_mmap = 0;
 	int fd;
 
 	if (argc != 7) {
@@ -518,6 +521,8 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	count = atoi(argv[3]);
 	if (!strcmp(argv[4], "dio"))
 		flags |= O_DIRECT;
+	else if (!strcmp(argv[4], "mmap"))
+		do_mmap = 1;
 	else if (strcmp(argv[4], "buffered"))
 		die("Wrong IO type");
 
@@ -529,8 +534,20 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 
 	fd = xopen(argv[6], O_RDONLY | flags, 0);
 
+	if (do_mmap) {
+		data = mmap(NULL, count * buf_size, PROT_READ,
+						MAP_SHARED, fd, offset);
+		if (data == MAP_FAILED)
+			die("Mmap failed");
+	}
+
 	for (i = 0; i < count; i++) {
-		ret = pread(fd, buf, buf_size, offset + buf_size * i);
+		if (do_mmap) {
+			memcpy(buf, data + offset + buf_size * i, buf_size);
+			ret = buf_size;
+		} else {
+			ret = pread(fd, buf, buf_size, offset + buf_size * i);
+		}
 		if (ret != buf_size)
 			break;
 
