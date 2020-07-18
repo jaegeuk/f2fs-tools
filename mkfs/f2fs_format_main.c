@@ -89,6 +89,12 @@ static void f2fs_show_info()
 
 	if (c.defset == CONF_ANDROID)
 		MSG(0, "Info: Set conf for android\n");
+
+	if (c.feature & le32_to_cpu(F2FS_FEATURE_CASEFOLD))
+		MSG(0, "Info: Enable %s with casefolding\n",
+					f2fs_encoding2str(c.s_encoding));
+	if (c.feature & le32_to_cpu(F2FS_FEATURE_PRJQUOTA))
+		MSG(0, "Info: Enable Project quota\n");
 }
 
 static void add_default_options(void)
@@ -105,6 +111,14 @@ static void add_default_options(void)
 		c.root_uid = c.root_gid = 0;
 		break;
 	}
+#ifdef CONF_CASEFOLD
+	c.s_encoding = F2FS_ENC_UTF8_12_1;
+	c.feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
+#endif
+#ifdef CONF_PROJID
+	c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
+	c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
+#endif
 }
 
 static void f2fs_parse_options(int argc, char *argv[])

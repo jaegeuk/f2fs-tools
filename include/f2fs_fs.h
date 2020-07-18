@@ -1527,6 +1527,7 @@ extern const struct f2fs_nls_table *f2fs_load_nls_table(int encoding);
 #define F2FS_ENC_UTF8_12_0	1
 
 extern int f2fs_str2encoding(const char *string);
+extern char *f2fs_encoding2str(const int encoding);
 extern int f2fs_get_encoding_flags(int encoding);
 extern int f2fs_str2encoding_flags(char **param, __u16 *flags);
 
