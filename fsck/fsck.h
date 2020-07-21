@@ -235,6 +235,8 @@ extern u32 update_nat_bits_flags(struct f2fs_super_block *,
 				struct f2fs_checkpoint *, u32);
 extern void write_nat_bits(struct f2fs_sb_info *, struct f2fs_super_block *,
 			struct f2fs_checkpoint *, int);
+extern unsigned int get_usable_seg_count(struct f2fs_sb_info *);
+extern bool is_usable_seg(struct f2fs_sb_info *, unsigned int);
 
 /* dump.c */
 struct dump_option {

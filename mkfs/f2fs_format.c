@@ -425,13 +425,19 @@ static int f2fs_prepare_super_block(void)
 
 	set_sb(segment_count_main, get_sb(section_count) * c.segs_per_sec);
 
-	/* Let's determine the best reserved and overprovisioned space */
+	/*
+	 * Let's determine the best reserved and overprovisioned space.
+	 * For Zoned device, if zone capacity less than zone size, the segments
+	 * starting after the zone capacity are unusable in each zone. So get
+	 * overprovision ratio and reserved seg count based on avg usable
+	 * segs_per_sec.
+	 */
 	if (c.overprovision == 0)
 		c.overprovision = get_best_overprovision(sb);
 
 	c.reserved_segments =
-			(2 * (100 / c.overprovision + 1) + NR_CURSEG_TYPE)
-			* c.segs_per_sec;
+			(2 * (100 / c.overprovision + 1) + NR_CURSEG_TYPE) *
+			round_up(f2fs_get_usable_segments(sb), get_sb(section_count));
 
 	if (c.overprovision == 0 || c.total_segments < F2FS_MIN_SEGMENTS ||
 		(c.devices[0].total_sectors *
@@ -679,19 +685,28 @@ static int f2fs_write_check_point_pack(void)
 	set_cp(valid_block_count, 2 + c.quota_inum + c.quota_dnum +
 			c.lpf_inum + c.lpf_dnum);
 	set_cp(rsvd_segment_count, c.reserved_segments);
-	set_cp(overprov_segment_count, (get_sb(segment_count_main) -
+
+	/*
+	 * For zoned devices, if zone capacity less than zone size, get
+	 * overprovision segment count based on usable segments in the device.
+	 */
+	set_cp(overprov_segment_count, (f2fs_get_usable_segments(sb) -
 			get_cp(rsvd_segment_count)) *
 			c.overprovision / 100);
 	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
 			get_cp(rsvd_segment_count));
 
+	if (f2fs_get_usable_segments(sb) <= get_cp(overprov_segment_count)) {
+		MSG(0, "\tError: Not enough segments to create F2FS Volume\n");
+		goto free_nat_bits;
+	}
 	MSG(0, "Info: Overprovision ratio = %.3lf%%\n", c.overprovision);
 	MSG(0, "Info: Overprovision segments = %u (GC reserved = %u)\n",
 					get_cp(overprov_segment_count),
 					c.reserved_segments);
 
 	/* main segments - reserved segments - (node + data segments) */
-	set_cp(free_segment_count, get_sb(segment_count_main) - 6);
+	set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 6);
 	set_cp(user_block_count, ((get_cp(free_segment_count) + 6 -
 			get_cp(overprov_segment_count)) * c.blks_per_seg));
 	/* cp page (2), data summaries (1), node summaries (3) */

@@ -291,6 +291,13 @@ int f2fs_check_zones(int j)
 		return -ENOMEM;
 	}
 
+	dev->zone_cap_blocks = malloc(dev->nr_zones * sizeof(size_t));
+	if (!dev->zone_cap_blocks) {
+		ERR_MSG("No memory for zone capacity list.\n");
+		return -ENOMEM;
+	}
+	memset(dev->zone_cap_blocks, 0, (dev->nr_zones * sizeof(size_t)));
+
 	dev->nr_rnd_zones = 0;
 	sector = 0;
 	total_sectors = (dev->total_sectors * c.sector_size) >> 9;
@@ -335,10 +342,15 @@ int f2fs_check_zones(int j)
 				    blk_zone_cond_str(blkz),
 				    blk_zone_sector(blkz),
 				    blk_zone_length(blkz));
+				dev->zone_cap_blocks[n] =
+					blk_zone_length(blkz) >>
+					(F2FS_BLKSIZE_BITS - SECTOR_SHIFT);
 			} else {
 				DBG(2,
-				    "Zone %05u: type 0x%x (%s), cond 0x%x (%s), need_reset %d, "
-				    "non_seq %d, sector %llu, %llu sectors, wp sector %llu\n",
+				    "Zone %05u: type 0x%x (%s), cond 0x%x (%s),"
+				    " need_reset %d, non_seq %d, sector %llu,"
+				    " %llu sectors, capacity %llu,"
+				    " wp sector %llu\n",
 				    n,
 				    blk_zone_type(blkz),
 				    blk_zone_type_str(blkz),
@@ -348,7 +360,11 @@ int f2fs_check_zones(int j)
 				    blk_zone_non_seq(blkz),
 				    blk_zone_sector(blkz),
 				    blk_zone_length(blkz),
+				    blk_zone_capacity(blkz, rep->flags),
 				    blk_zone_wp_sector(blkz));
+				dev->zone_cap_blocks[n] =
+					blk_zone_capacity(blkz, rep->flags) >>
+					(F2FS_BLKSIZE_BITS - SECTOR_SHIFT);
 			}
 
 			sector = blk_zone_sector(blkz) + blk_zone_length(blkz);
@@ -473,6 +489,34 @@ out:
 	return ret;
 }
 
+uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb)
+{
+#ifdef HAVE_BLK_ZONE_REP_V2
+	int i, j;
+	uint32_t usable_segs = 0, zone_segs;
+
+	for (i = 0; i < c.ndevs; i++) {
+		if (c.devices[i].zoned_model != F2FS_ZONED_HM) {
+			usable_segs += c.devices[i].total_segments;
+			continue;
+		}
+		for (j = 0; j < c.devices[i].nr_zones; j++) {
+			zone_segs = c.devices[i].zone_cap_blocks[j] >>
+					get_sb(log_blocks_per_seg);
+			if (c.devices[i].zone_cap_blocks[j] %
+						DEFAULT_BLOCKS_PER_SEGMENT)
+				usable_segs += zone_segs + 1;
+			else
+				usable_segs += zone_segs;
+		}
+	}
+	usable_segs -= (get_sb(main_blkaddr) - get_sb(segment0_blkaddr)) >>
+						get_sb(log_blocks_per_seg);
+	return usable_segs;
+#endif
+	return get_sb(segment_count_main);
+}
+
 #else
 
 int f2fs_report_zone(int i, u_int64_t UNUSED(sector), void *UNUSED(blkzone))
@@ -527,5 +571,9 @@ int f2fs_reset_zones(int i)
 	return -1;
 }
 
+uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb)
+{
+	return get_sb(segment_count_main);
+}
 #endif
 

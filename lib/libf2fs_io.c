@@ -784,6 +784,7 @@ int f2fs_finalize_device(void)
 			break;
 		}
 		free(c.devices[i].path);
+		free(c.devices[i].zone_cap_blocks);
 	}
 	close(c.kd);
 

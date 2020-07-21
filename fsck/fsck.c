@@ -1905,11 +1905,12 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 		if (IS_NODESEG(se->type))
 			sit_node_blks += se->valid_blocks;
 	}
-	if (fsck->chk.sit_free_segs + sit_valid_segs != TOTAL_SEGS(sbi)) {
+	if (fsck->chk.sit_free_segs + sit_valid_segs !=
+				get_usable_seg_count(sbi)) {
 		ASSERT_MSG("SIT usage does not match: sit_free_segs %u, "
 				"sit_valid_segs %u, total_segs %u",
 			fsck->chk.sit_free_segs, sit_valid_segs,
-			TOTAL_SEGS(sbi));
+			get_usable_seg_count(sbi));
 		return -EINVAL;
 	}
 

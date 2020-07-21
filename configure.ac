@@ -213,6 +213,10 @@ AC_CONFIG_FILES([
 	tools/f2fs_io/Makefile
 ])
 
+AC_CHECK_MEMBER([struct blk_zone.capacity],
+		[AC_DEFINE(HAVE_BLK_ZONE_REP_V2, [1], [report zones includes zone capacity])],
+		[], [[#include <linux/blkzoned.h>]])
+
 # export library version info for mkfs/libf2fs_format_la
 AC_SUBST(FMT_CURRENT, 6)
 AC_SUBST(FMT_REVISION, 0)

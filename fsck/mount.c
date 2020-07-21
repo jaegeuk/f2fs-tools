@@ -30,6 +30,76 @@
 #define ACL_OTHER		(0x20)
 #endif
 
+static int get_device_idx(struct f2fs_sb_info *sbi, u_int32_t segno)
+{
+	block_t seg_start_blkaddr;
+	int i;
+
+	seg_start_blkaddr = SM_I(sbi)->main_blkaddr +
+				segno * DEFAULT_BLOCKS_PER_SEGMENT;
+	for (i = 0; i < c.ndevs; i++)
+		if (c.devices[i].start_blkaddr <= seg_start_blkaddr &&
+			c.devices[i].end_blkaddr > seg_start_blkaddr)
+			return i;
+	return 0;
+}
+
+#ifdef HAVE_LINUX_BLKZONED_H
+
+static int get_zone_idx_from_dev(struct f2fs_sb_info *sbi,
+					u_int32_t segno, u_int32_t dev_idx)
+{
+	block_t seg_start_blkaddr = START_BLOCK(sbi, segno);
+
+	return (seg_start_blkaddr - c.devices[dev_idx].start_blkaddr) >>
+			log_base_2(sbi->segs_per_sec * sbi->blocks_per_seg);
+}
+
+bool is_usable_seg(struct f2fs_sb_info *sbi, unsigned int segno)
+{
+	unsigned int secno = segno / sbi->segs_per_sec;
+	block_t seg_start = START_BLOCK(sbi, segno);
+	block_t blocks_per_sec = sbi->blocks_per_seg * sbi->segs_per_sec;
+	unsigned int dev_idx = get_device_idx(sbi, segno);
+	unsigned int zone_idx = get_zone_idx_from_dev(sbi, segno, dev_idx);
+	unsigned int sec_off = SM_I(sbi)->main_blkaddr >>
+						log_base_2(blocks_per_sec);
+
+	if (zone_idx < c.devices[dev_idx].nr_rnd_zones)
+		return true;
+
+	if (c.devices[dev_idx].zoned_model != F2FS_ZONED_HM)
+		return true;
+
+	return seg_start < ((sec_off + secno) * blocks_per_sec) +
+				c.devices[dev_idx].zone_cap_blocks[zone_idx];
+}
+
+unsigned int get_usable_seg_count(struct f2fs_sb_info *sbi)
+{
+	unsigned int i, usable_seg_count = 0;
+
+	for (i = 0; i < TOTAL_SEGS(sbi); i++)
+		if (is_usable_seg(sbi, i))
+			usable_seg_count++;
+
+	return usable_seg_count;
+}
+
+#else
+
+bool is_usable_seg(struct f2fs_sb_info *UNUSED(sbi), unsigned int UNUSED(segno))
+{
+	return true;
+}
+
+unsigned int get_usable_seg_count(struct f2fs_sb_info *sbi)
+{
+	return TOTAL_SEGS(sbi);
+}
+
+#endif
+
 u32 get_free_segments(struct f2fs_sb_info *sbi)
 {
 	u32 i, free_segs = 0;
@@ -37,7 +107,8 @@ u32 get_free_segments(struct f2fs_sb_info *sbi)
 	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
 		struct seg_entry *se = get_seg_entry(sbi, i);
 
-		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, i))
+		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, i) &&
+							is_usable_seg(sbi, i))
 			free_segs++;
 	}
 	return free_segs;
@@ -2351,7 +2422,7 @@ void build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 		memcpy(ptr, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
 		ptr += SIT_VBLOCK_MAP_SIZE;
 
-		if (se->valid_blocks == 0x0) {
+		if (se->valid_blocks == 0x0 && is_usable_seg(sbi, segno)) {
 			if (le32_to_cpu(sbi->ckpt->cur_node_segno[0]) == segno ||
 				le32_to_cpu(sbi->ckpt->cur_data_segno[0]) == segno ||
 				le32_to_cpu(sbi->ckpt->cur_node_segno[1]) == segno ||
