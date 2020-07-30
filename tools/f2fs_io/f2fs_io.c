@@ -349,7 +349,7 @@ static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
 		exit(1);
 	}
 
-	fd = xopen(argv[2], O_RDWR, 0);
+	fd = xopen(argv[2], O_RDONLY, 0);
 
 	ret = -1;
 	if (!strcmp(argv[1], "set")) {
