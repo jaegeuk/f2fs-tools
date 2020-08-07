@@ -3165,6 +3165,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			is_set_ckpt_flags(cp, CP_QUOTA_NEED_FSCK_FLAG)) {
 			write_checkpoints(sbi);
 		}
+		/* to return FSCK_ERROR_CORRECTED */
+		ret = 0;
 	}
 	return ret;
 }

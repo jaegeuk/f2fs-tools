@@ -630,7 +630,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	error_out(prog);
 }
 
-static void do_fsck(struct f2fs_sb_info *sbi)
+static int do_fsck(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
@@ -655,7 +655,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 			} else {
 				MSG(0, "[FSCK] F2FS metadata   [Ok..]");
 				fsck_free(sbi);
-				return;
+				return FSCK_SUCCESS;
 			}
 
 			if (!c.ro)
@@ -687,7 +687,7 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 		ret = quota_init_context(sbi);
 		if (ret) {
 			ASSERT_MSG("quota_init_context failure: %d", ret);
-			return;
+			return FSCK_OPERATIONAL_ERROR;
 		}
 	}
 	fsck_chk_orphan_node(sbi);
@@ -695,8 +695,14 @@ static void do_fsck(struct f2fs_sb_info *sbi)
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, NULL);
 	fsck_chk_quota_files(sbi);
 
-	fsck_verify(sbi);
+	ret = fsck_verify(sbi);
 	fsck_free(sbi);
+
+	if (!c.bug_on)
+		return FSCK_SUCCESS;
+	if (!ret)
+		return FSCK_ERROR_CORRECTED;
+	return FSCK_ERRORS_LEFT_UNCORRECTED;
 }
 
 static void do_dump(struct f2fs_sb_info *sbi)
@@ -823,7 +829,7 @@ static u64 get_boottime_ns()
 int main(int argc, char **argv)
 {
 	struct f2fs_sb_info *sbi;
-	int ret = 0;
+	int ret = 0, ret2;
 	u64 start = get_boottime_ns();
 
 	f2fs_init_configuration();
@@ -833,11 +839,15 @@ int main(int argc, char **argv)
 	if (c.func != DUMP && f2fs_devs_are_umounted() < 0) {
 		if (errno == EBUSY) {
 			ret = -1;
+			if (c.func == FSCK)
+				ret = FSCK_OPERATIONAL_ERROR;
 			goto quick_err;
 		}
 		if (!c.ro || c.func == DEFRAG) {
 			MSG(0, "\tError: Not available on mounted device!\n");
 			ret = -1;
+			if (c.func == FSCK)
+				ret = FSCK_OPERATIONAL_ERROR;
 			goto quick_err;
 		}
 
@@ -854,6 +864,8 @@ int main(int argc, char **argv)
 	/* Get device */
 	if (f2fs_get_device_info() < 0) {
 		ret = -1;
+		if (c.func == FSCK)
+			ret = FSCK_OPERATIONAL_ERROR;
 		goto quick_err;
 	}
 
@@ -873,7 +885,7 @@ fsck_again:
 
 	switch (c.func) {
 	case FSCK:
-		do_fsck(sbi);
+		ret = do_fsck(sbi);
 		break;
 #ifdef WITH_DUMP
 	case DUMP:
@@ -921,8 +933,8 @@ fsck_again:
 			char ans[255] = {0};
 retry:
 			printf("Do you want to fix this partition? [Y/N] ");
-			ret = scanf("%s", ans);
-			ASSERT(ret >= 0);
+			ret2 = scanf("%s", ans);
+			ASSERT(ret2 >= 0);
 			if (!strcasecmp(ans, "y"))
 				c.fix_on = 1;
 			else if (!strcasecmp(ans, "n"))
@@ -934,12 +946,15 @@ retry:
 				goto fsck_again;
 		}
 	}
-	ret = f2fs_finalize_device();
-	if (ret < 0)
-		return ret;
+	ret2 = f2fs_finalize_device();
+	if (ret2) {
+		if (c.func == FSCK)
+			return FSCK_OPERATIONAL_ERROR;
+		return ret2;
+	}
 
 	printf("\nDone: %lf secs\n", (get_boottime_ns() - start) / 1000000000.0);
-	return 0;
+	return ret;
 
 out_err:
 	if (sbi->ckpt)
