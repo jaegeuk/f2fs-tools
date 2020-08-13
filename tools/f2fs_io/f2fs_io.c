@@ -130,6 +130,25 @@ static void full_write(int fd, const void *buf, size_t count)
 	}
 }
 
+#if defined(__APPLE__)
+static u64 get_current_us()
+{
+#ifdef HAVE_MACH_TIME_H
+	return mach_absolute_time() / 1000;
+#else
+	return 0;
+#endif
+}
+#else
+static u64 get_current_us()
+{
+	struct timespec t;
+	t.tv_sec = t.tv_nsec = 0;
+	clock_gettime(CLOCK_BOOTTIME, &t);
+	return (u64)t.tv_sec * 1000000LL + t.tv_nsec / 1000;
+}
+#endif
+
 #define fsync_desc "fsync"
 #define fsync_help						\
 "f2fs_io fsync [file]\n\n"					\
@@ -434,6 +453,7 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	unsigned bs, count, i;
 	int flags = 0;
 	int fd;
+	u64 total_time = 0, max_time = 0, max_time_t = 0;
 
 	srand(time(0));
 
@@ -468,6 +488,7 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 
 	fd = xopen(argv[6], O_CREAT | O_WRONLY | flags, 0755);
 
+	total_time = get_current_us();
 	for (i = 0; i < count; i++) {
 		if (!strcmp(argv[4], "inc_num"))
 			*(int *)buf = inc_num++;
@@ -475,13 +496,20 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 			*(int *)buf = rand();
 
 		/* write data */
+		max_time_t = get_current_us();
 		ret = pwrite(fd, buf, buf_size, offset + buf_size * i);
+		max_time_t = get_current_us() - max_time_t;
+		if (max_time < max_time_t)
+			max_time = max_time_t;
 		if (ret != buf_size)
 			break;
 		written += ret;
 	}
 
-	printf("Written %"PRIu64" bytes with pattern=%s\n", written, argv[4]);
+	printf("Written %"PRIu64" bytes with pattern=%s, total_time=%"PRIu64" us, max_latency=%"PRIu64" us\n",
+				written, argv[4],
+				get_current_us() - total_time,
+				max_time);
 	exit(0);
 }
 
