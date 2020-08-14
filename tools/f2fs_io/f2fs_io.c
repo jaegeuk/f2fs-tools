@@ -424,6 +424,7 @@ static void do_fallocate(int argc, char **argv, const struct cmd_desc *cmd)
 "IO can be\n"						\
 "  buffered : buffered IO\n"				\
 "  dio      : direct IO\n"				\
+"  osync    : O_SYNC\n"					\
 
 static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -460,6 +461,8 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 
 	if (!strcmp(argv[5], "dio"))
 		flags |= O_DIRECT;
+	else if (!strcmp(argv[5], "osync"))
+		flags |= O_SYNC;
 	else if (strcmp(argv[5], "buffered"))
 		die("Wrong IO type");
 
