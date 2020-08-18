@@ -404,6 +404,7 @@ struct f2fs_configuration {
 	int large_nat_bitmap;
 	int fix_chksum;			/* fix old cp.chksum position */
 	__le32 feature;			/* defined features */
+	time_t fixed_time;
 
 	/* mkfs parameters */
 	u_int32_t next_free_nid;
@@ -426,7 +427,6 @@ struct f2fs_configuration {
 	char *mount_point;
 	char *target_out_dir;
 	char *fs_config_file;
-	time_t fixed_time;
 #ifdef HAVE_LIBSELINUX
 	struct selinux_opt seopt_file[8];
 	int nr_opt;

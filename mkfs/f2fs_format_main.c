@@ -62,6 +62,7 @@ static void mkfs_usage()
 	MSG(0, "  -s # of segments per section [default:1]\n");
 	MSG(0, "  -S sparse mode\n");
 	MSG(0, "  -t 0: nodiscard, 1: discard [default:1]\n");
+	MSG(0, "  -T timestamps\n");
 	MSG(0, "  -w wanted sector size\n");
 	MSG(0, "  -z # of sections per zone [default:1]\n");
 	MSG(0, "  -V print the version number and exit\n");
@@ -123,7 +124,7 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:C:d:e:E:g:il:mo:O:R:s:S:z:t:U:Vfw:";
+	static const char *option_string = "qa:c:C:d:e:E:g:il:mo:O:R:s:S:z:t:T:U:Vfw:";
 	int32_t option=0;
 	int val;
 	char *token;
@@ -200,6 +201,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 't':
 			c.trim = atoi(optarg);
+			break;
+		case 'T':
+			c.fixed_time = strtoul(optarg, NULL, 0);
 			break;
 		case 'U':
 			c.vol_uuid = strdup(optarg);

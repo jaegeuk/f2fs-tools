@@ -74,6 +74,10 @@ mkfs.f2fs \- create an F2FS file system
 .I nodiscard/discard
 ]
 [
+.B \-T
+.I timestamp
+]
+[
 .B \-w
 .I wanted-sector-size
 ]
@@ -227,6 +231,10 @@ Enable sparse mode.
 .BI \-t " 1/0"
 Specify 1 or 0 to enable or disable discard policy, respectively.
 The default value is 1.
+.TP
+.BI \-T " timestamp"
+Set inodes times to a given timestamp. By default, the current time will be used.
+This behaviour corresponds to the value -1.
 .TP
 .BI \-w " wanted-sector-size"
 Specify the sector size in bytes.

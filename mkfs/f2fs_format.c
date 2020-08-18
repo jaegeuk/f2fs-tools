@@ -35,6 +35,9 @@ struct f2fs_checkpoint *cp;
 #define last_zone(cur)		((cur - 1) * c.segs_per_zone)
 #define last_section(cur)	(cur + (c.secs_per_zone - 1) * c.segs_per_sec)
 
+/* Return time fixed by the user or current time by default */
+#define mkfs_time ((c.fixed_time == -1) ? time(NULL) : c.fixed_time)
+
 static unsigned int quotatype_bits = 0;
 
 const char *media_ext_lists[] = {
@@ -1143,11 +1146,11 @@ static int f2fs_write_root_inode(void)
 	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes); /* dentry */
 	raw_node->i.i_blocks = cpu_to_le64(2);
 
-	raw_node->i.i_atime = cpu_to_le32(time(NULL));
+	raw_node->i.i_atime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_atime_nsec = 0;
-	raw_node->i.i_ctime = cpu_to_le32(time(NULL));
+	raw_node->i.i_ctime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_ctime_nsec = 0;
-	raw_node->i.i_mtime = cpu_to_le32(time(NULL));
+	raw_node->i.i_mtime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_mtime_nsec = 0;
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
@@ -1164,7 +1167,7 @@ static int f2fs_write_root_inode(void)
 		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
-		raw_node->i.i_crtime = cpu_to_le32(time(NULL));
+		raw_node->i.i_crtime = cpu_to_le32(mkfs_time);
 		raw_node->i.i_crtime_nsec = 0;
 	}
 
@@ -1301,11 +1304,11 @@ static int f2fs_write_qf_inode(int qtype)
 	raw_node->i.i_size = cpu_to_le64(1024 * 6); /* Hard coded */
 	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
 
-	raw_node->i.i_atime = cpu_to_le32(time(NULL));
+	raw_node->i.i_atime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_atime_nsec = 0;
-	raw_node->i.i_ctime = cpu_to_le32(time(NULL));
+	raw_node->i.i_ctime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_ctime_nsec = 0;
-	raw_node->i.i_mtime = cpu_to_le32(time(NULL));
+	raw_node->i.i_mtime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_mtime_nsec = 0;
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
@@ -1496,11 +1499,11 @@ static int f2fs_write_lpf_inode(void)
 	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes);
 	raw_node->i.i_blocks = cpu_to_le64(2);
 
-	raw_node->i.i_atime = cpu_to_le32(time(NULL));
+	raw_node->i.i_atime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_atime_nsec = 0;
-	raw_node->i.i_ctime = cpu_to_le32(time(NULL));
+	raw_node->i.i_ctime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_ctime_nsec = 0;
-	raw_node->i.i_mtime = cpu_to_le32(time(NULL));
+	raw_node->i.i_mtime = cpu_to_le32(mkfs_time);
 	raw_node->i.i_mtime_nsec = 0;
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
@@ -1520,7 +1523,7 @@ static int f2fs_write_lpf_inode(void)
 		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
-		raw_node->i.i_crtime = cpu_to_le32(time(NULL));
+		raw_node->i.i_crtime = cpu_to_le32(mkfs_time);
 		raw_node->i.i_crtime_nsec = 0;
 	}
 
