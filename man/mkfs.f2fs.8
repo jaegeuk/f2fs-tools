@@ -59,6 +59,9 @@ mkfs.f2fs \- create an F2FS file system
 .B \-q
 ]
 [
+.B \-r
+]
+[
 .B \-R
 .I root_owner
 ]
@@ -215,6 +218,9 @@ Default is disabled.
 .BI \-q
 Quiet mode.
 With it, mkfs.f2fs does not show any messages, including the basic messages.
+.TP
+.BI \-r
+Sets the checkpointing srand seed to 0.
 .TP
 .BI \-R
 Give root_owner option for initial uid/gid assignment.

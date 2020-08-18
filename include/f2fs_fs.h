@@ -407,6 +407,7 @@ struct f2fs_configuration {
 	time_t fixed_time;
 
 	/* mkfs parameters */
+	int fake_seed;
 	u_int32_t next_free_nid;
 	u_int32_t quota_inum;
 	u_int32_t quota_dnum;
