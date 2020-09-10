@@ -10,6 +10,13 @@
 #ifdef HAVE_LINUX_TYPES_H
 #include <linux/types.h>
 #endif
+#ifdef HAVE_LINUX_FIEMAP_H
+#include <linux/fiemap.h>
+#endif
+#ifdef HAVE_LINUX_FS_H
+#include <linux/fs.h>
+#endif
+
 #include <sys/types.h>
 
 #ifdef UNUSED
@@ -37,6 +44,9 @@ typedef u32	__le32;
 typedef u16	__be16;
 typedef u32	__be32;
 #endif
+
+#define F2FS_BLKSIZE	4096
+#define NEW_ADDR	0xFFFFFFFF
 
 #ifndef FS_IOC_GETFLAGS
 #define FS_IOC_GETFLAGS			_IOR('f', 1, long)

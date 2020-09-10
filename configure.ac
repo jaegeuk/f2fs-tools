@@ -93,6 +93,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	linux/posix_acl.h
 	linux/types.h
 	linux/xattr.h
+	linux/fiemap.h
 	mach/mach_time.h
 	mntent.h
 	scsi/sg.h

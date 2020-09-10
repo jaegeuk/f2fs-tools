@@ -42,6 +42,8 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <android_config.h>
+
 #include "f2fs_io.h"
 
 struct cmd_desc {
@@ -662,27 +664,18 @@ static void do_randread(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
-struct file_ext {
-	__u32 f_pos;
-	__u32 start_blk;
-	__u32 end_blk;
-	__u32 blk_count;
-};
-
-#ifndef FIBMAP
-#define FIBMAP          _IO(0x00, 1)    /* bmap access */
-#endif
-
 #define fiemap_desc "get block address in file"
 #define fiemap_help					\
 "f2fs_io fiemap [offset in 4kb] [count] [file_path]\n\n"\
 
+#if defined(HAVE_LINUX_FIEMAP_H) && defined(HAVE_LINUX_FS_H)
 static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
 {
-	u64 offset;
-	u32 blknum;
 	unsigned count, i;
 	int fd;
+	__u64 phy_addr;
+	struct fiemap *fm = xmalloc(sizeof(struct fiemap) +
+			sizeof(struct fiemap_extent));
 
 	if (argc != 4) {
 		fputs("Excess arguments\n\n", stderr);
@@ -690,23 +683,37 @@ static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
 		exit(1);
 	}
 
-	offset = atoi(argv[1]);
+	fm->fm_start = atoi(argv[1]) * F2FS_BLKSIZE;
+	fm->fm_length = F2FS_BLKSIZE;
+	fm->fm_extent_count = 1;
 	count = atoi(argv[2]);
 
 	fd = xopen(argv[3], O_RDONLY | O_LARGEFILE, 0);
 
-	printf("Fiemap: offset = %08"PRIx64" len = %d\n", offset, count);
+	printf("Fiemap: offset = %08"PRIx64" len = %d\n",
+				(u64)fm->fm_start / F2FS_BLKSIZE, count);
 	for (i = 0; i < count; i++) {
-		blknum = offset + i;
+		if (ioctl(fd, FS_IOC_FIEMAP, fm) < 0)
+			die_errno("FIEMAP failed");
 
-		if (ioctl(fd, FIBMAP, &blknum) < 0)
-			die_errno("FIBMAP failed");
-
-		printf("%u ", blknum);
+		phy_addr = fm->fm_extents[0].fe_physical / F2FS_BLKSIZE;
+		if (phy_addr == NEW_ADDR)
+			printf("NEW_ADDR ");
+		else
+			printf("%llu ", phy_addr);
+		fm->fm_start += F2FS_BLKSIZE;
 	}
 	printf("\n");
+	free(fm);
 	exit(0);
 }
+#else
+static void do_fiemap(int UNUSED(argc), char **UNUSED(argv),
+			const struct cmd_desc *UNUSED(cmd))
+{
+	die("Not support for this platform");
+}
+#endif
 
 #define gc_urgent_desc "start/end/run gc_urgent for given time period"
 #define gc_urgent_help					\
