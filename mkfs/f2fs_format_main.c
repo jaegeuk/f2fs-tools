@@ -20,6 +20,7 @@
 #include <time.h>
 #include <uuid.h>
 #include <errno.h>
+#include <getopt.h>
 
 #include "config.h"
 #ifdef HAVE_LIBBLKID
@@ -125,12 +126,16 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:c:C:d:e:E:g:il:mo:O:rR:s:S:z:t:T:U:Vfw:";
+	static const char *option_string = "qa:c:C:d:e:E:g:hil:mo:O:rR:s:S:z:t:T:U:Vfw:";
+	static const struct option long_opts[] = {
+		{ .name = "help", .has_arg = 0, .flag = NULL, .val = 'h' },
+		{ .name = NULL, .has_arg = 0, .flag = NULL, .val = 0 }
+	};
 	int32_t option=0;
 	int val;
 	char *token;
 
-	while ((option = getopt(argc,argv,option_string)) != EOF) {
+	while ((option = getopt_long(argc,argv,option_string,long_opts,NULL)) != EOF) {
 		switch (option) {
 		case 'q':
 			c.dbg_lv = -1;
@@ -163,6 +168,9 @@ static void f2fs_parse_options(int argc, char *argv[])
 		case 'g':
 			if (!strcmp(optarg, "android"))
 				c.defset = CONF_ANDROID;
+			break;
+		case 'h':
+			mkfs_usage();
 			break;
 		case 'i':
 			c.large_nat_bitmap = 1;
