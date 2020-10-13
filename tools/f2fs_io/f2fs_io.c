@@ -24,12 +24,12 @@
 #include <getopt.h>
 #include <inttypes.h>
 #include <limits.h>
+#include <linux/fs.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/sendfile.h>
@@ -431,6 +431,56 @@ static void do_fallocate(int argc, char **argv, const struct cmd_desc *cmd)
 		die_errno("fstat failed");
 
 	printf("fallocated a file: i_size=%"PRIu64", i_blocks=%"PRIu64"\n", sb.st_size, sb.st_blocks);
+	exit(0);
+}
+
+#define erase_desc "erase a block device"
+#define erase_help				\
+"f2fs_io erase [block_device_path]\n\n"		\
+"Send DISCARD | BLKSECDISCARD comamnd to"	\
+"block device in block_device_path\n"		\
+
+static void do_erase(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd, ret;
+	struct stat st;
+	u64 range[2];
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	if (stat(argv[1], &st) != 0) {
+		fputs("stat error\n", stderr);
+		exit(1);
+	}
+
+	if (!S_ISBLK(st.st_mode)) {
+		fputs(argv[1], stderr);
+		fputs(" is not a block device\n", stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	range[0] = 0;
+	ret = ioctl(fd, BLKGETSIZE64, &range[1]);
+	if (ret < 0) {
+		fputs("get size failed\n", stderr);
+		exit(1);
+	}
+
+	ret = ioctl(fd, BLKSECDISCARD, &range);
+	if (ret < 0) {
+		ret = ioctl(fd, BLKDISCARD, &range);
+		if (ret < 0) {
+			fputs("Discard failed\n", stderr);
+			exit(1);
+		}
+	}
+
 	exit(0);
 }
 
@@ -957,6 +1007,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(shutdown),
 	CMD(pinfile),
 	CMD(fallocate),
+	CMD(erase),
 	CMD(write),
 	CMD(read),
 	CMD(randread),
