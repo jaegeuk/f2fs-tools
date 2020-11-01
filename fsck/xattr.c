@@ -24,7 +24,7 @@ void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 	u64 inline_size = inline_xattr_size(&inode->i);
 	nid_t xnid = le32_to_cpu(inode->i.i_xattr_nid);
 
-	if (xnid) {
+	if (c.func == FSCK && xnid) {
 		struct f2fs_node *node_blk = NULL;
 		struct node_info ni;
 		int ret;
