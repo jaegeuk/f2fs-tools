@@ -194,8 +194,8 @@ static inline uint64_t bswap_64(uint64_t val)
 #define ASSERT(exp)							\
 	do {								\
 		if (!(exp)) {						\
-			printf("[ASSERT] (%s:%4d) " #exp"\n",		\
-					__func__, __LINE__);		\
+			printf("[ASSERT] (%s:%4d) %s\n",		\
+					__func__, __LINE__, #exp);	\
 			exit(-1);					\
 		}							\
 	} while (0)
