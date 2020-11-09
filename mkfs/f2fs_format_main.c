@@ -98,6 +98,9 @@ static void f2fs_show_info()
 					f2fs_encoding2str(c.s_encoding));
 	if (c.feature & le32_to_cpu(F2FS_FEATURE_PRJQUOTA))
 		MSG(0, "Info: Enable Project quota\n");
+
+	if (c.feature & le32_to_cpu(F2FS_FEATURE_COMPRESSION))
+		MSG(0, "Info: Enable Compression\n");
 }
 
 static void add_default_options(void)
