@@ -2482,7 +2482,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 		se->valid_blocks = valid_blocks;
 		type = se->type;
 		if (type >= NO_CHECK_TYPE) {
-			ASSERT_MSG("Invalide type and valid blocks=%x,%x",
+			ASSERT_MSG("Invalid type and valid blocks=%x,%x",
 					segno, valid_blocks);
 			type = 0;
 		}
