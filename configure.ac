@@ -20,7 +20,7 @@ AC_DEFINE([F2FS_MINOR_VERSION], m4_bpatsubst(f2fs_tools_version,
 				[\([0-9]*\).\([0-9]*\)\(\w\|\W\)*], [\2]),
 				[Minor version for f2fs-tools])
 
-AC_CHECK_FILE(.git,
+AS_IF([test -f .git],
 	AC_DEFINE([F2FS_TOOLS_DATE],
 		"m4_bpatsubst(f2fs_tools_gitdate,
 		[\([0-9-]*\)\(\w\|\W\)*], [\1])",
