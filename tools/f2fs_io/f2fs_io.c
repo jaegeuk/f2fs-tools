@@ -1052,6 +1052,50 @@ static void do_set_coption(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define decompress_desc "decompress an already compressed file"
+#define decompress_help "f2fs_io decompress [file_path]\n\n"
+
+static void do_decompress(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd, ret;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_DECOMPRESS_FILE);
+	if (ret < 0)
+		die_errno("F2FS_IOC_DECOMPRESS_FILE failed");
+
+	exit(0);
+}
+
+#define compress_desc "compress a compression enabled file"
+#define compress_help "f2fs_io compress [file_path]\n\n"
+
+static void do_compress(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd, ret;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_COMPRESS_FILE);
+	if (ret < 0)
+		die_errno("F2FS_IOC_COMPRESS_FILE failed");
+
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1079,6 +1123,8 @@ const struct cmd_desc cmd_list[] = {
 	CMD(reserve_cblocks),
 	CMD(get_coption),
 	CMD(set_coption),
+	CMD(decompress),
+	CMD(compress),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
