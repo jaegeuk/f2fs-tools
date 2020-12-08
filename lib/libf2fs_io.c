@@ -5,6 +5,9 @@
  *             http://www.samsung.com/
  * Copyright (c) 2019 Google Inc.
  *             http://www.google.com/
+ * Copyright (c) 2020 Google Inc.
+ *   Robin Hsu <robinhsu@google.com>
+ *  : add quick-buffer for sload compression support
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  */

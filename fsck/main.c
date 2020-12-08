@@ -13,6 +13,9 @@
  * Copyright (c) 2019 Google Inc.
  *   Robin Hsu <robinhsu@google.com>
  *  : add cache layer
+ * Copyright (c) 2020 Google Inc.
+ *   Robin Hsu <robinhsu@google.com>
+ *  : add sload compression support
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -25,6 +28,7 @@
 #include <getopt.h>
 #include <stdbool.h>
 #include "quotaio.h"
+#include "compress.h"
 
 struct f2fs_fsck gfsck;
 
@@ -134,6 +138,17 @@ void sload_usage()
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t mount point [prefix of target fs path, default:/]\n");
 	MSG(0, "  -T timestamp\n");
+	MSG(0, "  -c enable compression (default allow policy)\n");
+	MSG(0, "    ------------ Compression sub-options -----------------\n");
+	MSG(0, "    -L <log-of-blocks-per-cluster>, default 2\n");
+	MSG(0, "    -a <algorithm> compression algorithm, default LZ4\n");
+	MSG(0, "    -x <ext> compress files except for these extensions.\n");
+	MSG(0, "    -i <ext> compress files with these extensions only.\n");
+	MSG(0, "    * -i or -x: use it many times for multiple extensions.\n");
+	MSG(0, "    * -i and -x cannot be used together..\n");
+	MSG(0, "    -m <num> min compressed blocks per cluster\n");
+	MSG(0, "    -r readonly (IMMUTABLE) for compressed files\n");
+	MSG(0, "    ------------------------------------------------------\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -V print the version number and exit\n");
 	exit(1);
@@ -534,7 +549,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif
 	} else if (!strcmp("sload.f2fs", prog)) {
 #ifdef WITH_SLOAD
-		const char *option_string = "C:d:f:p:s:St:T:V";
+		const char *option_string = "cL:a:i:x:m:rC:d:f:p:s:St:T:V";
 #ifdef HAVE_LIBSELINUX
 		int max_nr_opt = (int)sizeof(c.seopt_file) /
 			sizeof(c.seopt_file[0]);
@@ -543,8 +558,83 @@ void f2fs_parse_options(int argc, char *argv[])
 		char *p;
 
 		c.func = SLOAD;
+		c.compress.cc.log_cluster_size = 2;
+		c.compress.alg = COMPR_LZ4;
+		c.compress.min_blocks = 1;
+		c.compress.filter_ops = &ext_filter;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
+			unsigned int i;
+			int val;
+
 			switch (option) {
+			case 'c': /* compression support */
+				c.compress.enabled = true;
+				break;
+			case 'L': /* compression: log of blocks-per-cluster */
+				c.compress.required = true;
+				val = atoi(optarg);
+				if (val < MIN_COMPRESS_LOG_SIZE ||
+						val > MAX_COMPRESS_LOG_SIZE) {
+					MSG(0, "\tError: log of blocks per"
+						" cluster must be in the range"
+						" of %d .. %d.\n",
+						MIN_COMPRESS_LOG_SIZE,
+						MAX_COMPRESS_LOG_SIZE);
+					error_out(prog);
+				}
+				c.compress.cc.log_cluster_size = val;
+				break;
+			case 'a': /* compression: choose algorithm */
+				c.compress.required = true;
+				c.compress.alg = MAX_COMPRESS_ALGS;
+				for (i = 0; i < MAX_COMPRESS_ALGS; i++) {
+					if (!strcmp(supported_comp_names[i],
+								optarg)) {
+						c.compress.alg = i;
+						break;
+					}
+				}
+				if (c.compress.alg == MAX_COMPRESS_ALGS) {
+					MSG(0, "\tError: Unknown compression"
+						" algorithm %s\n", optarg);
+					error_out(prog);
+				}
+				break;
+			case 'i': /* compress only these extensions */
+				c.compress.required = true;
+				if (c.compress.filter == COMPR_FILTER_ALLOW) {
+					MSG(0, "\tError: could not mix option"
+							" -i and -x\n");
+					error_out(prog);
+				}
+				c.compress.filter = COMPR_FILTER_DENY;
+				c.compress.filter_ops->add(optarg);
+				break;
+			case 'x': /* compress except for these extensions */
+				c.compress.required = true;
+				if (c.compress.filter == COMPR_FILTER_DENY) {
+					MSG(0, "\tError: could not mix option"
+							" -i and -x\n");
+					error_out(prog);
+				}
+				c.compress.filter = COMPR_FILTER_ALLOW;
+				c.compress.filter_ops->add(optarg);
+				break;
+			case 'm': /* minimum compressed blocks per cluster */
+				c.compress.required = true;
+				val = atoi(optarg);
+				if (val <= 0) {
+					MSG(0, "\tError: minimum compressed"
+						" blocks per cluster must be"
+						" positive.\n");
+					error_out(prog);
+				}
+				c.compress.min_blocks = val;
+				break;
+			case 'r': /* compress file to set IMMUTABLE */
+				c.compress.required = true;
+				c.compress.readonly = true;
+				break;
 			case 'C':
 				c.fs_config_file = absolute_path(optarg);
 				break;
@@ -601,6 +691,27 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 			if (err != NOERROR)
 				break;
+		}
+		if (c.compress.required && !c.compress.enabled) {
+			MSG(0, "\tError: compression sub-options are used"
+				" without the compression enable (-c) option\n"
+			);
+			error_out(prog);
+		}
+		if (err == NOERROR && c.compress.enabled) {
+			c.compress.cc.cluster_size = 1
+				<< c.compress.cc.log_cluster_size;
+			if (c.compress.filter == COMPR_FILTER_UNASSIGNED)
+				c.compress.filter = COMPR_FILTER_ALLOW;
+			if (c.compress.min_blocks >=
+					c.compress.cc.cluster_size) {
+				MSG(0, "\tError: minimum reduced blocks by"
+					" compression per cluster must be at"
+					" most one less than blocks per"
+					" cluster, i.e. %d\n",
+					c.compress.cc.cluster_size - 1);
+				error_out(prog);
+			}
 		}
 #endif /* WITH_SLOAD */
 	}
@@ -812,6 +923,30 @@ static int do_resize(struct f2fs_sb_info *sbi)
 #endif
 
 #ifdef WITH_SLOAD
+static int init_compr(struct f2fs_sb_info *sbi)
+{
+	if (!c.compress.enabled)
+		return 0;
+
+	if (!(sbi->raw_super->feature
+			& cpu_to_le32(F2FS_FEATURE_COMPRESSION))) {
+		MSG(0, "Error: Compression (-c) was requested "
+			"but the file system is not created "
+			"with such feature.\n");
+		return -1;
+	}
+	if (!supported_comp_ops[c.compress.alg].init) {
+		MSG(0, "Error: The selected compression algorithm is not"
+				" supported\n");
+		return -1;
+	}
+	c.compress.ops = supported_comp_ops + c.compress.alg;
+	c.compress.ops->init(&c.compress.cc);
+	c.compress.ops->reset(&c.compress.cc);
+	c.compress.cc.rlen = c.compress.cc.cluster_size * F2FS_BLKSIZE;
+	return 0;
+}
+
 static int do_sload(struct f2fs_sb_info *sbi)
 {
 	if (!c.from_dir) {
@@ -820,6 +955,9 @@ static int do_sload(struct f2fs_sb_info *sbi)
 	}
 	if (!c.mount_point)
 		c.mount_point = "/";
+
+	if (init_compr(sbi))
+		return -1;
 
 	return f2fs_sload(sbi);
 }
@@ -970,6 +1108,9 @@ retry:
 			return FSCK_OPERATIONAL_ERROR;
 		return ret2;
 	}
+
+	if (c.func == SLOAD)
+		c.compress.filter_ops->destroy();
 
 	printf("\nDone: %lf secs\n", (get_boottime_ns() - start) / 1000000000.0);
 	return ret;
