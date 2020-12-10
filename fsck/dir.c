@@ -15,6 +15,7 @@
  */
 #include "fsck.h"
 #include "node.h"
+#include <search.h>
 
 static int room_for_filename(const u8 *bitmap, int slots, int max_slots)
 {
@@ -634,10 +635,43 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 	return 0;
 }
 
+static int cmp_from_devino(const void *a, const void *b) {
+	u64 devino_a = ((struct hardlink_cache_entry*) a)->from_devino;
+	u64 devino_b = ((struct hardlink_cache_entry*) b)->from_devino;
+
+	return (devino_a > devino_b) - (devino_a < devino_b);
+}
+
+struct hardlink_cache_entry *f2fs_search_hardlink(struct f2fs_sb_info *sbi,
+						struct dentry *de)
+{
+	struct hardlink_cache_entry *find_hardlink = NULL;
+	struct hardlink_cache_entry *found_hardlink = NULL;
+	void *search_result;
+
+	/* This might be a hardlink, try to find it in the cache */
+	find_hardlink = calloc(1, sizeof(struct hardlink_cache_entry));
+	find_hardlink->from_devino = de->from_devino;
+
+	search_result = tsearch(find_hardlink, &(sbi->hardlink_cache),
+				cmp_from_devino);
+	ASSERT(search_result != 0);
+
+	found_hardlink = *(struct hardlink_cache_entry**) search_result;
+	ASSERT(find_hardlink->from_devino == found_hardlink->from_devino);
+
+	/* If it was already in the cache, free the entry we just created */
+	if (found_hardlink != find_hardlink)
+		free(find_hardlink);
+
+	return found_hardlink;
+}
+
 int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 {
 	struct f2fs_node *parent, *child;
-	struct node_info ni;
+	struct hardlink_cache_entry *found_hardlink = NULL;
+	struct node_info ni, hardlink_ni;
 	struct f2fs_summary sum;
 	block_t blkaddr = NULL_ADDR;
 	int ret;
@@ -648,6 +682,9 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 		MSG(0, "No parent directory pino=%x\n", de->pino);
 		return -1;
 	}
+
+	if (de->from_devino)
+		found_hardlink = f2fs_search_hardlink(sbi, de);
 
 	parent = calloc(BLOCK_SZ, 1);
 	ASSERT(parent);
@@ -674,7 +711,26 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	child = calloc(BLOCK_SZ, 1);
 	ASSERT(child);
 
-	f2fs_alloc_nid(sbi, &de->ino);
+	if (found_hardlink && found_hardlink->to_ino) {
+		/*
+		 * If we found this devino in the cache, we're creating a
+		 * hard link.
+		 */
+		get_node_info(sbi, found_hardlink->to_ino, &hardlink_ni);
+		if (hardlink_ni.blk_addr == NULL_ADDR) {
+			MSG(1, "No original inode for hard link to_ino=%x\n",
+				found_hardlink->to_ino);
+			return -1;
+		}
+
+		/* Use previously-recorded inode */
+		de->ino = found_hardlink->to_ino;
+		blkaddr = hardlink_ni.blk_addr;
+		MSG(1, "Info: Creating \"%s\" as hard link to inode %d\n",
+				de->path, de->ino);
+	} else {
+		f2fs_alloc_nid(sbi, &de->ino);
+	}
 
 	init_inode_block(sbi, child, de);
 
@@ -689,6 +745,30 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 		goto free_child_dir;
 	}
 
+	if (found_hardlink) {
+		if (!found_hardlink->to_ino) {
+			MSG(2, "Adding inode %d from %s to hardlink cache\n",
+				de->ino, de->path);
+			found_hardlink->to_ino = de->ino;
+		} else {
+			/* Replace child with original block */
+			free(child);
+
+			child = calloc(BLOCK_SZ, 1);
+			ASSERT(child);
+
+			ret = dev_read_block(child, blkaddr);
+			ASSERT(ret >= 0);
+
+			/* Increment links and skip to writing block */
+			child->i.i_links = cpu_to_le32(
+					le32_to_cpu(child->i.i_links) + 1);
+			MSG(2, "Number of links on inode %d is now %d\n",
+				de->ino, le32_to_cpu(child->i.i_links));
+			goto write_child_dir;
+		}
+	}
+
 	/* write child */
 	set_summary(&sum, de->ino, 0, ni.version);
 	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE, 1);
@@ -697,16 +777,21 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	/* update nat info */
 	update_nat_blkaddr(sbi, de->ino, de->ino, blkaddr);
 
+write_child_dir:
 	ret = dev_write_block(child, blkaddr);
 	ASSERT(ret >= 0);
 
 	update_free_segments(sbi);
 	MSG(1, "Info: Create %s -> %s\n"
 		"  -- ino=%x, type=%x, mode=%x, uid=%x, "
-		"gid=%x, cap=%"PRIx64", size=%lu, pino=%x\n",
+		"gid=%x, cap=%"PRIx64", size=%lu, link=%u "
+		"blocks=%"PRIx64" pino=%x\n",
 		de->full_path, de->path,
 		de->ino, de->file_type, de->mode,
-		de->uid, de->gid, de->capabilities, de->size, de->pino);
+		de->uid, de->gid, de->capabilities, de->size,
+		le32_to_cpu(child->i.i_links),
+		le64_to_cpu(child->i.i_blocks),
+		de->pino);
 free_child_dir:
 	free(child);
 free_parent_dir:

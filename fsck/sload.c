@@ -148,6 +148,15 @@ static void set_inode_metadata(struct dentry *de)
 	}
 
 	if (S_ISREG(stat.st_mode)) {
+		if (stat.st_nlink > 1) {
+			/*
+			 * This file might have multiple links to it, so remember
+			 * device and inode.
+			 */
+			de->from_devino = stat.st_dev;
+			de->from_devino <<= 32;
+			de->from_devino |= stat.st_ino;
+		}
 		de->file_type = F2FS_FT_REG_FILE;
 	} else if (S_ISDIR(stat.st_mode)) {
 		de->file_type = F2FS_FT_DIR;
@@ -332,6 +341,9 @@ int f2fs_sload(struct f2fs_sb_info *sbi)
 
 	/* flush NAT/SIT journal entries */
 	flush_journal_entries(sbi);
+
+	/* initialize empty hardlink cache */
+	sbi->hardlink_cache = 0;
 
 	ret = build_directory(sbi, c.from_dir, "/",
 					c.target_out_dir, F2FS_ROOT_INO(sbi));

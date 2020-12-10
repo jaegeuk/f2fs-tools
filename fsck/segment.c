@@ -456,6 +456,17 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 	if (de->ino == 0)
 		return -1;
 
+	if (de->from_devino) {
+		struct hardlink_cache_entry *found_hardlink;
+
+		found_hardlink = f2fs_search_hardlink(sbi, de);
+		if (found_hardlink && found_hardlink->to_ino &&
+				found_hardlink->nbuild)
+			return 0;
+
+		found_hardlink->nbuild++;
+	}
+
 	fd = open(de->full_path, O_RDONLY);
 	if (fd < 0) {
 		MSG(0, "Skip: Fail to open %s\n", de->full_path);

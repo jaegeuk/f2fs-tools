@@ -221,6 +221,7 @@ struct dentry {
 	uint64_t capabilities;
 	nid_t ino;
 	nid_t pino;
+	u64 from_devino;
 };
 
 /* different from dnode_of_data in kernel */
@@ -232,6 +233,12 @@ struct dnode_of_data {
 	block_t data_blkaddr;
 	block_t node_blkaddr;
 	int idirty, ndirty;
+};
+
+struct hardlink_cache_entry {
+	u64 from_devino;
+	nid_t to_ino;
+	int nbuild;
 };
 
 struct f2fs_sb_info {
@@ -276,6 +283,9 @@ struct f2fs_sb_info {
 
 	/* true if late_build_segment_manger() is called */
 	bool seg_manager_done;
+
+	/* keep track of hardlinks so we can recreate them */
+	void *hardlink_cache;
 };
 
 static inline struct f2fs_super_block *F2FS_RAW_SUPER(struct f2fs_sb_info *sbi)
