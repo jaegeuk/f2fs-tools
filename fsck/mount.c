@@ -793,7 +793,7 @@ static int verify_sb_chksum(struct f2fs_super_block *sb)
 int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 {
 	unsigned int blocksize;
-	unsigned int segment_count, segs_per_sec, secs_per_zone;
+	unsigned int segment_count, segs_per_sec, secs_per_zone, segs_per_zone;
 	unsigned int total_sections, blocks_per_seg;
 
 	if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) &&
@@ -845,6 +845,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 	segs_per_sec = get_sb(segs_per_sec);
 	secs_per_zone = get_sb(secs_per_zone);
 	total_sections = get_sb(section_count);
+	segs_per_zone = segs_per_sec * secs_per_zone;
 
 	/* blocks_per_seg should be 512, given the above check */
 	blocks_per_seg = 1 << get_sb(log_blocks_per_seg);
@@ -883,7 +884,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 			dev_segs += le32_to_cpu(sb->devs[i].total_segments);
 			i++;
 		}
-		if (segment_count != dev_segs) {
+		if (segment_count != dev_segs / segs_per_zone * segs_per_zone) {
 			MSG(0, "Segment count (%u) mismatch with total segments from devices (%u)",
 				segment_count, dev_segs);
 			return 1;
