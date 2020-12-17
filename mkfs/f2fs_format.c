@@ -254,14 +254,22 @@ static int f2fs_prepare_super_block(void)
 			return -1;
 	}
 
+	if (c.zoned_mode && c.ndevs > 1)
+		zone_align_start_offset +=
+			(c.devices[0].total_sectors * c.sector_size) % zone_size_bytes;
+
 	set_sb(segment0_blkaddr, zone_align_start_offset / blk_size_bytes);
 	sb->cp_blkaddr = sb->segment0_blkaddr;
 
 	MSG(0, "Info: zone aligned segment0 blkaddr: %u\n",
 					get_sb(segment0_blkaddr));
 
-	if (c.zoned_mode && (get_sb(segment0_blkaddr) + c.start_sector /
-					DEFAULT_SECTORS_PER_BLOCK) % c.zone_blocks) {
+	if (c.zoned_mode &&
+		((c.ndevs == 1 &&
+			(get_sb(segment0_blkaddr) + c.start_sector /
+			DEFAULT_SECTORS_PER_BLOCK) % c.zone_blocks) ||
+		(c.ndevs > 1 &&
+			c.devices[1].start_blkaddr % c.zone_blocks))) {
 		MSG(1, "\tError: Unaligned segment0 block address %u\n",
 				get_sb(segment0_blkaddr));
 		return -1;
