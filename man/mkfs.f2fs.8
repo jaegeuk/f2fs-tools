@@ -32,6 +32,7 @@ mkfs.f2fs \- create an F2FS file system
 ]
 [
 .B \-g
+.I default-options
 ]
 [
 .B \-i
@@ -136,8 +137,14 @@ Force overwrite when an existing filesystem is detected on the device.
 By default, mkfs.f2fs will not write to the device if it suspects that
 there is a filesystem or partition table on the device already.
 .TP
-.BI \-g
-Add default Android options.
+.BI \-g " default-options"
+Use a default set of options.
+The following values are supported:
+.RS 1.2i
+.TP 1.2i
+.B android
+Use default options for Android.
+.RE
 .TP
 .BI \-i
 Enable extended node bitmap.
