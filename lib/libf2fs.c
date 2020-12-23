@@ -34,10 +34,8 @@
 #ifdef HAVE_SYS_UTSNAME_H
 #include <sys/utsname.h>
 #endif
-#ifndef WITH_ANDROID
 #ifdef HAVE_SCSI_SG_H
 #include <scsi/sg.h>
-#endif
 #endif
 #ifdef HAVE_LINUX_HDREG_H
 #include <linux/hdreg.h>
@@ -46,10 +44,8 @@
 #include <linux/limits.h>
 #endif
 
-#ifndef WITH_ANDROID
 /* SCSI command for standard inquiry*/
 #define MODELINQUIRY	0x12,0x00,0x00,0x00,0x4A,0x00
-#endif
 
 #ifndef _WIN32 /* O_BINARY is windows-specific flag */
 #define O_BINARY 0
@@ -900,7 +896,7 @@ int get_device_info(int i)
 #ifdef HDIO_GETGIO
 	struct hd_geometry geom;
 #endif
-#if !defined(WITH_ANDROID) && defined(__linux__)
+#ifdef __linux__
 	sg_io_hdr_t io_hdr;
 	unsigned char reply_buffer[96] = {0};
 	unsigned char model_inq[6] = {MODELINQUIRY};
@@ -1002,7 +998,7 @@ int get_device_info(int i)
 #endif
 		}
 
-#if !defined(WITH_ANDROID) && defined(__linux__)
+#ifdef __linux__
 		/* Send INQUIRY command */
 		memset(&io_hdr, 0, sizeof(sg_io_hdr_t));
 		io_hdr.interface_id = 'S';
@@ -1033,7 +1029,7 @@ int get_device_info(int i)
 		return -1;
 	}
 
-#if !defined(WITH_ANDROID) && defined(__linux__)
+#ifdef __linux__
 	if (S_ISBLK(stat_buf->st_mode)) {
 		if (f2fs_get_zoned_model(i) < 0) {
 			free(stat_buf);

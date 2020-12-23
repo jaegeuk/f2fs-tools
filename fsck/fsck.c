@@ -2994,7 +2994,7 @@ struct write_pointer_check_data {
 	int dev_index;
 };
 
-static int chk_and_fix_wp_with_sit(int i, void *blkzone, void *opaque)
+static int chk_and_fix_wp_with_sit(int UNUSED(i), void *blkzone, void *opaque)
 {
 	struct blk_zone *blkz = (struct blk_zone *)blkzone;
 	struct write_pointer_check_data *wpd = opaque;

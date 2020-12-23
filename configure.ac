@@ -95,6 +95,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	blkid/blkid.h
 	byteswap.h
 	fcntl.h
+	kernel/uapi/linux/blkzoned.h
 	linux/blkzoned.h
 	linux/falloc.h
 	linux/fiemap.h
@@ -222,7 +223,13 @@ AC_CONFIG_FILES([
 
 AC_CHECK_MEMBER([struct blk_zone.capacity],
 		[AC_DEFINE(HAVE_BLK_ZONE_REP_V2, [1], [report zones includes zone capacity])],
-		[], [[#include <linux/blkzoned.h>]])
+		[], [[
+#ifdef HAVE_KERNEL_UAPI_LINUX_BLKZONED_H
+#include <kernel/uapi/linux/blkzoned.h>
+#elif defined(HAVE_LINUX_BLKZONED_H)
+#include <linux/blkzoned.h>
+#endif
+		]])
 
 # export library version info for mkfs/libf2fs_format_la
 AC_SUBST(FMT_CURRENT, 7)
