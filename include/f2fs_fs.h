@@ -1407,7 +1407,7 @@ blk_zone_cond_str(struct blk_zone *blkz)
 /*
  * Handle kernel zone capacity support
  */
-#ifndef HAVE_BLK_ZONE_REP_V2
+#ifdef HAVE_BLK_ZONE_REP_V2
 #define BLK_ZONE_REP_CAPACITY   (1 << 0)
 struct blk_zone_v2 {
 	__u64   start;          /* Zone start sector */
