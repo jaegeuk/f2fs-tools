@@ -637,20 +637,25 @@ char *get_rootdev()
 
 	ptr = strstr(uevent, "DEVNAME");
 	if (!ptr)
-		return NULL;
+		goto out_free;
 
 	ret = sscanf(ptr, "DEVNAME=%s\n", buf);
 	if (strlen(buf) == 0)
-		return NULL;
+		goto out_free;
 
 	ret = strlen(buf) + 5;
 	rootdev = malloc(ret + 1);
 	if (!rootdev)
-		return NULL;
+		goto out_free;
 	rootdev[ret] = '\0';
 
 	snprintf(rootdev, ret + 1, "/dev/%s", buf);
+	free(uevent);
 	return rootdev;
+
+out_free:
+	free(uevent);
+	return NULL;
 #endif
 }
 
