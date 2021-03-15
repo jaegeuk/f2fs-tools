@@ -505,6 +505,7 @@ struct f2fs_configuration {
 	struct selinux_opt seopt_file[8];
 	int nr_opt;
 #endif
+	int preserve_perms;
 
 	/* resize parameters */
 	int safe_resize;

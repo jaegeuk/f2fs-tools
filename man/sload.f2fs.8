@@ -18,6 +18,9 @@ sload.f2fs \- load directories and files into the device directly
 .I debugging-level
 ]
 [
+.B \-P
+]
+[
 .B \-c
 [
 .B \-L
@@ -65,6 +68,10 @@ Specify the mount point path in the partition to load.
 .BI \-d " debug-level"
 Specify the level of debugging options.
 The default number is 0, which shows basic debugging messages.
+.TP
+.BI \-P
+Preserve owner: user and group.
+The user and group of the source files will be taken into account.
 .TP
 .BI \-c
 Enable a cluster-based file compression.

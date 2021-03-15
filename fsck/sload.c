@@ -187,6 +187,11 @@ static void set_inode_metadata(struct dentry *de)
 	else
 		de->mtime = c.fixed_time;
 
+	if (c.preserve_perms) {
+		de->uid = stat.st_uid;
+		de->gid = stat.st_gid;
+	}
+
 	set_perms_and_caps(de);
 }
 
