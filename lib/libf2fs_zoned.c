@@ -495,6 +495,9 @@ uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb)
 	int i, j;
 	uint32_t usable_segs = 0, zone_segs;
 
+	if (c.func == RESIZE)
+		return get_sb(segment_count_main);
+
 	for (i = 0; i < c.ndevs; i++) {
 		if (c.devices[i].zoned_model != F2FS_ZONED_HM) {
 			usable_segs += c.devices[i].total_segments;
