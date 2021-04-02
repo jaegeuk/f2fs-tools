@@ -506,7 +506,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif
 	} else if (!strcmp("resize.f2fs", prog)) {
 #ifdef WITH_RESIZE
-		const char *option_string = "d:st:iV";
+		const char *option_string = "d:fst:iV";
 
 		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -521,6 +521,10 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							c.dbg_lv);
+				break;
+			case 'f':
+				c.force = 1;
+				MSG(0, "Info: Force to resize\n");
 				break;
 			case 's':
 				c.safe_resize = 1;
