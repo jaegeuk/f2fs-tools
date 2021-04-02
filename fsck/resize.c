@@ -526,6 +526,11 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 
 	memcpy(new_cp, cp, (unsigned char *)cp->sit_nat_version_bitmap -
 						(unsigned char *)cp);
+	if (c.safe_resize)
+		memcpy((void *)new_cp + CP_BITMAP_OFFSET,
+			(void *)cp + CP_BITMAP_OFFSET,
+			F2FS_BLKSIZE - CP_BITMAP_OFFSET);
+
 	new_cp->checkpoint_ver = cpu_to_le64(cp_ver + 1);
 
 	crc = f2fs_checkpoint_chksum(new_cp);
