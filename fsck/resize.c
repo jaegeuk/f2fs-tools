@@ -650,8 +650,11 @@ static int f2fs_resize_shrink(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_super_block new_sb_raw;
 	struct f2fs_super_block *new_sb = &new_sb_raw;
+	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 	block_t old_end_blkaddr, old_main_blkaddr;
 	block_t new_end_blkaddr, new_main_blkaddr, tmp_end_blkaddr;
+	block_t user_block_count;
+	unsigned int overprov_segment_count;
 	unsigned int offset;
 	int err = -1;
 
@@ -660,6 +663,17 @@ static int f2fs_resize_shrink(struct f2fs_sb_info *sbi)
 
 	memcpy(new_sb, F2FS_RAW_SUPER(sbi), sizeof(*new_sb));
 	if (get_new_sb(new_sb))
+		return -1;
+
+	overprov_segment_count = (get_newsb(segment_count_main) -
+			c.new_reserved_segments) *
+			c.new_overprovision / 100;
+	overprov_segment_count += c.new_reserved_segments;
+
+	user_block_count = (get_newsb(segment_count_main) -
+			overprov_segment_count) * c.blks_per_seg;
+
+	if (get_cp(valid_block_count) > user_block_count)
 		return -1;
 
 	/* check nat availability */
