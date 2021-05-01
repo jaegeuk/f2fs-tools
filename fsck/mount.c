@@ -967,12 +967,13 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 					c.sb_version, c.version);
 		if (!c.no_kernel_check &&
 				memcmp(c.sb_version, c.version, VERSION_LEN)) {
+			c.auto_fix = 0;
+			c.fix_on = 1;
+		}
+		if (c.fix_on) {
 			memcpy(sbi->raw_super->version,
 						c.version, VERSION_LEN);
 			update_superblock(sbi->raw_super, SB_MASK(sb_addr));
-
-			c.auto_fix = 0;
-			c.fix_on = 1;
 		}
 		print_sb_state(sbi->raw_super);
 		return 0;
