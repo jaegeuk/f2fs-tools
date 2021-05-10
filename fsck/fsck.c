@@ -1780,8 +1780,11 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
 				get_node_info(sbi, ino, &ni);
 				if (!IS_VALID_NID(sbi, ino) ||
-						!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+				    !IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+					free(orphan_blk);
+					free(new_blk);
 					return -EINVAL;
+				}
 
 				continue;
 			}
