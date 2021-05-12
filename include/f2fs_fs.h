@@ -942,6 +942,21 @@ struct f2fs_extent {
 #define IS_CASEFOLDED(dir)     ((dir)->i_flags & F2FS_CASEFOLD_FL)
 
 /*
+ * fsck i_compr_blocks counting helper
+ */
+struct f2fs_compr_blk_cnt {
+	/* counting i_compr_blocks, init 0 */
+	u32 cnt;
+
+	/*
+	 * previous seen compression header (COMPR_ADDR) page offsets,
+	 * use CHEADER_PGOFS_NONE for none
+	 */
+	u32 cheader_pgofs;
+};
+#define CHEADER_PGOFS_NONE ((u32)-(1 << MAX_COMPRESS_LOG_SIZE))
+
+/*
  * inode flags
  */
 #define F2FS_COMPR_FL		0x00000004 /* Compress file */

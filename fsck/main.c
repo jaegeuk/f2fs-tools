@@ -820,6 +820,7 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 	u32 blk_cnt;
+	struct f2fs_compr_blk_cnt cbc;
 	errcode_t ret;
 
 	fsck_init(sbi);
@@ -867,6 +868,8 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 
 	/* Traverse all block recursively from root inode */
 	blk_cnt = 1;
+	cbc.cnt = 0;
+	cbc.cheader_pgofs = CHEADER_PGOFS_NONE;
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
 		ret = quota_init_context(sbi);
@@ -877,7 +880,7 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 	}
 	fsck_chk_orphan_node(sbi);
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
-			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, NULL);
+			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, &cbc, NULL);
 	fsck_chk_quota_files(sbi);
 
 	ret = fsck_verify(sbi);
