@@ -835,7 +835,7 @@ void get_kernel_uname_version(__u8 *version)
 	if (uname(&buf))
 		return;
 
-#if !defined(WITH_KERNEL_VERSION)
+#if defined(WITH_KERNEL_VERSION)
 	snprintf((char *)version,
 		VERSION_LEN, "%s %s", buf.release, buf.version);
 #else
