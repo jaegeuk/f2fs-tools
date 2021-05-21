@@ -155,6 +155,14 @@ void sload_usage()
 	exit(1);
 }
 
+void label_usage()
+{
+	MSG(0, "\nUsage: f2fslabel [options] device [volume-label]\n");
+	MSG(0, "[options]:\n");
+	MSG(0, "  -V print the version number and exit\n");
+	exit(1);
+}
+
 static int is_digits(char *optarg)
 {
 	unsigned int i;
@@ -177,6 +185,8 @@ static void error_out(char *prog)
 		resize_usage();
 	else if (!strcmp("sload.f2fs", prog))
 		sload_usage();
+	else if (!strcmp("f2fslabel", prog))
+		label_usage();
 	else
 		MSG(0, "\nWrong program.\n");
 }
@@ -722,6 +732,39 @@ void f2fs_parse_options(int argc, char *argv[])
 			}
 		}
 #endif /* WITH_SLOAD */
+	} else if (!strcmp("f2fslabel", prog)) {
+#ifdef WITH_LABEL
+		const char *option_string = "V";
+
+		c.func = LABEL;
+		while ((option = getopt(argc, argv, option_string)) != EOF) {
+			switch (option) {
+			case 'V':
+				show_version(prog);
+				exit(0);
+			default:
+				err = EUNKNOWN_OPT;
+				break;
+			}
+			if (err != NOERROR)
+				break;
+		}
+
+		if (argc > (optind + 2)) { /* unknown argument(s) is(are) passed */
+			optind += 2;
+			err = EUNKNOWN_ARG;
+		} else if (argc == (optind + 2)) { /* change label */
+			c.vol_label = argv[optind + 1];
+			argc--;
+		} else { /* print label */
+			/*
+			 * Since vol_label was initialized as "", in order to
+			 * distinguish between clear label and print, set
+			 * vol_label as NULL for print case
+			 */
+			c.vol_label = NULL;
+		}
+#endif /* WITH_LABEL */
 	}
 
 	if (err == NOERROR) {
@@ -971,6 +1014,36 @@ static int do_sload(struct f2fs_sb_info *sbi)
 }
 #endif
 
+#ifdef WITH_LABEL
+static int do_label(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+
+	if (!c.vol_label) {
+		char label[MAX_VOLUME_NAME];
+
+		utf16_to_utf8(label, sb->volume_name,
+			      MAX_VOLUME_NAME, MAX_VOLUME_NAME);
+		MSG(0, "Info: volume label = %s\n", label);
+		return 0;
+	}
+
+	if (strlen(c.vol_label) > MAX_VOLUME_NAME) {
+		ERR_MSG("Label should not exceed %d characters\n", MAX_VOLUME_NAME);
+		return -1;
+	}
+
+	utf8_to_utf16(sb->volume_name, (const char *)c.vol_label,
+		      MAX_VOLUME_NAME, strlen(c.vol_label));
+
+	update_superblock(sb, SB_MASK_ALL);
+
+	MSG(0, "Info: volume label is changed to %s\n", c.vol_label);
+
+	return 0;
+}
+#endif
+
 #if defined(__APPLE__)
 static u64 get_boottime_ns()
 {
@@ -1084,6 +1157,12 @@ fsck_again:
 		c.func = FSCK;
 		c.fix_on = 1;
 		goto fsck_again;
+#endif
+#ifdef WITH_LABEL
+	case LABEL:
+		if (do_label(sbi))
+			goto out_err;
+		break;
 #endif
 	default:
 		ERR_MSG("Wrong program name\n");

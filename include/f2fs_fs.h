@@ -35,6 +35,7 @@
 #define WITH_DEFRAG
 #define WITH_RESIZE
 #define WITH_SLOAD
+#define WITH_LABEL
 #endif
 
 #include <inttypes.h>
@@ -343,6 +344,7 @@ enum f2fs_config_func {
 	DEFRAG,
 	RESIZE,
 	SLOAD,
+	LABEL,
 };
 
 enum default_set {

@@ -18,3 +18,4 @@ install-data-hook:
 	ln -sf fsck.f2fs $(DESTDIR)/$(sbindir)/defrag.f2fs
 	ln -sf fsck.f2fs $(DESTDIR)/$(sbindir)/resize.f2fs
 	ln -sf fsck.f2fs $(DESTDIR)/$(sbindir)/sload.f2fs
+	ln -sf fsck.f2fs $(DESTDIR)/$(sbindir)/f2fslabel
