@@ -213,7 +213,8 @@ static void do_set_verity(int argc, char **argv, const struct cmd_desc *cmd)
 "  verity\n"							\
 "  casefold\n"							\
 "  compression\n"						\
-"  nocompression\n"
+"  nocompression\n"						\
+"  immutable\n"
 
 static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -271,6 +272,12 @@ static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 		printf("nocow(pinned)");
 		exist = 1;
 	}
+	if (flag & FS_IMMUTABLE_FL) {
+		if (exist)
+			printf(",");
+		printf("immutable");
+		exist = 1;
+	}
 	if (!exist)
 		printf("none");
 	printf("\n");
@@ -284,7 +291,8 @@ static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 "flag can be\n"							\
 "  casefold\n"							\
 "  compression\n"						\
-"  nocompression\n"
+"  nocompression\n"						\
+"  noimmutable\n"
 
 static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -310,6 +318,8 @@ static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 		flag |= FS_COMPR_FL;
 	else if (!strcmp(argv[1], "nocompression"))
 		flag |= FS_NOCOMP_FL;
+	else if (!strcmp(argv[1], "noimmutable"))
+		flag &= ~FS_IMMUTABLE_FL;
 
 	ret = ioctl(fd, F2FS_IOC_SETFLAGS, &flag);
 	printf("set a flag on %s ret=%d, flags=%s\n", argv[2], ret, argv[1]);
