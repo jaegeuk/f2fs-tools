@@ -71,6 +71,7 @@ void fsck_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -g add default options\n");
+	MSG(0, "  -l show superblock/checkpoint\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -S sparse_mode\n");
@@ -226,7 +227,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":aC:c:m:d:fg:O:p:q:StyV";
+		const char *option_string = ":aC:c:m:d:fg:lO:p:q:StyV";
 		int opt = 0, val;
 		char *token;
 		struct option long_opt[] = {
@@ -272,6 +273,9 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'g':
 				if (!strcmp(optarg, "android"))
 					c.defset = CONF_ANDROID;
+				break;
+			case 'l':
+				c.layout = 1;
 				break;
 			case 'O':
 				if (parse_feature(feature_table, optarg))

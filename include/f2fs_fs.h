@@ -240,14 +240,14 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #define MSG(n, fmt, ...)						\
 	do {								\
-		if (c.dbg_lv >= n) {					\
+		if (c.dbg_lv >= n && !c.layout) {			\
 			printf(fmt, ##__VA_ARGS__);			\
 		}							\
 	} while (0)
 
 #define DBG(n, fmt, ...)						\
 	do {								\
-		if (c.dbg_lv >= n) {					\
+		if (c.dbg_lv >= n && !c.layout) {			\
 			printf("[%s:%4d] " fmt,				\
 				__func__, __LINE__, ##__VA_ARGS__);	\
 		}							\
@@ -262,7 +262,11 @@ static inline uint64_t bswap_64(uint64_t val)
 #define DISP_u16(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 2);			\
-		printf("%-30s" "\t\t[0x%8x : %u]\n",			\
+		if (c.layout)						\
+			printf("%-30s %u\n",				\
+			#member":", le16_to_cpu(((ptr)->member)));	\
+		else							\
+			printf("%-30s" "\t\t[0x%8x : %u]\n",		\
 			#member, le16_to_cpu(((ptr)->member)),		\
 			le16_to_cpu(((ptr)->member)));			\
 	} while (0)
@@ -270,7 +274,11 @@ static inline uint64_t bswap_64(uint64_t val)
 #define DISP_u32(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) <= 4);			\
-		printf("%-30s" "\t\t[0x%8x : %u]\n",			\
+		if (c.layout)						\
+			printf("%-30s %u\n",				\
+			#member":", le32_to_cpu(((ptr)->member)));	\
+		else							\
+			printf("%-30s" "\t\t[0x%8x : %u]\n",		\
 			#member, le32_to_cpu(((ptr)->member)),		\
 			le32_to_cpu(((ptr)->member)));			\
 	} while (0)
@@ -278,14 +286,23 @@ static inline uint64_t bswap_64(uint64_t val)
 #define DISP_u64(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 8);			\
-		printf("%-30s" "\t\t[0x%8llx : %llu]\n",		\
+		if (c.layout)						\
+			printf("%-30s %llu\n",				\
+			#member":", le64_to_cpu(((ptr)->member)));	\
+		else							\
+			printf("%-30s" "\t\t[0x%8llx : %llu]\n",	\
 			#member, le64_to_cpu(((ptr)->member)),		\
 			le64_to_cpu(((ptr)->member)));			\
 	} while (0)
 
 #define DISP_utf(ptr, member)						\
 	do {								\
-		printf("%-30s" "\t\t[%s]\n", #member, ((ptr)->member)); \
+		if (c.layout)						\
+			printf("%-30s %s\n", #member":",		\
+					((ptr)->member)); 		\
+		else							\
+			printf("%-30s" "\t\t[%s]\n", #member,		\
+					((ptr)->member));		\
 	} while (0)
 
 /* Display to buffer */
@@ -472,6 +489,7 @@ struct f2fs_configuration {
 	int bug_nat_bits;
 	int alloc_failed;
 	int auto_fix;
+	int layout;
 	int quota_fix;
 	int preen_mode;
 	int ro;

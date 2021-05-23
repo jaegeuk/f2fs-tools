@@ -369,11 +369,16 @@ static void DISP_label(u_int16_t *name)
 	char buffer[MAX_VOLUME_NAME];
 
 	utf16_to_utf8(buffer, name, MAX_VOLUME_NAME, MAX_VOLUME_NAME);
-	printf("%-30s" "\t\t[%s]\n", "volum_name", buffer);
+	if (c.layout)
+		printf("%-30s %s\n", "Filesystem volume name:", buffer);
+	else
+		printf("%-30s" "\t\t[%s]\n", "volum_name", buffer);
 }
 
 void print_raw_sb_info(struct f2fs_super_block *sb)
 {
+	if (c.layout)
+		goto printout;
 	if (!c.dbg_lv)
 		return;
 
@@ -381,7 +386,7 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 	printf("+--------------------------------------------------------+\n");
 	printf("| Super block                                            |\n");
 	printf("+--------------------------------------------------------+\n");
-
+printout:
 	DISP_u32(sb, magic);
 	DISP_u32(sb, major_ver);
 
@@ -427,6 +432,8 @@ void print_ckpt_info(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 
+	if (c.layout)
+		goto printout;
 	if (!c.dbg_lv)
 		return;
 
@@ -434,7 +441,7 @@ void print_ckpt_info(struct f2fs_sb_info *sbi)
 	printf("+--------------------------------------------------------+\n");
 	printf("| Checkpoint                                             |\n");
 	printf("+--------------------------------------------------------+\n");
-
+printout:
 	DISP_u64(cp, checkpoint_ver);
 	DISP_u64(cp, user_block_count);
 	DISP_u64(cp, valid_block_count);
@@ -3535,6 +3542,8 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		if (get_cp(ckpt_flags) & CP_QUOTA_NEED_FSCK_FLAG)
 			c.fix_on = 1;
 	}
+	if (c.layout)
+		return 1;
 
 	if (tune_sb_features(sbi))
 		return -1;
