@@ -521,9 +521,9 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		node_blk->i.i_compress_algrithm = c.compress.alg;
 		node_blk->i.i_log_cluster_size =
 				c.compress.cc.log_cluster_size;
-		node_blk->i.i_flags = cpu_to_le32(
-				F2FS_COMPR_FL |
-				(c.compress.readonly ? FS_IMMUTABLE_FL : 0));
+		node_blk->i.i_flags = cpu_to_le32(F2FS_COMPR_FL);
+		if (c.compress.readonly)
+			node_blk->i.i_inline |= F2FS_COMPRESS_RELEASED;
 		ASSERT(write_inode(node_blk, ni.blk_addr) >= 0);
 
 		while (!eof && (n = bulkread(fd, rbuf, c.compress.cc.rlen,
