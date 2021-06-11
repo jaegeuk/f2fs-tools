@@ -149,7 +149,8 @@ void sload_usage()
 	MSG(0, "    * -i or -x: use it many times for multiple extensions.\n");
 	MSG(0, "    * -i and -x cannot be used together..\n");
 	MSG(0, "    -m <num> min compressed blocks per cluster\n");
-	MSG(0, "    -r readonly (IMMUTABLE) for compressed files\n");
+	MSG(0, "    -r read only (to release unused blocks) for compressed "
+			"files\n");
 	MSG(0, "    ------------------------------------------------------\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -V print the version number and exit\n");
@@ -650,7 +651,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				}
 				c.compress.min_blocks = val;
 				break;
-			case 'r': /* compress file to set IMMUTABLE */
+			case 'r': /* for setting FI_COMPRESS_RELEASED */
 				c.compress.required = true;
 				c.compress.readonly = true;
 				break;
