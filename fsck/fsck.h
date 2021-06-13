@@ -72,11 +72,18 @@ struct child_info {
 	u32 pgofs;
 	u8 dots;
 	u8 dir_level;
-	u32 p_ino;		/*parent ino*/
-	u32 pp_ino;		/*parent parent ino*/
+	u32 p_ino;		/* parent ino */
+	char p_name[F2FS_NAME_LEN + 1]; /* parent name */
+	u32 pp_ino;		/* parent parent ino*/
 	struct extent_info ei;
 	u32 last_blk;
 	u32 i_namelen;  /* dentry namelen */
+};
+
+struct f2fs_dentry {
+	char name[F2FS_NAME_LEN + 1];
+	int depth;
+	struct f2fs_dentry *next;
 };
 
 struct f2fs_fsck {
@@ -110,6 +117,8 @@ struct f2fs_fsck {
 	u32 nr_nat_entries;
 
 	u32 dentry_depth;
+	struct f2fs_dentry *dentry;
+	struct f2fs_dentry *dentry_end;
 	struct f2fs_nat_entry *entries;
 	u32 nat_valid_inode_cnt;
 
@@ -253,7 +262,7 @@ struct dump_option {
 extern void nat_dump(struct f2fs_sb_info *, nid_t, nid_t);
 extern void sit_dump(struct f2fs_sb_info *, unsigned int, unsigned int);
 extern void ssa_dump(struct f2fs_sb_info *, int, int);
-extern void dump_node(struct f2fs_sb_info *, nid_t, int);
+extern int dump_node(struct f2fs_sb_info *, nid_t, int);
 extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
 extern unsigned int start_bidx_of_node(unsigned int, struct f2fs_node *);
 

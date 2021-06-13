@@ -695,6 +695,8 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 
 	if (ftype == F2FS_FT_DIR) {
 		f2fs_set_main_bitmap(sbi, ni->blk_addr, CURSEG_HOT_NODE);
+		memcpy(child.p_name, node_blk->i.i_name,
+					node_blk->i.i_namelen);
 	} else {
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
 			f2fs_set_main_bitmap(sbi, ni->blk_addr,
@@ -1298,10 +1300,12 @@ void pretty_print_filename(const u8 *raw_name, u32 len,
 	out[len] = 0;
 }
 
-static void print_dentry(__u32 depth, __u8 *name,
+static void print_dentry(struct f2fs_sb_info *sbi, __u8 *name,
 		u8 *bitmap, struct f2fs_dir_entry *dentry,
 		int max, int idx, int last_blk, int enc_name)
 {
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	u32 depth = fsck->dentry_depth;
 	int last_de = 0;
 	int next_idx = 0;
 	u32 name_len;
@@ -1309,7 +1313,7 @@ static void print_dentry(__u32 depth, __u8 *name,
 	int bit_offset;
 	char new[F2FS_PRINT_NAMELEN];
 
-	if (!c.show_dentry)
+	if (!c.show_dentry && !c.show_file_map)
 		return;
 
 	name_len = le16_to_cpu(dentry[idx].name_len);
@@ -1334,15 +1338,31 @@ static void print_dentry(__u32 depth, __u8 *name,
 	if (tree_mark[depth - 1] == '`')
 		tree_mark[depth - 1] = ' ';
 
-	for (i = 1; i < depth; i++)
-		printf("%c   ", tree_mark[i]);
-
 	pretty_print_filename(name, name_len, new, enc_name);
 
-	printf("%c-- %s <ino = 0x%x>, <encrypted (%d)>\n",
+	if (c.show_file_map) {
+		struct f2fs_dentry *d = fsck->dentry;
+
+		if (dentry[idx].file_type != F2FS_FT_REG_FILE)
+			return;
+
+		while (d) {
+			if (d->depth > 1)
+				printf("/%s", d->name);
+			d = d->next;
+		}
+		printf("/%s", new);
+		if (dump_node(sbi, le32_to_cpu(dentry[idx].ino), 0))
+			printf("\33[2K\r");
+	} else {
+		for (i = 1; i < depth; i++)
+			printf("%c   ", tree_mark[i]);
+
+		printf("%c-- %s <ino = 0x%x>, <encrypted (%d)>\n",
 			last_de ? '`' : '|',
 			new, le32_to_cpu(dentry[idx].ino),
 			enc_name);
+	}
 }
 
 static int f2fs_check_hash_code(int encoding, int casefolded,
@@ -1609,7 +1629,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 				le32_to_cpu(dentry[i].ino),
 				dentry[i].file_type);
 
-		print_dentry(fsck->dentry_depth, name, bitmap,
+		print_dentry(sbi, name, bitmap,
 				dentry, max, i, last_blk, enc_name);
 
 		blk_cnt = 1;
@@ -1645,6 +1665,8 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 		struct f2fs_node *node_blk, struct child_info *child)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	struct f2fs_dentry *cur_dentry = fsck->dentry_end;
+	struct f2fs_dentry *new_dentry;
 	struct f2fs_dentry_ptr d;
 	void *inline_dentry;
 	int dentries;
@@ -1655,6 +1677,14 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 	make_dentry_ptr(&d, node_blk, inline_dentry, 2);
 
 	fsck->dentry_depth++;
+	new_dentry = calloc(sizeof(struct f2fs_dentry), 1);
+	ASSERT(new_dentry != NULL);
+
+	new_dentry->depth = fsck->dentry_depth;
+	memcpy(new_dentry->name, child->p_name, F2FS_NAME_LEN);
+	cur_dentry->next = new_dentry;
+	fsck->dentry_end = new_dentry;
+
 	dentries = __chk_dentries(sbi, IS_CASEFOLDED(&node_blk->i), child,
 			d.bitmap, d.dentry, d.filename, d.max, 1,
 			file_is_encrypt(&node_blk->i));// pass through
@@ -1667,6 +1697,10 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 			fsck->dentry_depth, dentries,
 			d.max, F2FS_NAME_LEN);
 	}
+	fsck->dentry = cur_dentry;
+	fsck->dentry_end = cur_dentry;
+	cur_dentry->next = NULL;
+	free(new_dentry);
 	fsck->dentry_depth--;
 	return dentries;
 }
@@ -1676,6 +1710,8 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_dentry_block *de_blk;
+	struct f2fs_dentry *cur_dentry = fsck->dentry_end;
+	struct f2fs_dentry *new_dentry;
 	int dentries, ret;
 
 	de_blk = (struct f2fs_dentry_block *)calloc(BLOCK_SZ, 1);
@@ -1685,6 +1721,12 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 	ASSERT(ret >= 0);
 
 	fsck->dentry_depth++;
+	new_dentry = calloc(sizeof(struct f2fs_dentry), 1);
+	new_dentry->depth = fsck->dentry_depth;
+	memcpy(new_dentry->name, child->p_name, F2FS_NAME_LEN);
+	cur_dentry->next = new_dentry;
+	fsck->dentry_end = new_dentry;
+
 	dentries = __chk_dentries(sbi, casefolded, child,
 			de_blk->dentry_bitmap,
 			de_blk->dentry, de_blk->filename,
@@ -1701,6 +1743,10 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 			fsck->dentry_depth, blk_addr, dentries,
 			NR_DENTRY_IN_BLOCK, F2FS_NAME_LEN);
 	}
+	fsck->dentry = cur_dentry;
+	fsck->dentry_end = cur_dentry;
+	cur_dentry->next = NULL;
+	free(new_dentry);
 	fsck->dentry_depth--;
 	free(de_blk);
 	return 0;
@@ -2061,6 +2107,10 @@ void fsck_init(struct f2fs_sb_info *sbi)
 	ASSERT(tree_mark_size != 0);
 	tree_mark = calloc(tree_mark_size, 1);
 	ASSERT(tree_mark != NULL);
+	fsck->dentry = calloc(sizeof(struct f2fs_dentry), 1);
+	ASSERT(fsck->dentry != NULL);
+	memcpy(fsck->dentry->name, "/", 1);
+	fsck->dentry_end = fsck->dentry;
 }
 
 static void fix_hard_links(struct f2fs_sb_info *sbi)
@@ -3022,6 +3072,9 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct hard_link_node *node = NULL;
 
+	if (c.show_file_map)
+		return 0;
+
 	printf("\n");
 
 	if (c.zoned_model == F2FS_ZONED_HM) {
@@ -3229,4 +3282,11 @@ void fsck_free(struct f2fs_sb_info *sbi)
 
 	if (tree_mark)
 		free(tree_mark);
+
+	while (fsck->dentry) {
+		struct f2fs_dentry *dentry = fsck->dentry;
+
+		fsck->dentry = fsck->dentry->next;
+		free(dentry);
+	}
 }

@@ -14,6 +14,10 @@ dump.f2fs \- retrieve directory and file entries from an F2FS-formated image
 .I NAT range
 ]
 [
+.B \-M
+.I Block map
+]
+[
 .B \-s
 .I SIT range
 ]
@@ -50,6 +54,9 @@ Specify an inode number to dump out.
 .TP
 .BI \-n " NAT range"
 Specify a range presented by nids to dump NAT entries.
+.TP
+.BI \-M " Block map"
+Show all the allocated block addresses given inode number.
 .TP
 .BI \-s " SIT range"
 Specify a range presented by segment numbers to dump SIT entries.

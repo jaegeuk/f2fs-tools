@@ -72,6 +72,7 @@ void fsck_usage()
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -g add default options\n");
 	MSG(0, "  -l show superblock/checkpoint\n");
+	MSG(0, "  -M show a file map\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
 	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
 	MSG(0, "  -S sparse_mode\n");
@@ -93,6 +94,7 @@ void dump_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -i inode no (hex)\n");
 	MSG(0, "  -n [NAT dump nid from #1~#2 (decimal), for all 0~-1]\n");
+	MSG(0, "  -M show a block map\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -a [SSA dump segno from #1~#2 (decimal), for all 0~-1]\n");
@@ -228,7 +230,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":aC:c:m:d:fg:lO:p:q:StyV";
+		const char *option_string = ":aC:c:m:Md:fg:lO:p:q:StyV";
 		int opt = 0, val;
 		char *token;
 		struct option long_opt[] = {
@@ -277,6 +279,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 			case 'l':
 				c.layout = 1;
+				break;
+			case 'M':
+				c.show_file_map = 1;
 				break;
 			case 'O':
 				if (parse_feature(feature_table, optarg))
@@ -377,7 +382,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
 #ifdef WITH_DUMP
-		const char *option_string = "d:i:n:s:Sa:b:V";
+		const char *option_string = "d:i:n:Ms:Sa:b:V";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -423,6 +428,9 @@ void f2fs_parse_options(int argc, char *argv[])
 				ret = sscanf(optarg, "%d~%d",
 							&dump_opt.start_nat,
 							&dump_opt.end_nat);
+				break;
+			case 'M':
+				c.show_file_map = 1;
 				break;
 			case 's':
 				ret = sscanf(optarg, "%d~%d",
@@ -1209,7 +1217,8 @@ retry:
 	if (c.func == SLOAD)
 		c.compress.filter_ops->destroy();
 
-	printf("\nDone: %lf secs\n", (get_boottime_ns() - start) / 1000000000.0);
+	if (!c.show_file_map)
+		printf("\nDone: %lf secs\n", (get_boottime_ns() - start) / 1000000000.0);
 	return ret;
 
 out_err:

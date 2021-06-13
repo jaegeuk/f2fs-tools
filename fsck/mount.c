@@ -489,6 +489,9 @@ printout:
 
 void print_cp_state(u32 flag)
 {
+	if (c.show_file_map)
+		return;
+
 	MSG(0, "Info: checkpoint state = %x : ", flag);
 	if (flag & CP_QUOTA_NEED_FSCK_FLAG)
 		MSG(0, "%s", " quota_need_fsck");
