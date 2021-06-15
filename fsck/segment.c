@@ -450,6 +450,109 @@ u64 f2fs_fix_mutable(struct f2fs_sb_info *sbi, nid_t ino, pgoff_t offset,
 	return 0;
 }
 
+static inline int is_consecutive(u32 prev_addr, u32 cur_addr)
+{
+	if (is_valid_data_blkaddr(cur_addr) && (cur_addr == prev_addr + 1))
+		return 1;
+	return 0;
+}
+
+static inline void copy_extent_info(struct extent_info *t_ext,
+				struct extent_info *s_ext)
+{
+	t_ext->fofs = s_ext->fofs;
+	t_ext->blk = s_ext->blk;
+	t_ext->len = s_ext->len;
+}
+
+static inline void update_extent_info(struct f2fs_node *inode,
+				struct extent_info *ext)
+{
+	inode->i.i_ext.fofs = cpu_to_le32(ext->fofs);
+	inode->i.i_ext.blk_addr = cpu_to_le32(ext->blk);
+	inode->i.i_ext.len = cpu_to_le32(ext->len);
+}
+
+static void update_largest_extent(struct f2fs_sb_info *sbi, nid_t ino)
+{
+	struct dnode_of_data dn;
+	struct node_info ni;
+	struct f2fs_node *inode;
+	u32 blkaddr, prev_blkaddr, cur_blk = 0, end_blk;
+	struct extent_info largest_ext, cur_ext;
+	u64 remained_blkentries = 0;
+	u32 cluster_size;
+	int count;
+	void *index_node = NULL;
+
+	memset(&dn, 0, sizeof(dn));
+	largest_ext.len = cur_ext.len = 0;
+
+	inode = (struct f2fs_node *) calloc(BLOCK_SZ, 1);
+	ASSERT(inode);
+
+	/* Read inode info */
+	get_node_info(sbi, ino, &ni);
+	ASSERT(dev_read_block(inode, ni.blk_addr) >= 0);
+	cluster_size = 1 << inode->i.i_log_cluster_size;
+
+	if (inode->i.i_inline & F2FS_INLINE_DATA)
+		goto exit;
+
+	end_blk  = f2fs_max_file_offset(&inode->i) >> F2FS_BLKSIZE_BITS;
+
+	while (cur_blk <= end_blk) {
+		if (remained_blkentries == 0) {
+			set_new_dnode(&dn, inode, NULL, ino);
+			get_dnode_of_data(sbi, &dn, cur_blk, LOOKUP_NODE);
+			if (index_node)
+				free(index_node);
+			index_node = (dn.node_blk == dn.inode_blk) ?
+				NULL : dn.node_blk;
+			remained_blkentries = ADDRS_PER_PAGE(sbi,
+					dn.node_blk, dn.inode_blk);
+		}
+		ASSERT(remained_blkentries > 0);
+
+		blkaddr = datablock_addr(dn.node_blk, dn.ofs_in_node);
+		if (cur_ext.len > 0) {
+			if (is_consecutive(prev_blkaddr, blkaddr))
+				cur_ext.len++;
+			else {
+				if (cur_ext.len > largest_ext.len)
+					copy_extent_info(&largest_ext,
+							&cur_ext);
+				cur_ext.len = 0;
+			}
+		}
+
+		if (cur_ext.len == 0 && is_valid_data_blkaddr(blkaddr)) {
+			cur_ext.fofs = cur_blk;
+			cur_ext.len = 1;
+			cur_ext.blk = blkaddr;
+		}
+
+		prev_blkaddr = blkaddr;
+		count = blkaddr == COMPRESS_ADDR ? cluster_size : 1;
+		cur_blk += count;
+		dn.ofs_in_node += count;
+		remained_blkentries -= count;
+		ASSERT(remained_blkentries >= 0);
+	}
+
+exit:
+	if (cur_ext.len > largest_ext.len)
+		copy_extent_info(&largest_ext, &cur_ext);
+	if (largest_ext.len > 0) {
+		update_extent_info(inode, &largest_ext);
+		ASSERT(write_inode(inode, ni.blk_addr) >= 0);
+	}
+
+	if (index_node)
+		free(index_node);
+	free(inode);
+}
+
 int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 {
 	int fd, n;
@@ -595,6 +698,8 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 	if (n < 0)
 		return -1;
 
+	if (!c.compress.enabled || (c.feature & cpu_to_le32(F2FS_FEATURE_RO)))
+		update_largest_extent(sbi, de->ino);
 	update_free_segments(sbi);
 
 	MSG(1, "Info: Create %s -> %s\n"
