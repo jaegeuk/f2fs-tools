@@ -440,6 +440,21 @@ static int f2fs_prepare_super_block(void)
 					main_blkzone);
 			return -1;
 		}
+		/*
+		 * Check if conventional device has enough space
+		 * to accommodate all metadata, zoned device should
+		 * not overlap to metadata area.
+		 */
+		for (i = 1; i < c.ndevs; i++) {
+			if (c.devices[i].zoned_model == F2FS_ZONED_HM &&
+				c.devices[i].start_blkaddr < get_sb(main_blkaddr)) {
+				MSG(0, "\tError: Conventional device %s is too small,"
+					" (%"PRIu64" MiB needed).\n", c.devices[0].path,
+					(get_sb(main_blkaddr) -
+					c.devices[i].start_blkaddr) >> 8);
+				return -1;
+			}
+		}
 	}
 
 	total_zones = get_sb(segment_count) / (c.segs_per_zone) -
