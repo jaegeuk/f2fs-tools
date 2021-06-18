@@ -293,27 +293,20 @@ static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr)
 }
 
 static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
-						u32 nid, u64 *ofs)
+				u32 nid, u32 addr_per_block, u64 *ofs)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
 	u32 skip = 0;
 	u32 i, idx = 0;
 
-	get_node_info(sbi, nid, &ni);
-
-	node_blk = calloc(BLOCK_SZ, 1);
-	ASSERT(node_blk);
-
-	dev_read_block(node_blk, ni.blk_addr);
-
 	switch (ntype) {
 	case TYPE_DIRECT_NODE:
-		skip = idx = ADDRS_PER_BLOCK(&node_blk->i);
+		skip = idx = addr_per_block;
 		break;
 	case TYPE_INDIRECT_NODE:
 		idx = NIDS_PER_BLOCK;
-		skip = idx * ADDRS_PER_BLOCK(&node_blk->i);
+		skip = idx * addr_per_block;
 		break;
 	case TYPE_DOUBLE_INDIRECT_NODE:
 		skip = 0;
@@ -323,26 +316,37 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 
 	if (nid == 0) {
 		*ofs += skip;
-		goto out;
+		return;
 	}
 
-	for (i = 0; i < idx; i++, (*ofs)++) {
+	get_node_info(sbi, nid, &ni);
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	dev_read_block(node_blk, ni.blk_addr);
+
+	for (i = 0; i < idx; i++) {
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
 			dump_data_blk(sbi, *ofs * F2FS_BLKSIZE,
 					le32_to_cpu(node_blk->dn.addr[i]));
+			(*ofs)++;
 			break;
 		case TYPE_INDIRECT_NODE:
 			dump_node_blk(sbi, TYPE_DIRECT_NODE,
-					le32_to_cpu(node_blk->in.nid[i]), ofs);
+					le32_to_cpu(node_blk->in.nid[i]),
+					addr_per_block,
+					ofs);
 			break;
 		case TYPE_DOUBLE_INDIRECT_NODE:
 			dump_node_blk(sbi, TYPE_INDIRECT_NODE,
-					le32_to_cpu(node_blk->in.nid[i]), ofs);
+					le32_to_cpu(node_blk->in.nid[i]),
+					addr_per_block,
+					ofs);
 			break;
 		}
 	}
-out:
 	free(node_blk);
 }
 
@@ -421,6 +425,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 {
 	u32 i = 0;
 	u64 ofs = 0;
+	u32 addr_per_block;
 
 	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
@@ -431,6 +436,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	c.show_file_map_max_offset = f2fs_max_file_offset(&node_blk->i);
+	addr_per_block = ADDRS_PER_BLOCK(&node_blk->i);
 
 	/* check data blocks in inode */
 	for (i = 0; i < ADDRS_PER_INODE(&node_blk->i); i++, ofs++)
@@ -441,13 +447,19 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	for (i = 0; i < 5; i++) {
 		if (i == 0 || i == 1)
 			dump_node_blk(sbi, TYPE_DIRECT_NODE,
-					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]),
+					addr_per_block,
+					&ofs);
 		else if (i == 2 || i == 3)
 			dump_node_blk(sbi, TYPE_INDIRECT_NODE,
-					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]),
+					addr_per_block,
+					&ofs);
 		else if (i == 4)
 			dump_node_blk(sbi, TYPE_DOUBLE_INDIRECT_NODE,
-					le32_to_cpu(node_blk->i.i_nid[i]), &ofs);
+					le32_to_cpu(node_blk->i.i_nid[i]),
+					addr_per_block,
+					&ofs);
 		else
 			ASSERT(0);
 	}
