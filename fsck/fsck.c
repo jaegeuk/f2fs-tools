@@ -1722,6 +1722,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 
 	fsck->dentry_depth++;
 	new_dentry = calloc(sizeof(struct f2fs_dentry), 1);
+	ASSERT(new_dentry != NULL);
 	new_dentry->depth = fsck->dentry_depth;
 	memcpy(new_dentry->name, child->p_name, F2FS_NAME_LEN);
 	cur_dentry->next = new_dentry;

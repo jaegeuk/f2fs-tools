@@ -256,8 +256,7 @@ static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr)
 			ASSERT(blkaddr == NULL_ADDR);
 			return;
 		}
-		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR ||
-					blkaddr == COMPRESS_ADDR) {
+		if (!is_valid_data_blkaddr(blkaddr)) {
 			print_extent(false);
 			dump_extent.blk = 0;
 			dump_extent.len = 1;
