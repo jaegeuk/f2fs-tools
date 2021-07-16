@@ -828,7 +828,7 @@ int f2fs_devs_are_umounted(void)
 void get_kernel_version(__u8 *version)
 {
 	int i;
-	for (i = 0; i < VERSION_LEN; i++) {
+	for (i = 0; i < VERSION_NAME_LEN; i++) {
 		if (version[i] == '\n')
 			break;
 	}
@@ -846,10 +846,10 @@ void get_kernel_uname_version(__u8 *version)
 
 #if defined(WITH_KERNEL_VERSION)
 	snprintf((char *)version,
-		VERSION_LEN, "%s %s", buf.release, buf.version);
+		VERSION_NAME_LEN, "%s %s", buf.release, buf.version);
 #else
 	snprintf((char *)version,
-		VERSION_LEN, "%s", buf.release);
+		VERSION_NAME_LEN, "%s", buf.release);
 #endif
 #else
 	memset(version, 0, VERSION_LEN);

@@ -350,7 +350,9 @@ static inline uint64_t bswap_64(uint64_t val)
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
 
-#define VERSION_LEN	256
+#define VERSION_LEN		256
+#define VERSION_TIMESTAMP_LEN	4
+#define VERSION_NAME_LEN	(VERSION_LEN - VERSION_TIMESTAMP_LEN)
 
 #define LPF "lost+found"
 

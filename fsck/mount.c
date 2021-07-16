@@ -13,6 +13,7 @@
 #include "xattr.h"
 #include <locale.h>
 #include <stdbool.h>
+#include <time.h>
 #ifdef HAVE_LINUX_POSIX_ACL_H
 #include <linux/posix_acl.h>
 #endif
@@ -424,7 +425,7 @@ printout:
 	DISP_u32(sb, meta_ino);
 	DISP_u32(sb, cp_payload);
 	DISP_u32(sb, crc);
-	DISP("%-.256s", sb, version);
+	DISP("%-.252s", sb, version);
 	printf("\n");
 }
 
@@ -939,6 +940,8 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 	return 0;
 }
 
+#define CHECK_PERIOD (3600 * 24 * 30)	// one month by default
+
 int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 {
 	char buf[F2FS_BLKSIZE];
@@ -956,31 +959,54 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 	if (!sanity_check_raw_super(sbi->raw_super, sb_addr)) {
 		/* get kernel version */
 		if (c.kd >= 0) {
-			dev_read_version(c.version, 0, VERSION_LEN);
+			dev_read_version(c.version, 0, VERSION_NAME_LEN);
 			get_kernel_version(c.version);
 		} else {
 			get_kernel_uname_version(c.version);
 		}
 
 		/* build sb version */
-		memcpy(c.sb_version, sbi->raw_super->version, VERSION_LEN);
+		memcpy(c.sb_version, sbi->raw_super->version, VERSION_NAME_LEN);
 		get_kernel_version(c.sb_version);
-		memcpy(c.init_version, sbi->raw_super->init_version, VERSION_LEN);
+		memcpy(c.init_version, sbi->raw_super->init_version,
+				VERSION_NAME_LEN);
 		get_kernel_version(c.init_version);
 
 		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					c.sb_version, c.version);
-		if (!c.no_kernel_check &&
-				memcmp(c.sb_version, c.version, VERSION_LEN)) {
-			c.auto_fix = 0;
-			c.fix_on = 1;
-		}
-		if (c.fix_on) {
-			memcpy(sbi->raw_super->version,
-						c.version, VERSION_LEN);
+		if (!c.no_kernel_check) {
+			struct timespec t;
+			u32 prev_time, cur_time, time_diff;
+			__le32 *ver_ts_ptr = (__le32 *)(sbi->raw_super->version
+						+ VERSION_NAME_LEN);
+
+			t.tv_sec = t.tv_nsec = 0;
+			clock_gettime(CLOCK_REALTIME, &t);
+			cur_time = (u32)t.tv_sec;
+			prev_time = le32_to_cpu(*ver_ts_ptr);
+
+			MSG(0, "Info: version timestamp cur: %u, prev: %u\n",
+					cur_time, prev_time);
+			if (!memcmp(c.sb_version, c.version,
+						VERSION_NAME_LEN)) {
+				/* valid prev_time */
+				if (prev_time != 0 && cur_time > prev_time) {
+					time_diff = cur_time - prev_time;
+					if (time_diff < CHECK_PERIOD)
+						goto out;
+					c.auto_fix = 0;
+					c.fix_on = 1;
+				}
+			} else {
+				memcpy(sbi->raw_super->version,
+						c.version, VERSION_NAME_LEN);
+			}
+
+			*ver_ts_ptr = cpu_to_le32(cur_time);
 			update_superblock(sbi->raw_super, SB_MASK(sb_addr));
 		}
+out:
 		print_sb_state(sbi->raw_super);
 		return 0;
 	}
