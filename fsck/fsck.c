@@ -1900,6 +1900,8 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 			ASSERT_MSG("wrong quota inode, qtype [%d] ino [0x%x]",
 								qtype, ino);
 			qf_szchk_type[qtype] = QF_SZCHK_ERR;
+			if (c.fix_on)
+				f2fs_rebuild_qf_inode(sbi, qtype);
 		}
 	}
 	cur_qtype = -1;

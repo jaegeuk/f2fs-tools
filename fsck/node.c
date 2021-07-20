@@ -40,6 +40,53 @@ void f2fs_release_nid(struct f2fs_sb_info *sbi, nid_t nid)
 	f2fs_clear_bit(nid, nm_i->nid_bitmap);
 }
 
+int f2fs_rebuild_qf_inode(struct f2fs_sb_info *sbi, int qtype)
+{
+	struct f2fs_node *raw_node = NULL;
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
+	struct f2fs_summary sum;
+	struct node_info ni;
+	nid_t ino = QUOTA_INO(sb, qtype);
+	block_t blkaddr = NULL_ADDR;
+	__u64 cp_ver = cur_cp_version(ckpt);
+	int ret = 0;
+
+	raw_node = calloc(F2FS_BLKSIZE, 1);
+	if (raw_node == NULL) {
+		MSG(1, "\tError: Calloc Failed for raw_node!!!\n");
+		return -ENOMEM;
+	}
+	f2fs_init_qf_inode(sb, raw_node, qtype, time(NULL));
+
+	if (is_set_ckpt_flags(ckpt, CP_CRC_RECOVERY_FLAG))
+		cp_ver |= (cur_cp_crc(ckpt) << 32);
+	raw_node->footer.cp_ver = cpu_to_le64(cp_ver);
+
+	get_node_info(sbi, ino, &ni);
+	set_summary(&sum, ino, 0, ni.version);
+	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE, 1);
+	if (ret) {
+		MSG(1, "\tError: Failed to reserve new block!\n");
+		goto err_out;
+	}
+
+	ret = write_inode(raw_node, blkaddr);
+	if (ret < 0) {
+		MSG(1, "\tError: While rebuilding the quota inode to disk!\n");
+		goto err_out;
+	}
+	update_nat_blkaddr(sbi, ino, ino, blkaddr);
+
+	f2fs_clear_bit(ino, F2FS_FSCK(sbi)->nat_area_bitmap);
+	f2fs_set_bit(ino, NM_I(sbi)->nid_bitmap);
+	DBG(1, "Rebuild quota inode ([%3d] ino [0x%x]) at offset:0x%x\n",
+						qtype, ino, blkaddr);
+err_out:
+	free(raw_node);
+	return ret;
+}
+
 void set_data_blkaddr(struct dnode_of_data *dn)
 {
 	__le32 *addr_array;

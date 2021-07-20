@@ -286,6 +286,7 @@ void f2fs_alloc_nid(struct f2fs_sb_info *, nid_t *);
 void set_data_blkaddr(struct dnode_of_data *);
 block_t new_node_block(struct f2fs_sb_info *,
 					struct dnode_of_data *, unsigned int);
+int f2fs_rebuild_qf_inode(struct f2fs_sb_info *sbi, int qtype);
 
 /* segment.c */
 struct quota_file;
