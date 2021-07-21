@@ -757,10 +757,11 @@ static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
 			die_errno("FIEMAP failed");
 
 		phy_addr = fm->fm_extents[0].fe_physical / F2FS_BLKSIZE;
-		if (phy_addr == NEW_ADDR)
-			printf("NEW_ADDR ");
-		else
-			printf("%llu ", phy_addr);
+		printf("%llu: %llu\n", fm->fm_start / F2FS_BLKSIZE, phy_addr);
+
+		if (fm->fm_extents[0].fe_flags & FIEMAP_EXTENT_LAST)
+			break;
+
 		fm->fm_start += F2FS_BLKSIZE;
 	}
 	printf("\n");
