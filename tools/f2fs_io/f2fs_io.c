@@ -1169,6 +1169,41 @@ static void do_get_filename_encrypt_mode (int argc, char **argv,
 	exit(0);
 }
 
+#define rename_desc "rename source to target file with fsync option"
+#define rename_help							\
+"f2fs_io rename [src_path] [target_path] [fsync_after_rename]\n\n"	\
+"e.g., f2fs_io rename source dest 1\n"					\
+"      1. open(source)\n"						\
+"      2. rename(source, dest)\n"					\
+"      3. fsync(source)\n"						\
+"      4. close(source)\n"
+
+static void do_rename(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd = -1;
+	int ret;
+
+	if (argc != 4) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	if (atoi(argv[3]))
+		fd = xopen(argv[1], O_WRONLY, 0);
+
+	ret = rename(argv[1], argv[2]);
+	if (ret < 0)
+		die_errno("rename failed");
+
+	if (fd >= 0) {
+		if (fsync(fd) != 0)
+			die_errno("fsync failed: %s", argv[1]);
+		close(fd);
+	}
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1199,6 +1234,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(decompress),
 	CMD(compress),
 	CMD(get_filename_encrypt_mode),
+	CMD(rename),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
