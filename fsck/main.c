@@ -74,7 +74,7 @@ void fsck_usage()
 	MSG(0, "  -l show superblock/checkpoint\n");
 	MSG(0, "  -M show a file map\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
-	MSG(0, "  -p preen mode [default:0 the same as -a [0|1]]\n");
+	MSG(0, "  -p preen mode [default:0 the same as -a [0|1|2]]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -t show directory tree\n");
 	MSG(0, "  -q preserve quota limits\n");
