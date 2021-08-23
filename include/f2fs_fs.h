@@ -437,8 +437,8 @@ typedef struct {
 	filter_ops *filter_ops;		/* filter ops */
 } compress_config_t;
 
-#define ALIGN_UP(value, size) ((value) + ((value) % (size) > 0 ? \
-		(size) - (value) % (size) : 0))
+#define ALIGN_DOWN(addrs, size)	(((addrs) / (size)) * (size))
+#define ALIGN_UP(addrs, size)	ALIGN_DOWN(((addrs) + (size) - 1), (size))
 
 struct f2fs_configuration {
 	u_int32_t reserved_segments;

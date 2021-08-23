@@ -499,8 +499,6 @@ opaque_seq:
 	return __f2fs_dentry_hash(name, len);
 }
 
-#define ALIGN_DOWN(addrs, size)	(((addrs) / (size)) * (size))
-#define ALIGN_UP(addrs, size)	ALIGN_DOWN(((addrs) + (size) - 1), (size))
 unsigned int addrs_per_inode(struct f2fs_inode *i)
 {
 	unsigned int addrs = CUR_ADDRS_PER_INODE(i) - get_inline_xattr_addrs(i);
