@@ -250,8 +250,12 @@ static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 	if (node_blk->footer.nid == node_blk->footer.ino) {
 		int ofs = get_extra_isize(node_blk);
 
+		if (ofs + ofs_in_node >= DEF_ADDRS_PER_INODE)
+			goto out;
 		target_blk_addr = node_blk->i.i_addr[ofs + ofs_in_node];
 	} else {
+		if (ofs_in_node >= DEF_ADDRS_PER_BLOCK)
+			goto out;
 		target_blk_addr = node_blk->dn.addr[ofs_in_node];
 	}
 
