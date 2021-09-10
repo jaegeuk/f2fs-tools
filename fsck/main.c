@@ -1120,7 +1120,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Get device */
-	if (f2fs_get_device_info() < 0) {
+	if (f2fs_get_device_info() < 0 || f2fs_get_f2fs_info() < 0) {
 		ret = -1;
 		if (c.func == FSCK)
 			ret = FSCK_OPERATIONAL_ERROR;

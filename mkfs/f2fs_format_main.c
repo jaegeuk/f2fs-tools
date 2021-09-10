@@ -396,18 +396,42 @@ int main(int argc, char *argv[])
 
 	c.func = MKFS;
 
-	if (!force_overwrite && f2fs_check_overwrite()) {
-		MSG(0, "\tUse the -f option to force overwrite.\n");
-		return -1;
-	}
-
 	if (f2fs_devs_are_umounted() < 0) {
 		if (errno != EBUSY)
 			MSG(0, "\tError: Not available on mounted device!\n");
-		return -1;
+		goto err_format;
 	}
 
 	if (f2fs_get_device_info() < 0)
+		return -1;
+
+	if (f2fs_check_overwrite()) {
+		char *zero_buf = NULL;
+		int i;
+
+		if (!force_overwrite) {
+			MSG(0, "\tUse the -f option to force overwrite.\n");
+			goto err_format;
+		}
+		zero_buf = calloc(F2FS_BLKSIZE, 1);
+		if (!zero_buf) {
+			MSG(0, "\tError: Fail to allocate zero buffer.\n");
+			goto err_format;
+		}
+		/* wipe out other FS magics mostly first 4MB space */
+		for (i = 0; i < 1024; i++)
+			if (dev_fill_block(zero_buf, i))
+				break;
+		free(zero_buf);
+		if (i != 1024) {
+			MSG(0, "\tError: Fail to fill zeros till %d.\n", i);
+			goto err_format;
+		}
+		if (f2fs_fsync_device())
+			goto err_format;
+	}
+
+	if (f2fs_get_f2fs_info() < 0)
 		goto err_format;
 
 	/*

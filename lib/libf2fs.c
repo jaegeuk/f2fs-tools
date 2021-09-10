@@ -1183,6 +1183,12 @@ int f2fs_get_device_info(void)
 	for (i = 0; i < c.ndevs; i++)
 		if (get_device_info(i))
 			return -1;
+	return 0;
+}
+
+int f2fs_get_f2fs_info(void)
+{
+	int i;
 
 	if (c.wanted_total_sectors < c.total_sectors) {
 		MSG(0, "Info: total device sectors = %"PRIu64" (in %u bytes)\n",
