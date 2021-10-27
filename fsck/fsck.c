@@ -2025,7 +2025,7 @@ int fsck_chk_quota_files(struct f2fs_sb_info *sbi)
 			f2fs_filesize_update(sbi, ino, 0);
 			ret = quota_write_inode(sbi, qtype);
 			if (!ret) {
-				c.bug_on = 1;
+				c.quota_fixed = true;
 				DBG(1, "OK\n");
 			} else {
 				ASSERT_MSG("Unable to write quota file");
@@ -2197,6 +2197,8 @@ void fsck_init(struct f2fs_sb_info *sbi)
 	ASSERT(fsck->dentry != NULL);
 	memcpy(fsck->dentry->name, "/", 1);
 	fsck->dentry_end = fsck->dentry;
+
+	c.quota_fixed = false;
 }
 
 static void fix_hard_links(struct f2fs_sb_info *sbi)
@@ -3330,7 +3332,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (force || (c.fix_on && f2fs_dev_is_writable())) {
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
 
-		if (force || c.bug_on || c.bug_nat_bits) {
+		if (force || c.bug_on || c.bug_nat_bits || c.quota_fixed) {
 			/* flush nats to write_nit_bits below */
 			flush_journal_entries(sbi);
 			fix_hard_links(sbi);
