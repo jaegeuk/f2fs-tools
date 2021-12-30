@@ -493,8 +493,23 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 				ni->blk_addr);
 
 	if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
+
 		fsck->chk.valid_blk_cnt++;
 		fsck->chk.valid_node_cnt++;
+
+		/* Progress report */
+		if (sbi->total_valid_node_count > 1000) {
+			unsigned int p10 = sbi->total_valid_node_count / 10;
+
+			if (sbi->fsck->chk.checked_node_cnt++ % p10)
+				return 0;
+
+			printf("[FSCK] Check node %"PRIu64" / %u (%.2f%%)\n",
+				sbi->fsck->chk.checked_node_cnt,
+				sbi->total_valid_node_count,
+				10 * (float)sbi->fsck->chk.checked_node_cnt /
+				p10);
+		}
 	}
 	return 0;
 }

@@ -91,6 +91,7 @@ struct f2fs_fsck {
 
 	struct orphan_info orphani;
 	struct chk_result {
+		u64 checked_node_cnt;
 		u64 valid_blk_cnt;
 		u32 valid_nat_entry_cnt;
 		u32 valid_node_cnt;
