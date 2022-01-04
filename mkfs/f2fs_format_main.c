@@ -28,6 +28,7 @@
 #endif
 
 #include "f2fs_fs.h"
+#include "quota.h"
 #include "f2fs_format_utils.h"
 
 #ifdef WITH_ANDROID
@@ -127,9 +128,17 @@ static void add_default_options(void)
 	c.feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
 #endif
 #ifdef CONF_PROJID
+	c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
 	c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
 	c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
 #endif
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO))
+		c.quota_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
+		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+		c.quota_bits |= QUOTA_PRJ_BIT;
+	}
 }
 
 static void f2fs_parse_options(int argc, char *argv[])

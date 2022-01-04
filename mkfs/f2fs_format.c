@@ -38,8 +38,6 @@ struct f2fs_checkpoint *cp;
 /* Return time fixed by the user or current time by default */
 #define mkfs_time ((c.fixed_time == -1) ? time(NULL) : c.fixed_time)
 
-static unsigned int quotatype_bits = 0;
-
 const char *media_ext_lists[] = {
 	/* common prefix */
 	"mp", // Covers mp3, mp4, mpeg, mpg
@@ -513,14 +511,8 @@ static int f2fs_prepare_super_block(void)
 	set_sb(root_ino, 3);
 	c.next_free_nid = 4;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
-		quotatype_bits = QUOTA_USR_BIT | QUOTA_GRP_BIT;
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
-			quotatype_bits |= QUOTA_PRJ_BIT;
-	}
-
 	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (!((1 << qtype) & quotatype_bits))
+		if (!((1 << qtype) & c.quota_bits))
 			continue;
 		sb->qf_ino[qtype] = cpu_to_le32(c.next_free_nid++);
 		MSG(0, "Info: add quota type = %u => %u\n",
@@ -867,7 +859,7 @@ static int f2fs_write_check_point_pack(void)
 			get_cp(cur_node_segno[0]) * c.blks_per_seg);
 
 	for (qtype = 0, i = 1; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (sb->qf_ino[qtype] == 0)
+		if (!((1 << qtype) & c.quota_bits))
 			continue;
 		journal->nat_j.entries[i].nid = sb->qf_ino[qtype];
 		journal->nat_j.entries[i].ne.version = 0;
@@ -958,9 +950,10 @@ static int f2fs_write_check_point_pack(void)
 
 	off = 1;
 	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (sb->qf_ino[qtype] == 0)
-			continue;
 		int j;
+
+		if (!((1 << qtype) & c.quota_bits))
+			continue;
 
 		for (j = 0; j < QUOTA_DATA(qtype); j++) {
 			(sum_entry + off + j)->nid = sb->qf_ino[qtype];
@@ -992,7 +985,7 @@ static int f2fs_write_check_point_pack(void)
 	sum->entries[0].nid = sb->root_ino;
 	sum->entries[0].ofs_in_node = 0;
 	for (qtype = i = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (sb->qf_ino[qtype] == 0)
+		if (!((1 << qtype) & c.quota_bits))
 			continue;
 		sum->entries[1 + i].nid = sb->qf_ino[qtype];
 		sum->entries[1 + i].ofs_in_node = 0;
@@ -1360,7 +1353,7 @@ static int f2fs_write_default_quota(int qtype, unsigned int blkaddr,
 	return 0;
 }
 
-static int f2fs_write_qf_inode(int qtype)
+static int f2fs_write_qf_inode(int qtype, int offset)
 {
 	struct f2fs_node *raw_node = NULL;
 	u_int64_t data_blk_nor;
@@ -1382,11 +1375,9 @@ static int f2fs_write_qf_inode(int qtype)
 	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
 
 	data_blk_nor = get_sb(main_blkaddr) +
-		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg + 1;
+		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg + 1
+		+ offset * QUOTA_DATA(i);
 
-	for (i = 0; i < qtype; i++)
-		if (sb->qf_ino[i])
-			data_blk_nor += QUOTA_DATA(i);
 	if (qtype == 0)
 		raw_id = raw_node->i.i_uid;
 	else if (qtype == 1)
@@ -1408,7 +1399,7 @@ static int f2fs_write_qf_inode(int qtype)
 
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
-					c.blks_per_seg + qtype + 1;
+					c.blks_per_seg + offset + 1;
 
 	DBG(1, "\tWriting quota inode (hot node), %x %x %x at offset 0x%08"PRIu64"\n",
 			get_sb(main_blkaddr),
@@ -1440,7 +1431,7 @@ static int f2fs_update_nat_root(void)
 
 	/* update quota */
 	for (qtype = i = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (sb->qf_ino[qtype] == 0)
+		if (!((1 << qtype) & c.quota_bits))
 			continue;
 		nat_blk->entries[sb->qf_ino[qtype]].block_addr =
 				cpu_to_le32(get_sb(main_blkaddr) +
@@ -1678,7 +1669,7 @@ static int f2fs_add_default_dentry_root(void)
 static int f2fs_create_root_dir(void)
 {
 	enum quota_type qtype;
-	int err = 0;
+	int err = 0, i = 0;
 
 	err = f2fs_write_root_inode();
 	if (err < 0) {
@@ -1687,9 +1678,9 @@ static int f2fs_create_root_dir(void)
 	}
 
 	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++)  {
-		if (sb->qf_ino[qtype] == 0)
+		if (!((1 << qtype) & c.quota_bits))
 			continue;
-		err = f2fs_write_qf_inode(qtype);
+		err = f2fs_write_qf_inode(qtype, i++);
 		if (err < 0) {
 			MSG(1, "\tError: Failed to write quota inode!!!\n");
 			goto exit;
