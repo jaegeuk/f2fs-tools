@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <string.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #ifndef ANDROID_WINDOWS_HOST
@@ -31,6 +32,9 @@
 #include "quota.h"
 #include "f2fs_format_utils.h"
 
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
 #ifdef WITH_ANDROID
 #include <sparse/sparse.h>
 extern struct sparse_file *f2fs_sparse_file;
@@ -104,11 +108,34 @@ static void f2fs_show_info()
 		MSG(0, "Info: Enable Compression\n");
 }
 
+#if defined(ANDROID_TARGET) && defined(HAVE_SYS_UTSNAME_H)
+static bool kernel_version_over(unsigned int min_major, unsigned int min_minor)
+{
+	unsigned int major, minor;
+	struct utsname uts;
+
+	if ((uname(&uts) != 0) ||
+			(sscanf(uts.release, "%u.%u", &major, &minor) != 2))
+		return false;
+	if (major > min_major)
+		return true;
+	if (major == min_major && minor >= min_minor)
+		return true;
+	return false;
+}
+#else
+static bool kernel_version_over(unsigned int UNUSED(min_major),
+				unsigned int UNUSED(min_minor))
+{
+	return false;
+}
+#endif
+
 static void add_default_options(void)
 {
 	switch (c.defset) {
 	case CONF_ANDROID:
-		/* -d1 -f -O encrypt -O quota -O verity -w 4096 -R 0:0 */
+		/* -d1 -f -w 4096 -R 0:0 */
 		c.dbg_lv = 1;
 		force_overwrite = 1;
 		c.wanted_sector_size = 4096;
@@ -118,8 +145,12 @@ static void add_default_options(void)
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
 			return;
 
+		/* -O encrypt -O project_quota,extra_attr,{quota} -O verity */
 		c.feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
-		c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+		if (!kernel_version_over(4, 14))
+			c.feature |= cpu_to_le32(F2FS_FEATURE_QUOTA_INO);
+		c.feature |= cpu_to_le32(F2FS_FEATURE_PRJQUOTA);
+		c.feature |= cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR);
 		c.feature |= cpu_to_le32(F2FS_FEATURE_VERITY);
 		break;
 	}
