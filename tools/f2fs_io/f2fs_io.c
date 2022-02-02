@@ -496,16 +496,19 @@ static void do_erase(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define write_desc "write data into file"
 #define write_help					\
-"f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path]\n\n"	\
+"f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path] {delay}\n\n"	\
 "Write given patten data in file_path\n"		\
 "pattern can be\n"					\
-"  zero     : zeros\n"					\
-"  inc_num  : incrementing numbers\n"			\
-"  rand     : random numbers\n"				\
+"  zero          : zeros\n"				\
+"  inc_num       : incrementing numbers\n"		\
+"  rand          : random numbers\n"			\
 "IO can be\n"						\
-"  buffered : buffered IO\n"				\
-"  dio      : direct IO\n"				\
-"  osync    : O_SYNC\n"					\
+"  buffered      : buffered IO\n"			\
+"  dio           : direct IO\n"				\
+"  osync         : O_SYNC\n"				\
+"  atomic_commit : atomic write & commit\n"		\
+"  atomic_abort  : atomic write & abort\n"		\
+"{delay} is in ms unit and optional only for atomic_commit and atomic_abort\n"
 
 static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -516,10 +519,12 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	int flags = 0;
 	int fd;
 	u64 total_time = 0, max_time = 0, max_time_t = 0;
+	bool atomic_commit = false, atomic_abort = false;
+	int useconds = 0;
 
 	srand(time(0));
 
-	if (argc != 7) {
+	if (argc < 7 || argc > 8) {
 		fputs("Excess arguments\n\n", stderr);
 		fputs(cmd->cmd_help, stderr);
 		exit(1);
@@ -545,10 +550,25 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 		flags |= O_DIRECT;
 	else if (!strcmp(argv[5], "osync"))
 		flags |= O_SYNC;
+	else if (!strcmp(argv[5], "atomic_commit"))
+		atomic_commit = true;
+	else if (!strcmp(argv[5], "atomic_abort"))
+		atomic_abort = true;
 	else if (strcmp(argv[5], "buffered"))
 		die("Wrong IO type");
 
 	fd = xopen(argv[6], O_CREAT | O_WRONLY | flags, 0755);
+
+	if (atomic_commit || atomic_abort) {
+		if (argc == 8)
+			useconds = atoi(argv[7]) * 1000;
+
+		ret = ioctl(fd, F2FS_IOC_START_ATOMIC_WRITE);
+		if (ret < 0) {
+			fputs("setting atomic file mode failed\n", stderr);
+			exit(1);
+		}
+	}
 
 	total_time = get_current_us();
 	for (i = 0; i < count; i++) {
@@ -566,6 +586,23 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 		if (ret != buf_size)
 			break;
 		written += ret;
+	}
+
+	if (useconds)
+		usleep(useconds);
+
+	if (atomic_commit) {
+		ret = ioctl(fd, F2FS_IOC_COMMIT_ATOMIC_WRITE);
+		if (ret < 0) {
+			fputs("committing atomic write failed\n", stderr);
+			exit(1);
+		}
+	} else if (atomic_abort) {
+		ret = ioctl(fd, F2FS_IOC_ABORT_VOLATILE_WRITE);
+		if (ret < 0) {
+			fputs("aborting atomic write failed\n", stderr);
+			exit(1);
+		}
 	}
 
 	printf("Written %"PRIu64" bytes with pattern=%s, total_time=%"PRIu64" us, max_latency=%"PRIu64" us\n",
