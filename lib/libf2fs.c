@@ -952,7 +952,7 @@ int get_device_info(int i)
 		c.kd = open("/proc/version", O_RDONLY);
 #endif
 		if (c.kd < 0) {
-			MSG(0, "\tInfo: No support kernel version!\n");
+			MSG(0, "Info: not exist /proc/version!\n");
 			c.kd = -2;
 		}
 	}

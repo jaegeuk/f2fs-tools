@@ -25,7 +25,7 @@
 
 #include "config.h"
 #ifdef HAVE_LIBBLKID
-#  include <blkid.h>
+#include <blkid.h>
 #endif
 
 #include "f2fs_fs.h"
@@ -79,7 +79,7 @@ static void mkfs_usage()
 
 static void f2fs_show_info()
 {
-	MSG(0, "\n\tF2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
+	MSG(0, "\n    F2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
 				F2FS_TOOLS_VERSION,
 				F2FS_TOOLS_DATE);
 	if (c.heap == 0)
