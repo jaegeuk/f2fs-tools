@@ -882,6 +882,11 @@ static int open_check_fs(char *path, int flag)
 	return open(path, O_RDONLY | flag);
 }
 
+static int is_power_of_2(unsigned long n)
+{
+	return (n != 0 && ((n & (n - 1)) == 0));
+}
+
 int get_device_info(int i)
 {
 	int32_t fd = 0;
@@ -1043,6 +1048,13 @@ int get_device_info(int i)
 			return -1;
 		}
 
+		if (!is_power_of_2(dev->zone_size)) {
+			MSG(0, "\tError: zoned: illegal zone size %lu (not a power of 2)\n",
+					dev->zone_size);
+			free(stat_buf);
+			return -1;
+		}
+
 		/*
 		 * Check zone configuration: for the first disk of a
 		 * multi-device volume, conventional zones are needed.
@@ -1055,8 +1067,9 @@ int get_device_info(int i)
 		MSG(0, "Info: Host-%s zoned block device:\n",
 				(dev->zoned_model == F2FS_ZONED_HA) ?
 					"aware" : "managed");
-		MSG(0, "      %u zones, %u randomly writeable zones\n",
-				dev->nr_zones, dev->nr_rnd_zones);
+		MSG(0, "      %u zones, %lu zone size(bytes), %u randomly writeable zones\n",
+				dev->nr_zones, dev->zone_size,
+				dev->nr_rnd_zones);
 		MSG(0, "      %lu blocks per zone\n",
 				dev->zone_blocks);
 	}

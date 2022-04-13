@@ -146,40 +146,50 @@ int f2fs_get_zoned_model(int i)
 	return 0;
 }
 
-int f2fs_get_zone_blocks(int i)
+uint32_t f2fs_get_zone_chunk_sectors(struct device_info *dev)
 {
-	struct device_info *dev = c.devices + i;
-	uint64_t sectors;
+	uint32_t sectors;
 	char str[PATH_MAX];
 	FILE *file;
 	int res;
 
-	/* Get zone size */
-	dev->zone_blocks = 0;
-
 	res = get_sysfs_path(dev, "queue/chunk_sectors", str, sizeof(str));
 	if (res != 0) {
 		MSG(0, "\tError: Failed to get device sysfs attribute path\n");
-		return -1;
+		return 0;
 	}
 
 	file = fopen(str, "r");
 	if (!file)
-		return -1;
+		return 0;
 
 	memset(str, 0, sizeof(str));
 	res = fscanf(file, "%s", str);
 	fclose(file);
 
 	if (res != 1)
-		return -1;
+		return 0;
 
-	sectors = atol(str);
+	sectors = atoi(str);
+
+	return sectors;
+}
+
+int f2fs_get_zone_blocks(int i)
+{
+	struct device_info *dev = c.devices + i;
+	uint64_t sectors;
+
+	/* Get zone size */
+	dev->zone_blocks = 0;
+
+	sectors = f2fs_get_zone_chunk_sectors(dev);
 	if (!sectors)
 		return -1;
 
-	dev->zone_blocks = sectors >> (F2FS_BLKSIZE_BITS - 9);
-	sectors = (sectors << 9) / c.sector_size;
+	dev->zone_size = sectors << SECTOR_SHIFT;
+	dev->zone_blocks = sectors >> (F2FS_BLKSIZE_BITS - SECTOR_SHIFT);
+	sectors = dev->zone_size / c.sector_size;
 
 	/*
 	 * Total number of zones: there may
