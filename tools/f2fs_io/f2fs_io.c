@@ -18,6 +18,9 @@
 #ifndef O_LARGEFILE
 #define O_LARGEFILE 0
 #endif
+#ifndef __SANE_USERSPACE_TYPES__
+#define __SANE_USERSPACE_TYPES__       /* For PPC64, to get LL64 types */
+#endif
 
 #include <errno.h>
 #include <fcntl.h>
