@@ -580,14 +580,14 @@ struct f2fs_configuration {
 #define get_newsb_le32(member)			le32_to_cpu(new_sb->member)
 #define get_newsb_le16(member)			le16_to_cpu(new_sb->member)
 
-#define set_sb(member, val)	\
+#define set_sb(member, val)						\
 			do {						\
-				typeof(sb->member) t;			\
+				typeof(sb->member) t = (val);		\
 				switch (sizeof(t)) {			\
-				case 8: set_sb_le64(member, val); break; \
-				case 4: set_sb_le32(member, val); break; \
-				case 2: set_sb_le16(member, val); break; \
-				} \
+				case 8: set_sb_le64(member, t); break;	\
+				case 4: set_sb_le32(member, t); break;	\
+				case 2: set_sb_le16(member, t); break;	\
+				}					\
 			} while(0)
 
 #define get_sb(member)		\
@@ -618,14 +618,14 @@ struct f2fs_configuration {
 #define get_cp_le32(member)			le32_to_cpu(cp->member)
 #define get_cp_le16(member)			le16_to_cpu(cp->member)
 
-#define set_cp(member, val)	\
+#define set_cp(member, val)						\
 			do {						\
-				typeof(cp->member) t;			\
+				typeof(cp->member) t = (val);		\
 				switch (sizeof(t)) {			\
-				case 8: set_cp_le64(member, val); break; \
-				case 4: set_cp_le32(member, val); break; \
-				case 2: set_cp_le16(member, val); break; \
-				} \
+				case 8: set_cp_le64(member, t); break;	\
+				case 4: set_cp_le32(member, t); break;	\
+				case 2: set_cp_le16(member, t); break;	\
+				}					\
 			} while(0)
 
 #define get_cp(member)		\
