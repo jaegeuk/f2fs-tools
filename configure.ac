@@ -33,7 +33,7 @@ AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([foreign tar-pax dist-xz])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign tar-pax dist-xz])
 
 # Test configure options.
 AC_ARG_WITH([selinux],
@@ -46,6 +46,7 @@ AC_ARG_WITH([blkid],
 
 # Checks for programs.
 AC_PROG_CC
+AM_PROG_AR
 LT_INIT
 AC_PATH_PROG([LDCONFIG], [ldconfig],
        [AC_MSG_ERROR([ldconfig not found])],
