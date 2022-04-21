@@ -1065,22 +1065,23 @@ static int do_label(struct f2fs_sb_info *sbi)
 }
 #endif
 
-#if defined(__APPLE__)
+#ifdef HAVE_MACH_TIME_H
 static u64 get_boottime_ns()
 {
-#ifdef HAVE_MACH_TIME_H
 	return mach_absolute_time();
-#else
-	return 0;
-#endif
 }
-#else
+#elif defined(HAVE_CLOCK_GETTIME) && defined(HAVE_CLOCK_BOOTTIME)
 static u64 get_boottime_ns()
 {
 	struct timespec t;
 	t.tv_sec = t.tv_nsec = 0;
 	clock_gettime(CLOCK_BOOTTIME, &t);
 	return (u64)t.tv_sec * 1000000000LL + t.tv_nsec;
+}
+#else
+static u64 get_boottime_ns()
+{
+	return 0;
 }
 #endif
 

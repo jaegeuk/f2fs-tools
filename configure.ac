@@ -83,6 +83,12 @@ AC_CHECK_LIB([uuid], [uuid_clear],
 		[Define if you have libuuid])
 	], [], [])
 
+AC_CHECK_LIB([winpthread], [clock_gettime],
+	[AC_SUBST([libwinpthread_LIBS], ["-lwinpthread"])
+		AC_DEFINE([HAVE_LIBWINPTHREAD], [1],
+		[Define if you have libwinpthread])
+	], [], [])
+
 # Checks for header files.
 AC_CHECK_HEADERS(m4_flatten([
 	attr/xattr.h
@@ -100,6 +106,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	linux/xattr.h
 	mach/mach_time.h
 	mntent.h
+	pthread_time.h
 	scsi/sg.h
 	selinux/selinux.h
 	stdlib.h
@@ -129,7 +136,9 @@ AC_CHECK_FUNCS_ONCE([
 	fsetxattr
 	fstat
 	fstat64
+	getgid
 	getmntent
+	getuid
 	keyctl
 	llseek
 	lseek64
@@ -139,6 +148,18 @@ AC_CHECK_FUNCS_ONCE([
 
 AS_IF([test "$ac_cv_header_byteswap_h" = "yes"],
       [AC_CHECK_DECLS([bswap_64],,,[#include <byteswap.h>])])
+
+AC_MSG_CHECKING([for CLOCK_BOOTIME])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
+#include <time.h>
+#ifdef HAVE_PTHREAD_TIME_H
+#include <pthread_time.h>
+#endif
+],[return CLOCK_BOOTTIME])],
+		  [AC_MSG_RESULT([yes])
+		  AC_DEFINE([HAVE_CLOCK_BOOTTIME], [1],
+		  [Define if CLOCK_BOOTTIME is available])],
+		  [AC_MSG_RESULT([no])])
 
 # AC_CANONICAL_HOST is needed to access the 'host_os' variable
 AC_CANONICAL_HOST
@@ -208,5 +229,30 @@ AC_SUBST(FMT_AGE, 0)
 AC_SUBST(LIBF2FS_CURRENT, 8)
 AC_SUBST(LIBF2FS_REVISION, 0)
 AC_SUBST(LIBF2FS_AGE, 0)
+
+AH_BOTTOM([
+#ifndef _CONFIG_H_
+#define _CONFIG_H_
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
+#ifndef HAVE_GETUID
+static inline unsigned int getuid(void) { return -1; }
+#endif
+#ifndef HAVE_GETGID
+static inline unsigned int getgid(void) { return -1; }
+#endif
+
+#ifndef S_ISLNK
+#define S_ISLNK(mode) false
+#endif
+#ifndef S_ISSOCK
+#define S_ISSOCK(mode) false
+#endif
+
+#endif
+])
 
 AC_OUTPUT

@@ -10,7 +10,7 @@ fsck_f2fs_SOURCES = main.c fsck.c dump.c mount.c defrag.c resize.c \
 		node.c segment.c dir.c sload.c xattr.c compress.c \
 		dict.c mkquota.c quotaio.c quotaio_tree.c quotaio_v2.c
 fsck_f2fs_LDADD = ${libselinux_LIBS} ${libuuid_LIBS} \
-	${liblzo2_LIBS} ${liblz4_LIBS} \
+	${liblzo2_LIBS} ${liblz4_LIBS} ${libwinpthread_LIBS} \
 	$(top_builddir)/lib/libf2fs.la
 
 install-data-hook:

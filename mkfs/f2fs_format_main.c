@@ -19,13 +19,15 @@
 #include <sys/mount.h>
 #endif
 #include <time.h>
-#include <uuid/uuid.h>
 #include <errno.h>
 #include <getopt.h>
 
 #include "config.h"
 #ifdef HAVE_LIBBLKID
 #include <blkid/blkid.h>
+#endif
+#ifdef HAVE_UUID_UUID_H
+#include <uuid/uuid.h>
 #endif
 
 #include "f2fs_fs.h"

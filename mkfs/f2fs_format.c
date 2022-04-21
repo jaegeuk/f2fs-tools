@@ -18,7 +18,14 @@
 #include <sys/mount.h>
 #endif
 #include <time.h>
+
+#include "config.h"
+#ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
+#else
+#define uuid_parse(a, b) -1
+#define uuid_generate(a)
+#endif
 
 #include "f2fs_fs.h"
 #include "quota.h"

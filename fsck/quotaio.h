@@ -21,7 +21,6 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <arpa/inet.h>
 
 #include "dict.h"
 #include "f2fs_fs.h"

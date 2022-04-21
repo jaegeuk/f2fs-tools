@@ -23,7 +23,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/types.h>
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SYSMACROS_H
 #include <sys/sysmacros.h>

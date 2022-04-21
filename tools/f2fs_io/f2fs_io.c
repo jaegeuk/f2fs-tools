@@ -132,22 +132,23 @@ static void full_write(int fd, const void *buf, size_t count)
 	}
 }
 
-#if defined(__APPLE__)
+#ifdef HAVE_MACH_TIME_H
 static u64 get_current_us()
 {
-#ifdef HAVE_MACH_TIME_H
 	return mach_absolute_time() / 1000;
-#else
-	return 0;
-#endif
 }
-#else
+#elif defined(HAVE_CLOCK_GETTIME) && defined(HAVE_CLOCK_BOOTTIME)
 static u64 get_current_us()
 {
 	struct timespec t;
 	t.tv_sec = t.tv_nsec = 0;
 	clock_gettime(CLOCK_BOOTTIME, &t);
 	return (u64)t.tv_sec * 1000000LL + t.tv_nsec / 1000;
+}
+#else
+static u64 get_current_us()
+{
+	return 0;
 }
 #endif
 

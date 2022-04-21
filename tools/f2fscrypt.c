@@ -43,7 +43,9 @@
 #ifdef __KERNEL__
 #include <linux/fs.h>
 #endif
+#ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
+#endif
 
 #if !defined(HAVE_ADD_KEY) || !defined(HAVE_KEYCTL)
 #include <sys/syscall.h>

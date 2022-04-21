@@ -27,8 +27,12 @@
 #include <mach/mach_time.h>
 #endif
 #include <sys/stat.h>
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
+#endif
+#ifdef HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
+#endif
 #include <assert.h>
 
 #include "f2fs_fs.h"
@@ -589,8 +593,12 @@ static unsigned char f2fs_type_by_mode[S_IFMT >> S_SHIFT] = {
 	[S_IFCHR >> S_SHIFT]    = F2FS_FT_CHRDEV,
 	[S_IFBLK >> S_SHIFT]    = F2FS_FT_BLKDEV,
 	[S_IFIFO >> S_SHIFT]    = F2FS_FT_FIFO,
+#ifdef S_IFSOCK
 	[S_IFSOCK >> S_SHIFT]   = F2FS_FT_SOCK,
+#endif
+#ifdef S_IFLNK
 	[S_IFLNK >> S_SHIFT]    = F2FS_FT_SYMLINK,
+#endif
 };
 
 static inline int map_de_type(umode_t mode)

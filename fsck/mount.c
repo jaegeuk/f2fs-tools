@@ -31,6 +31,8 @@
 #define ACL_OTHER		(0x20)
 #endif
 
+#ifdef HAVE_LINUX_BLKZONED_H
+
 static int get_device_idx(struct f2fs_sb_info *sbi, uint32_t segno)
 {
 	block_t seg_start_blkaddr;
@@ -44,8 +46,6 @@ static int get_device_idx(struct f2fs_sb_info *sbi, uint32_t segno)
 			return i;
 	return 0;
 }
-
-#ifdef HAVE_LINUX_BLKZONED_H
 
 static int get_zone_idx_from_dev(struct f2fs_sb_info *sbi,
 					uint32_t segno, uint32_t dev_idx)
