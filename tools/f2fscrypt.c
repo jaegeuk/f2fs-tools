@@ -45,6 +45,8 @@
 #endif
 #ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
+#else
+typedef unsigned char uuid_t[16];
 #endif
 
 #if !defined(HAVE_ADD_KEY) || !defined(HAVE_KEYCTL)
@@ -354,11 +356,13 @@ static void parse_salt(char *salt_str, int flags)
 			perror("F2FS_IOC_GET_ENCRYPTION_PWSALT");
 			exit(1);
 		}
+#ifdef HAVE_UUID_UUID_H
 		if (options & OPT_VERBOSE) {
 			char tmp[80];
 			uuid_unparse(buf, tmp);
 			printf("%s has pw salt %s\n", cp, tmp);
 		}
+#endif
 		salt_len = 16;
 	} else if (strncmp(cp, "f:", 2) == 0) {
 		cp += 2;
@@ -380,8 +384,10 @@ static void parse_salt(char *salt_str, int flags)
 				(((unsigned char)(h - hexchars) << 4) +
 				 (unsigned char)(l - hexchars));
 		}
+#ifdef HAVE_UUID_UUID_H
 	} else if (uuid_parse(cp, buf) == 0) {
 		salt_len = 16;
+#endif
 	} else {
 	invalid_salt:
 		fprintf(stderr, "Invalid salt: %s\n", salt_str);
