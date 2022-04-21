@@ -68,6 +68,10 @@
 # define UNUSED(x) x
 #endif
 
+#ifndef static_assert
+#define static_assert _Static_assert
+#endif
+
 #ifdef _WIN32
 #undef HAVE_LINUX_TYPES_H
 #endif
@@ -738,6 +742,8 @@ struct f2fs_device {
 	__le32 total_segments;
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_device) == 68, "");
+
 struct f2fs_super_block {
 	__le32 magic;			/* Magic Number */
 	__le16 major_ver;		/* Major Version */
@@ -784,6 +790,8 @@ struct f2fs_super_block {
 	__u8 reserved[306];		/* valid reserved region */
 	__le32 crc;			/* checksum of superblock */
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_super_block) == 3072, "");
 
 /*
  * For checkpoint
@@ -836,6 +844,8 @@ struct f2fs_checkpoint {
 	unsigned char sit_nat_version_bitmap[];
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_checkpoint) == 192, "");
+
 #define CP_BITMAP_OFFSET	\
 	(offsetof(struct f2fs_checkpoint, sit_nat_version_bitmap))
 #define CP_MIN_CHKSUM_OFFSET	CP_BITMAP_OFFSET
@@ -860,6 +870,8 @@ struct f2fs_orphan_block {
 	__le32 check_sum;	/* CRC32 for orphan inode block */
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_orphan_block) == 4096, "");
+
 /*
  * For NODE structure
  */
@@ -868,6 +880,8 @@ struct f2fs_extent {
 	__le32 blk_addr;	/* start block address of the extent */
 	__le32 len;		/* lengh of the extent */
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_extent) == 12, "");
 
 #define F2FS_NAME_LEN		255
 
@@ -1014,14 +1028,19 @@ struct f2fs_inode {
 						double_indirect(1) node id */
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_inode) == 4072, "");
 
 struct direct_node {
 	__le32 addr[DEF_ADDRS_PER_BLOCK];	/* array of data block address */
 } __attribute__((packed));
 
+static_assert(sizeof(struct direct_node) == 4072, "");
+
 struct indirect_node {
 	__le32 nid[NIDS_PER_BLOCK];	/* array of data block address */
 } __attribute__((packed));
+
+static_assert(sizeof(struct indirect_node) == 4072, "");
 
 enum {
 	COLD_BIT_SHIFT = 0,
@@ -1040,6 +1059,8 @@ struct node_footer {
 	__le32 next_blkaddr;	/* next node page block address */
 } __attribute__((packed));
 
+static_assert(sizeof(struct node_footer) == 24, "");
+
 struct f2fs_node {
 	/* can be one of three types: inode, direct, and indirect types */
 	union {
@@ -1049,6 +1070,8 @@ struct f2fs_node {
 	};
 	struct node_footer footer;
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_node) == 4096, "");
 
 /*
  * For NAT entries
@@ -1064,9 +1087,13 @@ struct f2fs_nat_entry {
 	__le32 block_addr;	/* block address */
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_nat_entry) == 9, "");
+
 struct f2fs_nat_block {
 	struct f2fs_nat_entry entries[NAT_ENTRY_PER_BLOCK];
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_nat_block) == 4095, "");
 
 /*
  * For SIT entries
@@ -1107,9 +1134,13 @@ struct f2fs_sit_entry {
 	__le64 mtime;				/* segment age for cleaning */
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_sit_entry) == 74, "");
+
 struct f2fs_sit_block {
 	struct f2fs_sit_entry entries[SIT_ENTRY_PER_BLOCK];
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_sit_block) == 4070, "");
 
 /*
  * For segment summary
@@ -1143,6 +1174,8 @@ struct f2fs_summary {
 	};
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_summary) == 7, "");
+
 /* summary block type, node or data, is stored to the summary_footer */
 #define SUM_TYPE_NODE		(1)
 #define SUM_TYPE_DATA		(0)
@@ -1151,6 +1184,8 @@ struct summary_footer {
 	unsigned char entry_type;	/* SUM_TYPE_XXX */
 	__le32 check_sum;		/* summary checksum */
 } __attribute__((packed));
+
+static_assert(sizeof(struct summary_footer) == 5, "");
 
 #define SUM_JOURNAL_SIZE	(F2FS_BLKSIZE - SUM_FOOTER_SIZE -\
 				SUM_ENTRIES_SIZE)
@@ -1183,25 +1218,35 @@ struct nat_journal_entry {
 	struct f2fs_nat_entry ne;
 } __attribute__((packed));
 
+static_assert(sizeof(struct nat_journal_entry) == 13, "");
+
 struct nat_journal {
 	struct nat_journal_entry entries[NAT_JOURNAL_ENTRIES];
 	__u8 reserved[NAT_JOURNAL_RESERVED];
 } __attribute__((packed));
+
+static_assert(sizeof(struct nat_journal) == 505, "");
 
 struct sit_journal_entry {
 	__le32 segno;
 	struct f2fs_sit_entry se;
 } __attribute__((packed));
 
+static_assert(sizeof(struct sit_journal_entry) == 78, "");
+
 struct sit_journal {
 	struct sit_journal_entry entries[SIT_JOURNAL_ENTRIES];
 	__u8 reserved[SIT_JOURNAL_RESERVED];
 } __attribute__((packed));
 
+static_assert(sizeof(struct sit_journal) == 505, "");
+
 struct f2fs_extra_info {
 	__le64 kbytes_written;
 	__u8 reserved[EXTRA_INFO_RESERVED];
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_extra_info) == 505, "");
 
 struct f2fs_journal {
 	union {
@@ -1216,12 +1261,16 @@ struct f2fs_journal {
 	};
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_journal) == 507, "");
+
 /* 4KB-sized summary block structure */
 struct f2fs_summary_block {
 	struct f2fs_summary entries[ENTRIES_IN_SUM];
 	struct f2fs_journal journal;
 	struct summary_footer footer;
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_summary_block) == 4096, "");
 
 /*
  * For directory operations
@@ -1264,6 +1313,8 @@ struct f2fs_dir_entry {
 	__u8 file_type;		/* file type */
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_dir_entry) == 11, "");
+
 /* 4KB-sized directory entry block */
 struct f2fs_dentry_block {
 	/* validity bitmap for directory entries in each block */
@@ -1272,6 +1323,9 @@ struct f2fs_dentry_block {
 	struct f2fs_dir_entry dentry[NR_DENTRY_IN_BLOCK];
 	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
 } __attribute__((packed));
+
+static_assert(sizeof(struct f2fs_dentry_block) == 4096, "");
+
 #pragma pack(pop)
 
 /* for inline stuff */

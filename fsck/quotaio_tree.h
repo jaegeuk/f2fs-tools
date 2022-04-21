@@ -35,6 +35,8 @@ struct qt_disk_dqdbheader {
 	__le32 dqdh_pad2;
 } __attribute__ ((packed));
 
+static_assert(sizeof(struct qt_disk_dqdbheader) == 16, "");
+
 struct dquot;
 struct quota_handle;
 

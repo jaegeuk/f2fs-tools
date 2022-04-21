@@ -104,6 +104,8 @@ struct f2fs_fscrypt_policy {
 	__u8 master_key_descriptor[F2FS_KEY_DESCRIPTOR_SIZE];
 } __attribute__((packed));
 
+static_assert(sizeof(struct f2fs_fscrypt_policy) == 12, "");
+
 #define F2FS_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct f2fs_fscrypt_policy)
 #define F2FS_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
 #define F2FS_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct f2fs_fscrypt_policy)
@@ -120,6 +122,8 @@ struct f2fs_encryption_key {
         char raw[F2FS_MAX_KEY_SIZE];
         __u32 size;
 } __attribute__((__packed__));
+
+static_assert(sizeof(struct f2fs_encryption_key) == 72, "");
 
 int options;
 

@@ -50,6 +50,8 @@ struct v2_disk_dqheader {
 	uint32_t dqh_version;	/* File version */
 } __attribute__ ((packed));
 
+static_assert(sizeof(struct v2_disk_dqheader) == 8, "");
+
 /* Header with type and version specific information */
 struct v2_disk_dqinfo {
 	uint32_t dqi_bgrace;	/* Time before block soft limit becomes hard limit */
@@ -59,6 +61,8 @@ struct v2_disk_dqinfo {
 	uint32_t dqi_free_blk;	/* Number of first free block in the list */
 	uint32_t dqi_free_entry;	/* Number of block with at least one free entry */
 } __attribute__ ((packed));
+
+static_assert(sizeof(struct v2_disk_dqinfo) == 24, "");
 
 struct v2r1_disk_dqblk {
 	__le32 dqb_id;  	/* id this quota applies to */
@@ -74,6 +78,9 @@ struct v2r1_disk_dqblk {
 	__le64 dqb_btime;       /* time limit for excessive disk use */
 	__le64 dqb_itime;       /* time limit for excessive inode use */
 } __attribute__ ((packed));
+
+static_assert(sizeof(struct v2r1_disk_dqblk) == 72, "");
+
 #pragma pack(pop)
 
 #endif

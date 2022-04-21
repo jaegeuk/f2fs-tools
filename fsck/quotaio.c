@@ -33,6 +33,8 @@ struct disk_dqheader {
 	__le32 dqh_version;
 } __attribute__ ((packed));
 
+static_assert(sizeof(struct disk_dqheader) == 8, "");
+
 int cur_qtype = -1;
 u32 qf_last_blkofs[MAXQUOTAS] = {0, 0, 0};
 enum qf_szchk_type_t qf_szchk_type[MAXQUOTAS] =
