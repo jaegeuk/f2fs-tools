@@ -66,5 +66,5 @@ jobs:
           ./autogen.sh
           ./configure --host=${{matrix.host}} \
               CC=${{ matrix.host && format('{0}-{1}', matrix.host, matrix.cc) || matrix.cc }} \
-              CFLAGS="${{matrix.cflags}}"
+              CFLAGS="-Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-function -Wno-unused-parameter ${{matrix.cflags}}"
           make -j$(nproc)
