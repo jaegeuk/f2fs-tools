@@ -370,6 +370,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				exit(0);
 			case '?':
 				option = optopt;
+				fallthrough;
 			default:
 				err = EUNKNOWN_OPT;
 				break;

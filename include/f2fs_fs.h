@@ -73,6 +73,12 @@
 #define static_assert _Static_assert
 #endif
 
+#ifdef __clang__
+#define fallthrough do {} while (0) /* fall through */
+#else
+#define fallthrough __attribute__((__fallthrough__))
+#endif
+
 #ifdef _WIN32
 #undef HAVE_LINUX_TYPES_H
 #endif

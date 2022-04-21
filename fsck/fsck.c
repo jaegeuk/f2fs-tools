@@ -1669,6 +1669,7 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 				switch (ret) {
 				case 1:
 					fixed = 1;
+					fallthrough;
 				case 0:
 					child->dots++;
 					break;
