@@ -146,31 +146,6 @@ AC_CHECK_FUNCS_ONCE([
 AS_IF([test "$ac_cv_header_byteswap_h" = "yes"],
       [AC_CHECK_DECLS([bswap_64],,,[#include <byteswap.h>])])
 
-dnl
-dnl Check to see if llseek() is declared in unistd.h.  On some libc's
-dnl it is, and on others it isn't..... Thank you glibc developers....
-dnl
-AC_CHECK_DECL(llseek,[AC_DEFINE(HAVE_LLSEEK_PROTOTYPE, 1,
-			[Define to 1 if llseek declared in unistd.h])],,
-			[#include <unistd.h>])
-dnl
-dnl Check to see if lseek64() is declared in unistd.h.  Glibc's header files
-dnl are so convoluted that I can't tell whether it will always be defined,
-dnl and if it isn't defined while lseek64 is defined in the library,
-dnl disaster will strike.
-dnl
-dnl Warning!  Use of --enable-gcc-wall may throw off this test.
-dnl
-dnl
-AC_CHECK_DECL(lseek64,[AC_DEFINE(HAVE_LSEEK64_PROTOTYPE, 1,
-		[Define to 1 if lseek64 declared in unistd.h])],,
-		[#define _LARGEFILE_SOURCE
-		#define _LARGEFILE64_SOURCE
-		#include <unistd.h>])
-dnl
-dnl Word sizes...
-dnl
-
 # AC_CANONICAL_HOST is needed to access the 'host_os' variable
 AC_CANONICAL_HOST
 
