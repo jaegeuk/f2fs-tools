@@ -30,7 +30,7 @@ AS_IF([test -d .git],[
 		[f2fs-tools date based on Source releases])])
 
 AC_CONFIG_SRCDIR([config.h.in])
-AC_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([foreign tar-pax dist-xz])
@@ -46,7 +46,7 @@ AC_ARG_WITH([blkid],
 
 # Checks for programs.
 AC_PROG_CC
-AC_PROG_LIBTOOL
+LT_INIT
 AC_PATH_PROG([LDCONFIG], [ldconfig],
        [AC_MSG_ERROR([ldconfig not found])],
        [$PATH:/sbin])
