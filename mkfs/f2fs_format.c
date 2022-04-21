@@ -13,8 +13,10 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-#ifndef _WIN32
+#ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
+#endif
+#ifdef HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
 #endif
 #include <time.h>

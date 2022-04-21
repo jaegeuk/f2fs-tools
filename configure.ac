@@ -116,6 +116,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	sys/acl.h
 	sys/ioctl.h
 	sys/mount.h
+	sys/stat.h
 	sys/syscall.h
 	sys/sysmacros.h
 	sys/utsname.h
@@ -138,6 +139,7 @@ AC_CHECK_FUNCS_ONCE([
 	fsetxattr
 	fstat
 	fstat64
+	fsync
 	getgid
 	getmntent
 	getuid

@@ -15,7 +15,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#ifndef _WIN32
+#ifdef HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
 #endif
 #include <time.h>

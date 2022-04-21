@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#ifndef _WIN32
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
 #include <sys/stat.h>
@@ -39,16 +39,19 @@
 #include <linux/falloc.h>
 #endif
 
+#ifdef __linux__
 #ifndef BLKDISCARD
 #define BLKDISCARD	_IO(0x12,119)
 #endif
 #ifndef BLKSECDISCARD
 #define BLKSECDISCARD	_IO(0x12,125)
 #endif
+#endif
 
 static int trim_device(int i)
 {
-#ifndef _WIN32
+#if defined(FALLOC_FL_PUNCH_HOLE) || defined(BLKDISCARD) || \
+	defined(BLKSECDISCARD)
 	unsigned long long range[2];
 	struct stat *stat_buf;
 	struct device_info *dev = c.devices + i;

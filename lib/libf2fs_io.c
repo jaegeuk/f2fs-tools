@@ -23,9 +23,13 @@
 #include <mntent.h>
 #endif
 #include <time.h>
-#ifndef _WIN32
+#ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
+#endif
+#ifdef HAVE_SYS_MOUNT_H
 #include <sys/mount.h>
+#endif
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
 #ifdef HAVE_LINUX_HDREG_H
@@ -634,7 +638,7 @@ int dev_reada_block(__u64 blk_addr)
 
 int f2fs_fsync_device(void)
 {
-#ifndef _WIN32
+#ifdef HAVE_FSYNC
 	int i;
 
 	for (i = 0; i < c.ndevs; i++) {
@@ -783,7 +787,7 @@ int f2fs_finalize_device(void)
 	 * in the block device page cache.
 	 */
 	for (i = 0; i < c.ndevs; i++) {
-#ifndef _WIN32
+#ifdef HAVE_FSYNC
 		ret = fsync(c.devices[i].fd);
 		if (ret < 0) {
 			MSG(0, "\tError: Could not conduct fsync!!!\n");

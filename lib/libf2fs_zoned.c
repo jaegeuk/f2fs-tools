@@ -22,7 +22,7 @@
 #ifdef HAVE_LINUX_LIMITS_H
 #include <linux/limits.h>
 #endif
-#ifndef _WIN32
+#ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
 #include <libgen.h>
