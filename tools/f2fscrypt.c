@@ -102,7 +102,7 @@ struct f2fs_fscrypt_policy {
 	__u8 filenames_encryption_mode;
 	__u8 flags;
 	__u8 master_key_descriptor[F2FS_KEY_DESCRIPTOR_SIZE];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_fscrypt_policy) == 12, "");
 
@@ -121,7 +121,7 @@ struct f2fs_encryption_key {
         __u32 mode;
         char raw[F2FS_MAX_KEY_SIZE];
         __u32 size;
-} __attribute__((__packed__));
+};
 
 static_assert(sizeof(struct f2fs_encryption_key) == 72, "");
 

@@ -31,7 +31,7 @@ static const char * const extensions[MAXQUOTAS] = {
 struct disk_dqheader {
 	__le32 dqh_magic;
 	__le32 dqh_version;
-} __attribute__ ((packed));
+};
 
 static_assert(sizeof(struct disk_dqheader) == 8, "");
 

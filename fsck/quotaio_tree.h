@@ -33,7 +33,7 @@ struct qt_disk_dqdbheader {
 	__le16 dqdh_entries; /* Number of valid entries in block */
 	__le16 dqdh_pad1;
 	__le32 dqdh_pad2;
-} __attribute__ ((packed));
+};
 
 static_assert(sizeof(struct qt_disk_dqdbheader) == 16, "");
 

@@ -736,11 +736,10 @@ enum {
 /*
  * For superblock
  */
-#pragma pack(push, 1)
 struct f2fs_device {
 	__u8 path[MAX_PATH_LEN];
 	__le32 total_segments;
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_device) == 68, "");
 
@@ -755,7 +754,8 @@ struct f2fs_super_block {
 	__le32 segs_per_sec;		/* # of segments per section */
 	__le32 secs_per_zone;		/* # of sections per zone */
 	__le32 checksum_offset;		/* checksum offset inside super block */
-	__le64 block_count;		/* total # of user blocks */
+	__le64 block_count __attribute__((packed));
+					/* total # of user blocks */
 	__le32 section_count;		/* total # of sections */
 	__le32 segment_count;		/* total # of segments */
 	__le32 segment_count_ckpt;	/* # of segments for checkpoint */
@@ -782,14 +782,14 @@ struct f2fs_super_block {
 	__le32 feature;			/* defined features */
 	__u8 encryption_level;		/* versioning level for encryption */
 	__u8 encrypt_pw_salt[16];	/* Salt used for string2key algorithm */
-	struct f2fs_device devs[MAX_DEVICES];	/* device list */
-	__le32 qf_ino[F2FS_MAX_QUOTAS];	/* quota inode numbers */
+	struct f2fs_device devs[MAX_DEVICES] __attribute__((packed));	/* device list */
+	__le32 qf_ino[F2FS_MAX_QUOTAS] __attribute__((packed));	/* quota inode numbers */
 	__u8 hot_ext_count;		/* # of hot file extension */
 	__le16  s_encoding;		/* Filename charset encoding */
 	__le16  s_encoding_flags;	/* Filename charset encoding flags */
 	__u8 reserved[306];		/* valid reserved region */
 	__le32 crc;			/* checksum of superblock */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_super_block) == 3072, "");
 
@@ -842,7 +842,7 @@ struct f2fs_checkpoint {
 
 	/* SIT and NAT version bitmap */
 	unsigned char sit_nat_version_bitmap[];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_checkpoint) == 192, "");
 
@@ -868,7 +868,7 @@ struct f2fs_orphan_block {
 	__le16 blk_count;	/* Number of orphan inode blocks in CP */
 	__le32 entry_count;	/* Total number of orphan nodes in current CP */
 	__le32 check_sum;	/* CRC32 for orphan inode block */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_orphan_block) == 4096, "");
 
@@ -879,7 +879,7 @@ struct f2fs_extent {
 	__le32 fofs;		/* start file offset of the extent */
 	__le32 blk_addr;	/* start block address of the extent */
 	__le32 len;		/* lengh of the extent */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_extent) == 12, "");
 
@@ -1006,7 +1006,7 @@ struct f2fs_inode {
 	__u8 i_name[F2FS_NAME_LEN];	/* file name for SPOR */
 	__u8 i_dir_level;		/* dentry_level for large dir */
 
-	struct f2fs_extent i_ext;	/* caching a largest extent */
+	struct f2fs_extent i_ext __attribute__((packed));	/* caching a largest extent */
 
 	union {
 		struct {
@@ -1026,19 +1026,21 @@ struct f2fs_inode {
 	};
 	__le32 i_nid[5];		/* direct(2), indirect(2),
 						double_indirect(1) node id */
-} __attribute__((packed));
+};
 
+static_assert(offsetof(struct f2fs_inode, i_extra_end) -
+	      offsetof(struct f2fs_inode, i_extra_isize) == 36, "");
 static_assert(sizeof(struct f2fs_inode) == 4072, "");
 
 struct direct_node {
 	__le32 addr[DEF_ADDRS_PER_BLOCK];	/* array of data block address */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct direct_node) == 4072, "");
 
 struct indirect_node {
 	__le32 nid[NIDS_PER_BLOCK];	/* array of data block address */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct indirect_node) == 4072, "");
 
@@ -1055,9 +1057,9 @@ struct node_footer {
 	__le32 nid;		/* node id */
 	__le32 ino;		/* inode nunmber */
 	__le32 flag;		/* include cold/fsync/dentry marks and offset */
-	__le64 cp_ver;		/* checkpoint version */
+	__le64 cp_ver __attribute__((packed));		/* checkpoint version */
 	__le32 next_blkaddr;	/* next node page block address */
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct node_footer) == 24, "");
 
@@ -1069,7 +1071,7 @@ struct f2fs_node {
 		struct indirect_node in;
 	};
 	struct node_footer footer;
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_node) == 4096, "");
 
@@ -1091,7 +1093,7 @@ static_assert(sizeof(struct f2fs_nat_entry) == 9, "");
 
 struct f2fs_nat_block {
 	struct f2fs_nat_entry entries[NAT_ENTRY_PER_BLOCK];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_nat_block) == 4095, "");
 
@@ -1138,7 +1140,7 @@ static_assert(sizeof(struct f2fs_sit_entry) == 74, "");
 
 struct f2fs_sit_block {
 	struct f2fs_sit_entry entries[SIT_ENTRY_PER_BLOCK];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_sit_block) == 4070, "");
 
@@ -1182,8 +1184,8 @@ static_assert(sizeof(struct f2fs_summary) == 7, "");
 
 struct summary_footer {
 	unsigned char entry_type;	/* SUM_TYPE_XXX */
-	__le32 check_sum;		/* summary checksum */
-} __attribute__((packed));
+	__le32 check_sum __attribute__((packed)); /* summary checksum */
+};
 
 static_assert(sizeof(struct summary_footer) == 5, "");
 
@@ -1223,7 +1225,7 @@ static_assert(sizeof(struct nat_journal_entry) == 13, "");
 struct nat_journal {
 	struct nat_journal_entry entries[NAT_JOURNAL_ENTRIES];
 	__u8 reserved[NAT_JOURNAL_RESERVED];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct nat_journal) == 505, "");
 
@@ -1237,7 +1239,7 @@ static_assert(sizeof(struct sit_journal_entry) == 78, "");
 struct sit_journal {
 	struct sit_journal_entry entries[SIT_JOURNAL_ENTRIES];
 	__u8 reserved[SIT_JOURNAL_RESERVED];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct sit_journal) == 505, "");
 
@@ -1268,7 +1270,7 @@ struct f2fs_summary_block {
 	struct f2fs_summary entries[ENTRIES_IN_SUM];
 	struct f2fs_journal journal;
 	struct summary_footer footer;
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_summary_block) == 4096, "");
 
@@ -1322,11 +1324,9 @@ struct f2fs_dentry_block {
 	__u8 reserved[SIZE_OF_RESERVED];
 	struct f2fs_dir_entry dentry[NR_DENTRY_IN_BLOCK];
 	__u8 filename[NR_DENTRY_IN_BLOCK][F2FS_SLOT_LEN];
-} __attribute__((packed));
+};
 
 static_assert(sizeof(struct f2fs_dentry_block) == 4096, "");
-
-#pragma pack(pop)
 
 /* for inline stuff */
 #define DEF_INLINE_RESERVED_SIZE	1
