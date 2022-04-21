@@ -1429,7 +1429,7 @@ static int f2fs_early_init_nid_bitmap(struct f2fs_sb_info *sbi)
 
 	if (nats_in_cursum(journal) > NAT_JOURNAL_ENTRIES) {
 		MSG(0, "\tError: f2fs_init_nid_bitmap truncate n_nats(%u) to "
-			"NAT_JOURNAL_ENTRIES(%lu)\n",
+			"NAT_JOURNAL_ENTRIES(%zu)\n",
 			nats_in_cursum(journal), NAT_JOURNAL_ENTRIES);
 		journal->n_nats = cpu_to_le16(NAT_JOURNAL_ENTRIES);
 		c.fix_on = 1;
@@ -2381,7 +2381,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 
 	if (sits_in_cursum(journal) > SIT_JOURNAL_ENTRIES) {
 		MSG(0, "\tError: build_sit_entries truncate n_sits(%u) to "
-			"SIT_JOURNAL_ENTRIES(%lu)\n",
+			"SIT_JOURNAL_ENTRIES(%zu)\n",
 			sits_in_cursum(journal), SIT_JOURNAL_ENTRIES);
 		journal->n_sits = cpu_to_le16(SIT_JOURNAL_ENTRIES);
 		c.fix_on = 1;
