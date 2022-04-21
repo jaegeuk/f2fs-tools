@@ -100,13 +100,13 @@ AC_CHECK_HEADERS(m4_flatten([
 	fcntl.h
 	linux/blkzoned.h
 	linux/falloc.h
+	linux/fiemap.h
 	linux/fs.h
 	linux/hdreg.h
 	linux/limits.h
 	linux/posix_acl.h
 	linux/types.h
 	linux/xattr.h
-	linux/fiemap.h
 	mach/mach_time.h
 	mntent.h
 	scsi/sg.h
@@ -114,8 +114,8 @@ AC_CHECK_HEADERS(m4_flatten([
 	string.h
 	sys/acl.h
 	sys/ioctl.h
-	sys/syscall.h
 	sys/mount.h
+	sys/syscall.h
 	sys/sysmacros.h
 	sys/utsname.h
 	sys/xattr.h
