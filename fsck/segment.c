@@ -537,7 +537,6 @@ static void update_largest_extent(struct f2fs_sb_info *sbi, nid_t ino)
 		cur_blk += count;
 		dn.ofs_in_node += count;
 		remained_blkentries -= count;
-		ASSERT(remained_blkentries >= 0);
 	}
 
 exit:
