@@ -108,6 +108,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	mntent.h
 	pthread_time.h
 	scsi/sg.h
+	selinux/android.h
 	selinux/selinux.h
 	sparse/sparse.h
 	stdlib.h
