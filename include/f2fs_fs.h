@@ -194,6 +194,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define cpu_to_le16(x)	((uint16_t)(x))
 #define cpu_to_le32(x)	((uint32_t)(x))
 #define cpu_to_le64(x)	((uint64_t)(x))
+#define be32_to_cpu(x)	__builtin_bswap64(x)
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #define le16_to_cpu(x)	bswap_16(x)
 #define le32_to_cpu(x)	bswap_32(x)
@@ -201,6 +202,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define cpu_to_le16(x)	bswap_16(x)
 #define cpu_to_le32(x)	bswap_32(x)
 #define cpu_to_le64(x)	bswap_64(x)
+#define be32_to_cpu(x)	((uint64_t)(x))
 #endif
 
 #define typecheck(type,x) \

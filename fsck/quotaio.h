@@ -197,8 +197,6 @@ struct quotafile_ops {
 #define __force
 #endif
 
-#define be32_to_cpu(n) ntohl(n)
-
 /* Open existing quotafile of given type (and verify its format) on given
  * filesystem. */
 errcode_t quota_file_open(struct f2fs_sb_info *sbi, struct quota_handle *h,
