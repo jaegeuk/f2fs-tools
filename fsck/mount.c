@@ -250,7 +250,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 		MSG(0, " - File name         : %s%s\n", en,
 				enc_name ? " <encrypted>" : "");
 		setlocale(LC_ALL, "");
-		MSG(0, " - File size         : %'llu (bytes)\n",
+		MSG(0, " - File size         : %'" PRIu64 " (bytes)\n",
 				le64_to_cpu(inode->i_size));
 		return;
 	}
