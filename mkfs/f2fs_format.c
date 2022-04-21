@@ -1650,7 +1650,7 @@ static int f2fs_add_default_dentry_root(void)
 		dent_blk->dentry[2].file_type = F2FS_FT_DIR;
 		memcpy(dent_blk->filename[2], LPF, F2FS_SLOT_LEN);
 
-		memcpy(dent_blk->filename[3], LPF + F2FS_SLOT_LEN,
+		memcpy(dent_blk->filename[3], &LPF[F2FS_SLOT_LEN],
 				len - F2FS_SLOT_LEN);
 
 		test_and_set_bit_le(2, dent_blk->dentry_bitmap);
