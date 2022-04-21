@@ -34,6 +34,7 @@ struct f2fs_fsck gfsck;
 
 INIT_FEATURE_TABLE;
 
+#ifdef WITH_SLOAD
 static char *absolute_path(const char *file)
 {
 	char *ret;
@@ -51,6 +52,7 @@ static char *absolute_path(const char *file)
 		ret = strdup(file);
 	return ret;
 }
+#endif
 
 void fsck_usage()
 {
