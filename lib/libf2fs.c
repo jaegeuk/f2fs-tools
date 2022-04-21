@@ -22,7 +22,7 @@
 #endif
 #include <time.h>
 #include <sys/stat.h>
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/mount.h>
 #include <sys/ioctl.h>
 #endif
@@ -49,7 +49,7 @@
 #define MODELINQUIRY	0x12,0x00,0x00,0x00,0x4A,0x00
 #endif
 
-#ifndef ANDROID_WINDOWS_HOST /* O_BINARY is windows-specific flag */
+#ifndef _WIN32 /* O_BINARY is windows-specific flag */
 #define O_BINARY 0
 #else
 /* On Windows, wchar_t is 8 bit sized and it causes compilation errors. */
@@ -606,7 +606,7 @@ int write_inode(struct f2fs_node *inode, u64 blkaddr)
  */
 char *get_rootdev()
 {
-#if defined(ANDROID_WINDOWS_HOST) || defined(WITH_ANDROID)
+#if defined(_WIN32) || defined(WITH_ANDROID)
 	return NULL;
 #else
 	struct stat sb;
@@ -740,7 +740,7 @@ static int is_mounted(const char *mpt, const char *device)
 
 int f2fs_dev_is_umounted(char *path)
 {
-#ifdef ANDROID_WINDOWS_HOST
+#ifdef _WIN32
 	return 0;
 #else
 	struct stat *st_buf;
@@ -872,7 +872,7 @@ void get_kernel_uname_version(__u8 *version)
 #define BLKSSZGET	DKIOCGETBLOCKCOUNT
 #endif /* APPLE_DARWIN */
 
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 static int open_check_fs(char *path, int flag)
 {
 	if (c.func != DUMP && (c.func != FSCK || c.fix_on || c.auto_fix))

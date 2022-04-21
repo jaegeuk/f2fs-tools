@@ -23,7 +23,7 @@
 #include <mntent.h>
 #endif
 #include <time.h>
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/stat.h>
 #include <sys/mount.h>
 #include <sys/ioctl.h>
@@ -634,7 +634,7 @@ int dev_reada_block(__u64 blk_addr)
 
 int f2fs_fsync_device(void)
 {
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 	int i;
 
 	for (i = 0; i < c.ndevs; i++) {
@@ -783,7 +783,7 @@ int f2fs_finalize_device(void)
 	 * in the block device page cache.
 	 */
 	for (i = 0; i < c.ndevs; i++) {
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 		ret = fsync(c.devices[i].fd);
 		if (ret < 0) {
 			MSG(0, "\tError: Could not conduct fsync!!!\n");

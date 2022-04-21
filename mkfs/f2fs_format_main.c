@@ -15,7 +15,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/mount.h>
 #endif
 #include <time.h>

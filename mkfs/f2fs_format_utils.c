@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/ioctl.h>
 #endif
 #include <sys/stat.h>
@@ -48,7 +48,7 @@
 
 static int trim_device(int i)
 {
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 	unsigned long long range[2];
 	struct stat *stat_buf;
 	struct device_info *dev = c.devices + i;

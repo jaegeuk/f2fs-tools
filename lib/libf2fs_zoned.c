@@ -22,7 +22,7 @@
 #ifdef HAVE_LINUX_LIMITS_H
 #include <linux/limits.h>
 #endif
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/ioctl.h>
 #endif
 #include <libgen.h>

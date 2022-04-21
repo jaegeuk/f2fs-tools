@@ -68,7 +68,7 @@
 # define UNUSED(x) x
 #endif
 
-#ifdef ANDROID_WINDOWS_HOST
+#ifdef _WIN32
 #undef HAVE_LINUX_TYPES_H
 #endif
 

@@ -13,7 +13,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-#ifndef ANDROID_WINDOWS_HOST
+#ifndef _WIN32
 #include <sys/stat.h>
 #include <sys/mount.h>
 #endif
