@@ -9,7 +9,6 @@ Before compilation
 
 You should install the following packages.
  - libuuid-devel or uuid-dev
- - pkg-config
  - autoconf
  - libtool
  - libselinux1-dev

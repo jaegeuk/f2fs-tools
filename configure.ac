@@ -53,6 +53,12 @@ AC_PATH_PROG([LDCONFIG], [ldconfig],
        [$PATH:/sbin])
 
 # Checks for libraries.
+AC_CHECK_LIB([blkid], [blkid_probe_all],
+	[AC_SUBST([libblkid_LIBS], ["-lblkid"])
+		AC_DEFINE([HAVE_LIBBLKID], [1],
+		[Define if you have libblkid])
+	], [], [])
+
 AC_CHECK_LIB([lzo2], [main],
 	[AC_SUBST([liblzo2_LIBS], ["-llzo2"])
 		AC_DEFINE([HAVE_LIBLZO2], [1],
@@ -65,37 +71,22 @@ AC_CHECK_LIB([lz4], [main],
 		[Define if you have liblz4])
 	], [], [])
 
-PKG_CHECK_MODULES([libuuid], [uuid])
+AC_CHECK_LIB([selinux], [getcon],
+	[AC_SUBST([libselinux_LIBS], ["-lselinux"])
+		AC_DEFINE([HAVE_LIBSELINUX], [1],
+		[Define if you have libselinux])
+	], [], [])
 
-AS_IF([test "x$with_selinux" != "xno"],
-	[PKG_CHECK_MODULES([libselinux], [libselinux],
-	                   [have_selinux=yes], [have_selinux=no])],
-	[have_selinux=no]
-)
-
-AS_IF([test "x$have_selinux" = "xyes"],
-	[AC_DEFINE([HAVE_LIBSELINUX], [1], [Use libselinux])],
-	[AS_IF([test "x$with_selinux" = "xyes"],
-		[AC_MSG_ERROR([selinux support requested but libselinux not found])]
-	)]
-)
-
-AS_IF([test "x$with_blkid" != "xno"],
-	[PKG_CHECK_MODULES([libblkid], [blkid],
-	                   [have_blkid=yes], [have_blkid=no])],
-	[have_blkid=no]
-)
-
-AS_IF([test "x$have_blkid" = "xyes"],
-	[AC_DEFINE([HAVE_LIBBLKID], [1], [Use blkid])],
-	[AS_IF([test "x$with_blkid" = "xyes"],
-		[AC_MSG_ERROR([blkid support requested but libblkid not found])]
-	)]
-)
+AC_CHECK_LIB([uuid], [uuid_clear],
+	[AC_SUBST([libuuid_LIBS], ["-luuid"])
+		AC_DEFINE([HAVE_LIBUUID], [1],
+		[Define if you have libuuid])
+	], [], [])
 
 # Checks for header files.
 AC_CHECK_HEADERS(m4_flatten([
 	attr/xattr.h
+	blkid/blkid.h
 	byteswap.h
 	fcntl.h
 	linux/blkzoned.h
@@ -110,6 +101,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	mach/mach_time.h
 	mntent.h
 	scsi/sg.h
+	selinux/selinux.h
 	stdlib.h
 	string.h
 	sys/acl.h
@@ -120,6 +112,7 @@ AC_CHECK_HEADERS(m4_flatten([
 	sys/utsname.h
 	sys/xattr.h
 	unistd.h
+	uuid/uuid.h
 ]))
 
 # Checks for typedefs, structures, and compiler characteristics.
