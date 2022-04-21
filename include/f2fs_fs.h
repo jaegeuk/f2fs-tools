@@ -70,20 +70,16 @@
 
 #ifdef ANDROID_WINDOWS_HOST
 #undef HAVE_LINUX_TYPES_H
-typedef uint64_t u_int64_t;
-typedef uint32_t u_int32_t;
-typedef uint16_t u_int16_t;
-typedef uint8_t u_int8_t;
 #endif
 
 /* codes from kernel's f2fs.h, GPL-v2.0 */
 #define MIN_COMPRESS_LOG_SIZE	2
 #define MAX_COMPRESS_LOG_SIZE	8
 
-typedef u_int64_t	u64;
-typedef u_int32_t	u32;
-typedef u_int16_t	u16;
-typedef u_int8_t	u8;
+typedef uint64_t	u64;
+typedef uint32_t	u32;
+typedef uint16_t	u16;
+typedef uint8_t		u8;
 typedef u32		block_t;
 typedef u32		nid_t;
 #ifndef bool
@@ -378,16 +374,16 @@ enum default_set {
 struct device_info {
 	char *path;
 	int32_t fd;
-	u_int32_t sector_size;
-	u_int64_t total_sectors;	/* got by get_device_info */
-	u_int64_t start_blkaddr;
-	u_int64_t end_blkaddr;
-	u_int32_t total_segments;
+	uint32_t sector_size;
+	uint64_t total_sectors;	/* got by get_device_info */
+	uint64_t start_blkaddr;
+	uint64_t end_blkaddr;
+	uint32_t total_segments;
 
 	/* to handle zone block devices */
 	int zoned_model;
-	u_int32_t nr_zones;
-	u_int32_t nr_rnd_zones;
+	uint32_t nr_zones;
+	uint32_t nr_rnd_zones;
 	size_t zone_blocks;
 	uint64_t zone_size;
 	size_t *zone_cap_blocks;
@@ -445,36 +441,36 @@ typedef struct {
 #define ALIGN_UP(addrs, size)	ALIGN_DOWN(((addrs) + (size) - 1), (size))
 
 struct f2fs_configuration {
-	u_int32_t reserved_segments;
-	u_int32_t new_reserved_segments;
+	uint32_t reserved_segments;
+	uint32_t new_reserved_segments;
 	int sparse_mode;
 	int zoned_mode;
 	int zoned_model;
 	size_t zone_blocks;
 	double overprovision;
 	double new_overprovision;
-	u_int32_t cur_seg[6];
-	u_int32_t segs_per_sec;
-	u_int32_t secs_per_zone;
-	u_int32_t segs_per_zone;
-	u_int32_t start_sector;
-	u_int32_t total_segments;
-	u_int32_t sector_size;
-	u_int64_t device_size;
-	u_int64_t total_sectors;
-	u_int64_t wanted_total_sectors;
-	u_int64_t wanted_sector_size;
-	u_int64_t target_sectors;
-	u_int64_t max_size;
-	u_int32_t sectors_per_blk;
-	u_int32_t blks_per_seg;
+	uint32_t cur_seg[6];
+	uint32_t segs_per_sec;
+	uint32_t secs_per_zone;
+	uint32_t segs_per_zone;
+	uint32_t start_sector;
+	uint32_t total_segments;
+	uint32_t sector_size;
+	uint64_t device_size;
+	uint64_t total_sectors;
+	uint64_t wanted_total_sectors;
+	uint64_t wanted_sector_size;
+	uint64_t target_sectors;
+	uint64_t max_size;
+	uint32_t sectors_per_blk;
+	uint32_t blks_per_seg;
 	__u8 init_version[VERSION_LEN + 1];
 	__u8 sb_version[VERSION_LEN + 1];
 	__u8 version[VERSION_LEN + 1];
 	char *vol_label;
 	char *vol_uuid;
-	u_int16_t s_encoding;
-	u_int16_t s_encoding_flags;
+	uint16_t s_encoding;
+	uint16_t s_encoding_flags;
 	int heap;
 	int32_t kd;
 	int32_t dump_fd;
@@ -513,20 +509,20 @@ struct f2fs_configuration {
 
 	/* mkfs parameters */
 	int fake_seed;
-	u_int32_t next_free_nid;
-	u_int32_t quota_inum;
-	u_int32_t quota_dnum;
-	u_int32_t lpf_inum;
-	u_int32_t lpf_dnum;
-	u_int32_t lpf_ino;
-	u_int32_t root_uid;
-	u_int32_t root_gid;
+	uint32_t next_free_nid;
+	uint32_t quota_inum;
+	uint32_t quota_dnum;
+	uint32_t lpf_inum;
+	uint32_t lpf_dnum;
+	uint32_t lpf_ino;
+	uint32_t root_uid;
+	uint32_t root_gid;
 
 	/* defragmentation parameters */
 	int defrag_shrink;
-	u_int64_t defrag_start;
-	u_int64_t defrag_len;
-	u_int64_t defrag_target;
+	uint64_t defrag_start;
+	uint64_t defrag_len;
+	uint64_t defrag_target;
 
 	/* sload parameters */
 	char *from_dir;
@@ -543,7 +539,7 @@ struct f2fs_configuration {
 	int safe_resize;
 
 	/* precomputed fs UUID checksum for seeding other checksums */
-	u_int32_t chksum_seed;
+	uint32_t chksum_seed;
 
 	/* cache parameters */
 	dev_cache_config_t cache_config;
@@ -1319,9 +1315,9 @@ enum {
 	SSR
 };
 
-extern int utf8_to_utf16(u_int16_t *, const char *, size_t, size_t);
-extern int utf16_to_utf8(char *, const u_int16_t *, size_t, size_t);
-extern int log_base_2(u_int32_t);
+extern int utf8_to_utf16(uint16_t *, const char *, size_t, size_t);
+extern int utf16_to_utf8(char *, const uint16_t *, size_t, size_t);
+extern int log_base_2(uint32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
 extern unsigned int addrs_per_block(struct f2fs_inode *);
 extern unsigned int f2fs_max_file_offset(struct f2fs_inode *);
@@ -1339,8 +1335,8 @@ extern int f2fs_clear_bit(unsigned int, char *);
 extern u64 find_next_bit_le(const u8 *, u64, u64);
 extern u64 find_next_zero_bit_le(const u8 *, u64, u64);
 
-extern u_int32_t f2fs_cal_crc32(u_int32_t, void *, int);
-extern int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len);
+extern uint32_t f2fs_cal_crc32(uint32_t, void *, int);
+extern int f2fs_crc_valid(uint32_t blk_crc, void *buf, int len);
 
 extern void f2fs_init_configuration(void);
 extern int f2fs_devs_are_umounted(void);
@@ -1497,7 +1493,7 @@ blk_zone_cond_str(struct blk_zone *blkz)
 
 extern int f2fs_get_zoned_model(int);
 extern int f2fs_get_zone_blocks(int);
-extern int f2fs_report_zone(int, u_int64_t, void *);
+extern int f2fs_report_zone(int, uint64_t, void *);
 typedef int (report_zones_cb_t)(int i, void *, void *);
 extern int f2fs_report_zones(int, report_zones_cb_t *, void *);
 extern int f2fs_check_zones(int);
@@ -1514,7 +1510,7 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 {
 	double reserved, ovp, candidate, end, diff, space;
 	double max_ovp = 0, max_space = 0;
-	u_int32_t usable_main_segs = f2fs_get_usable_segments(sb);
+	uint32_t usable_main_segs = f2fs_get_usable_segments(sb);
 
 	if (get_sb(segment_count_main) < 256) {
 		candidate = 10;
@@ -1541,12 +1537,12 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 
 static inline __le64 get_cp_crc(struct f2fs_checkpoint *cp)
 {
-	u_int64_t cp_ver = get_cp(checkpoint_ver);
+	uint64_t cp_ver = get_cp(checkpoint_ver);
 	size_t crc_offset = get_cp(checksum_offset);
-	u_int32_t crc = le32_to_cpu(*(__le32 *)((unsigned char *)cp +
+	uint32_t crc = le32_to_cpu(*(__le32 *)((unsigned char *)cp +
 							crc_offset));
 
-	cp_ver |= ((u_int64_t)crc << 32);
+	cp_ver |= ((uint64_t)crc << 32);
 	return cpu_to_le64(cp_ver);
 }
 
@@ -1693,7 +1689,7 @@ static inline int parse_feature(struct feature *table, const char *features)
 }
 
 static inline int parse_root_owner(char *ids,
-			u_int32_t *root_uid, u_int32_t *root_gid)
+			uint32_t *root_uid, uint32_t *root_gid)
 {
 	char *uid = ids;
 	char *gid = NULL;

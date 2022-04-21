@@ -31,7 +31,7 @@
 #define ACL_OTHER		(0x20)
 #endif
 
-static int get_device_idx(struct f2fs_sb_info *sbi, u_int32_t segno)
+static int get_device_idx(struct f2fs_sb_info *sbi, uint32_t segno)
 {
 	block_t seg_start_blkaddr;
 	int i;
@@ -48,7 +48,7 @@ static int get_device_idx(struct f2fs_sb_info *sbi, u_int32_t segno)
 #ifdef HAVE_LINUX_BLKZONED_H
 
 static int get_zone_idx_from_dev(struct f2fs_sb_info *sbi,
-					u_int32_t segno, u_int32_t dev_idx)
+					uint32_t segno, uint32_t dev_idx)
 {
 	block_t seg_start_blkaddr = START_BLOCK(sbi, segno);
 
@@ -365,7 +365,7 @@ void print_node_info(struct f2fs_sb_info *sbi,
 	}
 }
 
-static void DISP_label(u_int16_t *name)
+static void DISP_label(uint16_t *name)
 {
 	char buffer[MAX_VOLUME_NAME];
 
@@ -674,7 +674,7 @@ out:
 void update_superblock(struct f2fs_super_block *sb, int sb_mask)
 {
 	int addr, ret;
-	u_int8_t *buf;
+	uint8_t *buf;
 	u32 old_crc, new_crc;
 
 	buf = calloc(BLOCK_SZ, 1);
@@ -1498,7 +1498,7 @@ static int f2fs_late_init_nid_bitmap(struct f2fs_sb_info *sbi)
 u32 update_nat_bits_flags(struct f2fs_super_block *sb,
 				struct f2fs_checkpoint *cp, u32 flags)
 {
-	u_int32_t nat_bits_bytes, nat_bits_blocks;
+	uint32_t nat_bits_bytes, nat_bits_blocks;
 
 	nat_bits_bytes = get_sb(segment_count_nat) << 5;
 	nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) + 8 +
@@ -1517,14 +1517,14 @@ void write_nat_bits(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb, struct f2fs_checkpoint *cp, int set)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
-	u_int32_t nat_blocks = get_sb(segment_count_nat) <<
+	uint32_t nat_blocks = get_sb(segment_count_nat) <<
 				(get_sb(log_blocks_per_seg) - 1);
-	u_int32_t nat_bits_bytes = nat_blocks >> 3;
-	u_int32_t nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) +
+	uint32_t nat_bits_bytes = nat_blocks >> 3;
+	uint32_t nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) +
 					8 + F2FS_BLKSIZE - 1);
 	unsigned char *nat_bits, *full_nat_bits, *empty_nat_bits;
 	struct f2fs_nat_block *nat_block;
-	u_int32_t i, j;
+	uint32_t i, j;
 	block_t blkaddr;
 	int ret;
 
@@ -1590,15 +1590,15 @@ static int check_nat_bits(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb, struct f2fs_checkpoint *cp)
 {
 	struct f2fs_nm_info *nm_i = NM_I(sbi);
-	u_int32_t nat_blocks = get_sb(segment_count_nat) <<
+	uint32_t nat_blocks = get_sb(segment_count_nat) <<
 				(get_sb(log_blocks_per_seg) - 1);
-	u_int32_t nat_bits_bytes = nat_blocks >> 3;
-	u_int32_t nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) +
+	uint32_t nat_bits_bytes = nat_blocks >> 3;
+	uint32_t nat_bits_blocks = F2FS_BYTES_TO_BLK((nat_bits_bytes << 1) +
 					8 + F2FS_BLKSIZE - 1);
 	unsigned char *nat_bits, *full_nat_bits, *empty_nat_bits;
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_journal *journal = &curseg->sum_blk->journal;
-	u_int32_t i, j;
+	uint32_t i, j;
 	block_t blkaddr;
 	int err = 0;
 
@@ -1628,8 +1628,8 @@ static int check_nat_bits(struct f2fs_sb_info *sbi,
 	}
 
 	for (i = 0; i < nat_blocks; i++) {
-		u_int32_t start_nid = i * NAT_ENTRY_PER_BLOCK;
-		u_int32_t valid = 0;
+		uint32_t start_nid = i * NAT_ENTRY_PER_BLOCK;
+		uint32_t valid = 0;
 		int empty = test_bit_le(i, empty_nat_bits);
 		int full = test_bit_le(i, full_nat_bits);
 
@@ -2702,7 +2702,7 @@ void set_section_type(struct f2fs_sb_info *sbi, unsigned int segno, int type)
 static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 					unsigned int zone_segno)
 {
-	u_int64_t sector;
+	uint64_t sector;
 	struct blk_zone blkz;
 	block_t block = START_BLOCK(sbi, zone_segno);
 	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
@@ -3011,7 +3011,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	unsigned long long cp_blk_no;
 	u32 flags = CP_UMOUNT_FLAG;
 	int i, ret;
-	u_int32_t crc = 0;
+	uint32_t crc = 0;
 
 	if (is_set_ckpt_flags(cp, CP_ORPHAN_PRESENT_FLAG)) {
 		orphan_blks = __start_sum_addr(sbi) - 1;
@@ -3242,7 +3242,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 
 static int check_sector_size(struct f2fs_super_block *sb)
 {
-	u_int32_t log_sectorsize, log_sectors_per_block;
+	uint32_t log_sectorsize, log_sectors_per_block;
 
 	log_sectorsize = log_base_2(c.sector_size);
 	log_sectors_per_block = log_base_2(c.sectors_per_blk);
@@ -3679,10 +3679,10 @@ void f2fs_do_umount(struct f2fs_sb_info *sbi)
 int f2fs_sparse_initialize_meta(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = sbi->raw_super;
-	u_int32_t sit_seg_count, sit_size;
-	u_int32_t nat_seg_count, nat_size;
-	u_int64_t sit_seg_addr, nat_seg_addr, payload_addr;
-	u_int32_t seg_size = 1 << get_sb(log_blocks_per_seg);
+	uint32_t sit_seg_count, sit_size;
+	uint32_t nat_seg_count, nat_size;
+	uint64_t sit_seg_addr, nat_seg_addr, payload_addr;
+	uint32_t seg_size = 1 << get_sb(log_blocks_per_seg);
 	int ret;
 
 	if (!c.sparse_mode)

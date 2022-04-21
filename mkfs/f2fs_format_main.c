@@ -253,7 +253,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'S':
 			c.device_size = atoll(optarg);
-			c.device_size &= (~((u_int64_t)(F2FS_BLKSIZE - 1)));
+			c.device_size &= (~((uint64_t)(F2FS_BLKSIZE - 1)));
 			c.sparse_mode = 1;
 			break;
 		case 'z':

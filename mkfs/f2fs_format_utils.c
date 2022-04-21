@@ -52,7 +52,7 @@ static int trim_device(int i)
 	unsigned long long range[2];
 	struct stat *stat_buf;
 	struct device_info *dev = c.devices + i;
-	u_int64_t bytes = dev->total_sectors * dev->sector_size;
+	uint64_t bytes = dev->total_sectors * dev->sector_size;
 	int fd = dev->fd;
 
 	stat_buf = malloc(sizeof(struct stat));

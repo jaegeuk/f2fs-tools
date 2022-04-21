@@ -46,18 +46,18 @@ enum quota_type {
 
 #pragma pack(push, 1)
 struct v2_disk_dqheader {
-	u_int32_t dqh_magic;	/* Magic number identifying file */
-	u_int32_t dqh_version;	/* File version */
+	uint32_t dqh_magic;	/* Magic number identifying file */
+	uint32_t dqh_version;	/* File version */
 } __attribute__ ((packed));
 
 /* Header with type and version specific information */
 struct v2_disk_dqinfo {
-	u_int32_t dqi_bgrace;	/* Time before block soft limit becomes hard limit */
-	u_int32_t dqi_igrace;	/* Time before inode soft limit becomes hard limit */
-	u_int32_t dqi_flags;	/* Flags for quotafile (DQF_*) */
-	u_int32_t dqi_blocks;	/* Number of blocks in file */
-	u_int32_t dqi_free_blk;	/* Number of first free block in the list */
-	u_int32_t dqi_free_entry;	/* Number of block with at least one free entry */
+	uint32_t dqi_bgrace;	/* Time before block soft limit becomes hard limit */
+	uint32_t dqi_igrace;	/* Time before inode soft limit becomes hard limit */
+	uint32_t dqi_flags;	/* Flags for quotafile (DQF_*) */
+	uint32_t dqi_blocks;	/* Number of blocks in file */
+	uint32_t dqi_free_blk;	/* Number of first free block in the list */
+	uint32_t dqi_free_entry;	/* Number of block with at least one free entry */
 } __attribute__ ((packed));
 
 struct v2r1_disk_dqblk {

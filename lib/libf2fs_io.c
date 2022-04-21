@@ -43,7 +43,7 @@ struct f2fs_configuration c;
 #include <sparse/sparse.h>
 struct sparse_file *f2fs_sparse_file;
 static char **blocks;
-u_int64_t blocks_count;
+uint64_t blocks_count;
 static char *zeroed_block;
 #endif
 
@@ -661,7 +661,7 @@ int f2fs_init_sparse_file(void)
 			return -1;
 
 		c.device_size = sparse_file_len(f2fs_sparse_file, 0, 0);
-		c.device_size &= (~((u_int64_t)(F2FS_BLKSIZE - 1)));
+		c.device_size &= (~((uint64_t)(F2FS_BLKSIZE - 1)));
 	}
 
 	if (sparse_file_block_size(f2fs_sparse_file) != F2FS_BLKSIZE) {

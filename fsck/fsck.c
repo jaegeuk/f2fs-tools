@@ -2312,7 +2312,7 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	block_t cp_blocks;
 	u32 i;
 	int ret;
-	u_int32_t crc = 0;
+	uint32_t crc = 0;
 
 	/* should call from fsck */
 	ASSERT(c.func == FSCK);
@@ -2438,7 +2438,7 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct blk_zone blkz;
 	block_t cs_block, wp_block, zone_last_vblock;
-	u_int64_t cs_sector, wp_sector;
+	uint64_t cs_sector, wp_sector;
 	int i, ret;
 	unsigned int zone_segno;
 	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;

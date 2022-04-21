@@ -104,7 +104,7 @@ static const char *utf8_to_wchar(const char *input, wchar_t *wc,
 	return NULL;
 }
 
-static u_int16_t *wchar_to_utf16(u_int16_t *output, wchar_t wc, size_t outsize)
+static uint16_t *wchar_to_utf16(uint16_t *output, wchar_t wc, size_t outsize)
 {
 	if (wc <= 0xffff) {
 		if (outsize == 0)
@@ -120,11 +120,11 @@ static u_int16_t *wchar_to_utf16(u_int16_t *output, wchar_t wc, size_t outsize)
 	return output + 2;
 }
 
-int utf8_to_utf16(u_int16_t *output, const char *input, size_t outsize,
+int utf8_to_utf16(uint16_t *output, const char *input, size_t outsize,
 		size_t insize)
 {
 	const char *inp = input;
-	u_int16_t *outp = output;
+	uint16_t *outp = output;
 	wchar_t wc;
 
 	while ((size_t)(inp - input) < insize && *inp) {
@@ -143,7 +143,7 @@ int utf8_to_utf16(u_int16_t *output, const char *input, size_t outsize,
 	return 0;
 }
 
-static const u_int16_t *utf16_to_wchar(const u_int16_t *input, wchar_t *wc,
+static const uint16_t *utf16_to_wchar(const uint16_t *input, wchar_t *wc,
 		size_t insize)
 {
 	if ((le16_to_cpu(input[0]) & 0xfc00) == 0xd800) {
@@ -206,10 +206,10 @@ static char *wchar_to_utf8(char *output, wchar_t wc, size_t outsize)
 	return output;
 }
 
-int utf16_to_utf8(char *output, const u_int16_t *input, size_t outsize,
+int utf16_to_utf8(char *output, const uint16_t *input, size_t outsize,
 		size_t insize)
 {
-	const u_int16_t *inp = input;
+	const uint16_t *inp = input;
 	char *outp = output;
 	wchar_t wc;
 
@@ -229,7 +229,7 @@ int utf16_to_utf8(char *output, const u_int16_t *input, size_t outsize,
 	return 0;
 }
 
-int log_base_2(u_int32_t num)
+int log_base_2(uint32_t num)
 {
 	int ret = 0;
 	if (num <= 0 || (num & (num - 1)) != 0)
@@ -530,7 +530,7 @@ unsigned int f2fs_max_file_offset(struct f2fs_inode *i)
  */
 #define CRCPOLY_LE 0xedb88320
 
-u_int32_t f2fs_cal_crc32(u_int32_t crc, void *buf, int len)
+uint32_t f2fs_cal_crc32(uint32_t crc, void *buf, int len)
 {
 	int i;
 	unsigned char *p = (unsigned char *)buf;
@@ -542,9 +542,9 @@ u_int32_t f2fs_cal_crc32(u_int32_t crc, void *buf, int len)
 	return crc;
 }
 
-int f2fs_crc_valid(u_int32_t blk_crc, void *buf, int len)
+int f2fs_crc_valid(uint32_t blk_crc, void *buf, int len)
 {
-	u_int32_t cal_crc = 0;
+	uint32_t cal_crc = 0;
 
 	cal_crc = f2fs_cal_crc32(F2FS_SUPER_MAGIC, buf, len);
 
@@ -1210,7 +1210,7 @@ int f2fs_get_f2fs_info(void)
 		c.devices[0].total_sectors = c.total_sectors;
 	}
 	if (c.total_sectors * c.sector_size >
-		(u_int64_t)F2FS_MAX_SEGMENT * 2 * 1024 * 1024) {
+		(uint64_t)F2FS_MAX_SEGMENT * 2 * 1024 * 1024) {
 		MSG(0, "\tError: F2FS can support 16TB at most!!!\n");
 		return -1;
 	}

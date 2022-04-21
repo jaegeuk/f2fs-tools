@@ -11,27 +11,27 @@
 
 static int get_new_sb(struct f2fs_super_block *sb)
 {
-	u_int32_t zone_size_bytes;
-	u_int64_t zone_align_start_offset;
-	u_int32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
-	u_int32_t sit_segments, nat_segments, diff, total_meta_segments;
-	u_int32_t total_valid_blks_available;
-	u_int32_t sit_bitmap_size, max_sit_bitmap_size;
-	u_int32_t max_nat_bitmap_size, max_nat_segments;
-	u_int32_t segment_size_bytes = 1 << (get_sb(log_blocksize) +
+	uint32_t zone_size_bytes;
+	uint64_t zone_align_start_offset;
+	uint32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
+	uint32_t sit_segments, nat_segments, diff, total_meta_segments;
+	uint32_t total_valid_blks_available;
+	uint32_t sit_bitmap_size, max_sit_bitmap_size;
+	uint32_t max_nat_bitmap_size, max_nat_segments;
+	uint32_t segment_size_bytes = 1 << (get_sb(log_blocksize) +
 					get_sb(log_blocks_per_seg));
-	u_int32_t blks_per_seg = 1 << get_sb(log_blocks_per_seg);
-	u_int32_t segs_per_zone = get_sb(segs_per_sec) * get_sb(secs_per_zone);
+	uint32_t blks_per_seg = 1 << get_sb(log_blocks_per_seg);
+	uint32_t segs_per_zone = get_sb(segs_per_sec) * get_sb(secs_per_zone);
 
 	set_sb(block_count, c.target_sectors >>
 				get_sb(log_sectors_per_block));
 
 	zone_size_bytes = segment_size_bytes * segs_per_zone;
 	zone_align_start_offset =
-		((u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE +
+		((uint64_t) c.start_sector * DEFAULT_SECTOR_SIZE +
 		2 * F2FS_BLKSIZE + zone_size_bytes - 1) /
 		zone_size_bytes * zone_size_bytes -
-		(u_int64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
+		(uint64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
 
 	set_sb(segment_count, (c.target_sectors * c.sector_size -
 				zone_align_start_offset) / segment_size_bytes /
@@ -76,7 +76,7 @@ static int get_new_sb(struct f2fs_super_block *sb)
 		/* use cp_payload if free space of f2fs_checkpoint is not enough */
 		if (max_sit_bitmap_size + max_nat_bitmap_size >
 						MAX_BITMAP_SIZE_IN_CKPT) {
-			u_int32_t diff =  max_sit_bitmap_size +
+			uint32_t diff =  max_sit_bitmap_size +
 						max_nat_bitmap_size -
 						MAX_BITMAP_SIZE_IN_CKPT;
 			set_sb(cp_payload, F2FS_BLK_ALIGN(diff));
@@ -457,7 +457,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	block_t new_cp_blks = 1 + get_newsb(cp_payload);
 	block_t orphan_blks = 0;
 	block_t new_cp_blk_no, old_cp_blk_no;
-	u_int32_t crc = 0;
+	uint32_t crc = 0;
 	u32 flags;
 	void *buf;
 	int i, ret;

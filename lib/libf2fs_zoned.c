@@ -202,7 +202,7 @@ int f2fs_get_zone_blocks(int i)
 	return 0;
 }
 
-int f2fs_report_zone(int i, u_int64_t sector, void *blkzone)
+int f2fs_report_zone(int i, uint64_t sector, void *blkzone)
 {
 	struct blk_zone *blkz = (struct blk_zone *)blkzone;
 	struct blk_zone_report *rep;
@@ -237,9 +237,9 @@ int f2fs_report_zones(int j, report_zones_cb_t *report_zones_cb, void *opaque)
 	struct blk_zone_report *rep;
 	struct blk_zone *blkz;
 	unsigned int i, n = 0;
-	u_int64_t total_sectors = (dev->total_sectors * c.sector_size)
+	uint64_t total_sectors = (dev->total_sectors * c.sector_size)
 		>> SECTOR_SHIFT;
-	u_int64_t sector = 0;
+	uint64_t sector = 0;
 	int ret = -1;
 
 	rep = malloc(F2FS_REPORT_ZONES_BUFSZ);
@@ -290,8 +290,8 @@ int f2fs_check_zones(int j)
 	struct blk_zone_report *rep;
 	struct blk_zone *blkz;
 	unsigned int i, n = 0;
-	u_int64_t total_sectors;
-	u_int64_t sector;
+	uint64_t total_sectors;
+	uint64_t sector;
 	int last_is_conv = 1;
 	int ret = -1;
 
@@ -443,8 +443,8 @@ int f2fs_reset_zones(int j)
 	struct blk_zone_report *rep;
 	struct blk_zone *blkz;
 	struct blk_zone_range range;
-	u_int64_t total_sectors;
-	u_int64_t sector;
+	uint64_t total_sectors;
+	uint64_t sector;
 	unsigned int i;
 	int ret = -1;
 
@@ -532,7 +532,7 @@ uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb)
 
 #else
 
-int f2fs_report_zone(int i, u_int64_t UNUSED(sector), void *UNUSED(blkzone))
+int f2fs_report_zone(int i, uint64_t UNUSED(sector), void *UNUSED(blkzone))
 {
 	ERR_MSG("%d: Unsupported zoned block device\n", i);
 	return -1;
