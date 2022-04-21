@@ -29,6 +29,7 @@
 #define HAVE_LSEEK64 1
 #define HAVE_MEMSET 1
 #define HAVE_SETMNTENT 1
+#define HAVE_SPARSE_SPARSE_H 1
 
 #ifdef WITH_SLOAD
 #define HAVE_LIBSELINUX 1

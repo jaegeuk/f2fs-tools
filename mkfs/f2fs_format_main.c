@@ -37,7 +37,7 @@
 #ifdef HAVE_SYS_UTSNAME_H
 #include <sys/utsname.h>
 #endif
-#ifdef WITH_ANDROID
+#ifdef HAVE_SPARSE_SPARSE_H
 #include <sparse/sparse.h>
 extern struct sparse_file *f2fs_sparse_file;
 #endif
