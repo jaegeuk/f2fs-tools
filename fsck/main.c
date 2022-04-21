@@ -32,11 +32,6 @@
 
 struct f2fs_fsck gfsck;
 
-#ifdef WITH_ANDROID
-#include <sparse/sparse.h>
-extern struct sparse_file *f2fs_sparse_file;
-#endif
-
 INIT_FEATURE_TABLE;
 
 static char *absolute_path(const char *file)
