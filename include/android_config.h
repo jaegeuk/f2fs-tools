@@ -31,6 +31,7 @@
 #define HAVE_SELINUX_ANDROID_H 1
 #define HAVE_SETMNTENT 1
 #define HAVE_SPARSE_SPARSE_H 1
+#define HAVE_LIBLZ4 1
 
 #ifdef WITH_SLOAD
 #define HAVE_LIBSELINUX 1
@@ -57,6 +58,7 @@
 #define HAVE_GETMNTENT 1
 #define HAVE_LLSEEK 1
 #define HAVE_MEMSET 1
+#define HAVE_LIBLZ4 1
 
 #ifdef WITH_SLOAD
 #define HAVE_LIBSELINUX 1
