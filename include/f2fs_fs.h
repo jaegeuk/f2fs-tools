@@ -26,13 +26,14 @@
 #include <stddef.h>
 #include <string.h>
 #include <time.h>
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#endif
-
+#else
 #ifdef __ANDROID__
 #define WITH_ANDROID
 #endif
+#endif /* HAVE_CONFIG_H */
 
 #ifdef WITH_ANDROID
 #include <android_config.h>
