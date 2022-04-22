@@ -501,9 +501,22 @@ static int sparse_merge_blocks(uint64_t start, uint64_t num, int zero)
 					F2FS_BLKSIZE * num, start);
 }
 #else
-static int sparse_read_blk(__u64 block, int count, void *buf) { return 0; }
-static int sparse_write_blk(__u64 block, int count, const void *buf) { return 0; }
-static int sparse_write_zeroed_blk(__u64 block, int count) { return 0; }
+static int sparse_read_blk(__u64 UNUSED(block),
+				int UNUSED(count), void *UNUSED(buf))
+{
+	return 0;
+}
+
+static int sparse_write_blk(__u64 UNUSED(block),
+				int UNUSED(count), const void *UNUSED(buf))
+{
+	return 0;
+}
+
+static int sparse_write_zeroed_blk(__u64 UNUSED(block), int UNUSED(count))
+{
+	return 0;
+}
 #endif
 
 int dev_read(void *buf, __u64 offset, size_t len)
