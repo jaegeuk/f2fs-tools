@@ -24,7 +24,8 @@
 #include "config.h"
 #ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
-#else
+#endif
+#ifndef HAVE_LIBUUID
 #define uuid_parse(a, b) -1
 #define uuid_generate(a)
 #endif

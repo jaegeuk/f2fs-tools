@@ -356,7 +356,7 @@ static void parse_salt(char *salt_str, int flags)
 			perror("F2FS_IOC_GET_ENCRYPTION_PWSALT");
 			exit(1);
 		}
-#ifdef HAVE_UUID_UUID_H
+#ifdef HAVE_LIBUUID
 		if (options & OPT_VERBOSE) {
 			char tmp[80];
 			uuid_unparse(buf, tmp);
@@ -384,7 +384,7 @@ static void parse_salt(char *salt_str, int flags)
 				(((unsigned char)(h - hexchars) << 4) +
 				 (unsigned char)(l - hexchars));
 		}
-#ifdef HAVE_UUID_UUID_H
+#ifdef HAVE_LIBUUID
 	} else if (uuid_parse(cp, buf) == 0) {
 		salt_len = 16;
 #endif
