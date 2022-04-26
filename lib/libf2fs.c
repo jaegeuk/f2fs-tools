@@ -1272,6 +1272,9 @@ int f2fs_get_f2fs_info(void)
 
 	c.segs_per_zone = c.segs_per_sec * c.secs_per_zone;
 
+	if (c.func != MKFS)
+		return 0;
+
 	MSG(0, "Info: Segments per section = %d\n", c.segs_per_sec);
 	MSG(0, "Info: Sections per zone = %d\n", c.secs_per_zone);
 	MSG(0, "Info: sector size = %u\n", c.sector_size);
