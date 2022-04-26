@@ -86,7 +86,8 @@ static int lz4_compress(struct compress_ctx *cc)
 {
 	cc->clen = LZ4_compress_fast_extState(cc->private, cc->rbuf,
 			(char *)cc->cbuf->cdata, cc->rlen,
-			cc->rlen - F2FS_BLKSIZE * c.compress.min_blocks,
+			cc->rlen - F2FS_BLKSIZE * c.compress.min_blocks -
+			COMPRESS_HEADER_SIZE,
 			LZ4_ACCELERATION_DEFAULT);
 
 	if (!cc->clen)
