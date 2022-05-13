@@ -12,6 +12,8 @@ m4_define([f2fs_tools_gitdate],
 AC_INIT([F2FS tools], [f2fs_tools_version],
 			[linux-f2fs-devel@lists.sourceforge.net])
 
+AM_SILENT_RULES([yes])
+
 AC_DEFINE([F2FS_TOOLS_VERSION], "f2fs_tools_version", [f2fs-tools version])
 AC_DEFINE([F2FS_MAJOR_VERSION], m4_bpatsubst(f2fs_tools_version,
 				[\([0-9]*\)\(\w\|\W\)*], [\1]),
