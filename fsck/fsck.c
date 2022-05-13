@@ -498,7 +498,7 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		fsck->chk.valid_node_cnt++;
 
 		/* Progress report */
-		if (sbi->total_valid_node_count > 1000) {
+		if (!c.show_file_map && sbi->total_valid_node_count > 1000) {
 			unsigned int p10 = sbi->total_valid_node_count / 10;
 
 			if (sbi->fsck->chk.checked_node_cnt++ % p10)
