@@ -23,6 +23,7 @@
 #define HAVE_SYS_SYSMACROS_H 1
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
+#define HAVE_UUID_UUID_H 1
 #define HAVE_SCSI_SG_H 1
 
 #define HAVE_FALLOCATE 1
@@ -37,6 +38,7 @@
 #define HAVE_SETMNTENT 1
 #define HAVE_SPARSE_SPARSE_H 1
 #define HAVE_LIBLZ4 1
+#define HAVE_LIBUUID 1
 
 #ifdef WITH_SLOAD
 #define HAVE_LIBSELINUX 1
