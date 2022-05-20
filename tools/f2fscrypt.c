@@ -43,6 +43,9 @@
 #ifdef __KERNEL__
 #include <linux/fs.h>
 #endif
+
+#include <f2fs_fs.h>
+
 #ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
 #else
@@ -55,7 +58,6 @@ typedef unsigned char uuid_t[16];
 #ifdef HAVE_SYS_KEY_H
 #include <sys/key.h>
 #endif
-#include <f2fs_fs.h>
 
 #define F2FS_MAX_KEY_SIZE		64
 #define F2FS_MAX_PASSPHRASE_SIZE	1024
