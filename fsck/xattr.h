@@ -35,7 +35,9 @@ struct f2fs_xattr_entry {
 };
 
 #define FS_ENCRYPTION_CONTEXT_FORMAT_V1 1
+#ifndef FS_KEY_DESCRIPTOR_SIZE
 #define FS_KEY_DESCRIPTOR_SIZE 8
+#endif
 #define FS_KEY_DERIVATION_NONCE_SIZE 16
 
 struct fscrypt_context {

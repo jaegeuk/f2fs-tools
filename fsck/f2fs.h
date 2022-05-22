@@ -20,6 +20,8 @@
 #include <fcntl.h>
 #include <string.h>
 #include <errno.h>
+#include <f2fs_fs.h>
+
 #ifdef HAVE_MNTENT_H
 #include <mntent.h>
 #endif
@@ -34,8 +36,6 @@
 #include <sys/mount.h>
 #endif
 #include <assert.h>
-
-#include "f2fs_fs.h"
 
 #define EXIT_ERR_CODE		(-1)
 #define ver_after(a, b) (typecheck(unsigned long long, a) &&            \

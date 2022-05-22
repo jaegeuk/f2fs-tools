@@ -21,6 +21,8 @@
 #endif
 
 #include "config.h"
+#include <f2fs_fs.h>
+
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>
@@ -43,8 +45,6 @@
 #ifdef __KERNEL__
 #include <linux/fs.h>
 #endif
-
-#include <f2fs_fs.h>
 
 #ifdef HAVE_UUID_UUID_H
 #include <uuid/uuid.h>
