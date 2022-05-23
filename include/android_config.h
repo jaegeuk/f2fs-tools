@@ -24,7 +24,6 @@
 #define HAVE_SYS_XATTR_H 1
 #define HAVE_UNISTD_H 1
 #define HAVE_UUID_UUID_H 1
-#define HAVE_SCSI_SG_H 1
 
 #define HAVE_FALLOCATE 1
 #define HAVE_FSETXATTR 1
