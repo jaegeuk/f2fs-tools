@@ -161,6 +161,7 @@ static bool is_wiped_device(int i)
 	if (wiped)
 		MSG(0, "Info: Found all zeros in first %d blocks\n", nblocks);
 	return wiped;
+}
 #else
 static bool is_wiped_device(int UNUSED(i))
 {
