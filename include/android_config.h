@@ -4,8 +4,6 @@
 #define HAVE_FCNTL_H 1
 #define HAVE_FALLOC_H 1
 #define HAVE_FSYNC 1
-#define HAVE_KERNEL_UAPI_LINUX_BLKZONED_H 1
-#define HAVE_LINUX_BLKZONED_H 1
 #define HAVE_LINUX_HDREG_H 1
 #define HAVE_LINUX_LIMITS_H 1
 #define HAVE_POSIX_ACL_H 1
@@ -42,6 +40,12 @@
 #ifdef WITH_SLOAD
 #define HAVE_LIBSELINUX 1
 #endif
+
+#ifdef WITH_LIBC
+#define HAVE_KERNEL_UAPI_LINUX_BLKZONED_H 1
+#define HAVE_LINUX_BLKZONED_H 1
+#endif
+
 #endif
 
 #if defined(__APPLE__)
