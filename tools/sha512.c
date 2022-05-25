@@ -11,7 +11,6 @@
  */
 
 
-#include "config.h"
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>

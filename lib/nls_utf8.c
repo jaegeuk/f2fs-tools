@@ -20,14 +20,13 @@
  * implementation.
  */
 
-#include "config.h"
 #include <stdint.h>
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
 #include <errno.h>
 
-#include "f2fs_fs.h"
+#include <f2fs_fs.h>
 
 /* Encoding a unicode version number as a single unsigned int. */
 #define UNICODE_MAJ_SHIFT		(16)

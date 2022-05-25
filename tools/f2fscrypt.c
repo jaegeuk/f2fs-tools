@@ -20,7 +20,6 @@
 #define _GNU_SOURCE
 #endif
 
-#include "config.h"
 #include <f2fs_fs.h>
 
 #include <assert.h>
