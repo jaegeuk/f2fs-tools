@@ -27,8 +27,6 @@
 #endif
 #include <libgen.h>
 
-#include <f2fs_fs.h>
-
 #ifdef HAVE_LINUX_BLKZONED_H
 
 int get_sysfs_path(struct device_info *dev, const char *attr,
