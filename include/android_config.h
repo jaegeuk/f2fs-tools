@@ -41,8 +41,7 @@
 #define HAVE_LIBSELINUX 1
 #endif
 
-#ifdef WITH_LIBC
-#define HAVE_KERNEL_UAPI_LINUX_BLKZONED_H 1
+#if defined(__BIONIC__)
 #define HAVE_LINUX_BLKZONED_H 1
 #endif
 
