@@ -77,10 +77,16 @@
 #define static_assert _Static_assert
 #endif
 
+#ifdef HAVE_SYS_MOUNT_H
+#include <sys/mount.h>
+#endif
+
+#ifndef fallthrough
 #ifdef __clang__
 #define fallthrough do {} while (0) /* fall through */
 #else
 #define fallthrough __attribute__((__fallthrough__))
+#endif
 #endif
 
 #ifdef _WIN32
