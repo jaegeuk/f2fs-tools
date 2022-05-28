@@ -508,7 +508,8 @@ static void do_erase(int argc, char **argv, const struct cmd_desc *cmd)
 "  rand          : random numbers\n"			\
 "IO can be\n"						\
 "  buffered      : buffered IO\n"			\
-"  dio           : direct IO\n"				\
+"  dio           : O_DIRECT\n"				\
+"  dsync         : O_DIRECT | O_DSYNC\n"		\
 "  osync         : O_SYNC\n"				\
 "  atomic_commit : atomic write & commit\n"		\
 "  atomic_abort  : atomic write & abort\n"		\
@@ -552,6 +553,8 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 
 	if (!strcmp(argv[5], "dio"))
 		flags |= O_DIRECT;
+	else if (!strcmp(argv[5], "dsync"))
+		flags |= O_DIRECT | O_DSYNC;
 	else if (!strcmp(argv[5], "osync"))
 		flags |= O_SYNC;
 	else if (!strcmp(argv[5], "atomic_commit"))
