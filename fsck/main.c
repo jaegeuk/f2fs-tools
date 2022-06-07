@@ -90,6 +90,7 @@ void dump_usage()
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -i inode no (hex)\n");
+	MSG(0, "  -I inode no (hex) scan full disk\n");
 	MSG(0, "  -n [NAT dump nid from #1~#2 (decimal), for all 0~-1]\n");
 	MSG(0, "  -M show a block map\n");
 	MSG(0, "  -s [SIT dump segno from #1~#2 (decimal), for all 0~-1]\n");
@@ -380,7 +381,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
 #ifdef WITH_DUMP
-		const char *option_string = "d:i:n:Ms:Sa:b:V";
+		const char *option_string = "d:i:I:n:Ms:Sa:b:V";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -390,6 +391,7 @@ void f2fs_parse_options(int argc, char *argv[])
 			.start_ssa = -1,
 			.end_ssa = -1,
 			.blk_addr = -1,
+			.scan_nid = 0,
 		};
 
 		c.func = DUMP;
@@ -421,6 +423,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				else
 					ret = sscanf(optarg, "%x",
 							&dump_opt.nid);
+				break;
+			case 'I':
+				if (strncmp(optarg, "0x", 2))
+					ret = sscanf(optarg, "%d",
+							&dump_opt.scan_nid);
+				else
+					ret = sscanf(optarg, "%x",
+							&dump_opt.scan_nid);
 				break;
 			case 'n':
 				ret = sscanf(optarg, "%d~%d",
@@ -914,6 +924,8 @@ static void do_dump(struct f2fs_sb_info *sbi)
 		dump_info_from_blkaddr(sbi, opt->blk_addr);
 	if (opt->nid)
 		dump_node(sbi, opt->nid, 0);
+	if (opt->scan_nid)
+		dump_node_scan_disk(sbi, opt->scan_nid);
 
 	print_cp_state(flag);
 

@@ -262,6 +262,7 @@ struct dump_option {
 	int start_ssa;
 	int end_ssa;
 	int32_t blk_addr;
+	nid_t scan_nid;
 };
 
 extern void nat_dump(struct f2fs_sb_info *, nid_t, nid_t);
@@ -270,6 +271,7 @@ extern void ssa_dump(struct f2fs_sb_info *, int, int);
 extern int dump_node(struct f2fs_sb_info *, nid_t, int);
 extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
 extern unsigned int start_bidx_of_node(unsigned int, struct f2fs_node *);
+extern void dump_node_scan_disk(struct f2fs_sb_info *sbi, nid_t nid);
 
 
 /* defrag.c */

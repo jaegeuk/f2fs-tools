@@ -10,6 +10,10 @@ dump.f2fs \- retrieve directory and file entries from an F2FS-formated image
 .I inode number
 ]
 [
+.B \-I
+.I inode number
+]
+[
 .B \-n
 .I NAT range
 ]
@@ -51,6 +55,9 @@ is 0 on success and -1 on failure.
 .TP
 .BI \-i " inode number"
 Specify an inode number to dump out.
+.TP
+.BI \-I " inode number"
+Specify an inode number and scan full disk to dump out, include history inode block
 .TP
 .BI \-n " NAT range"
 Specify a range presented by nids to dump NAT entries.
