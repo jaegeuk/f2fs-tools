@@ -102,7 +102,7 @@ static void stat_bdev(struct stat *st, unsigned int *start_lba)
 	char linkname[32] = { 0, };
 	int fd;
 
-	sprintf(devname, "/dev/block/%d:%d", major(st->st_dev), minor(st->st_dev));
+	sprintf(devname, "/sys/dev/block/%d:%d", major(st->st_dev), minor(st->st_dev));
 
 	fd = open(devname, O_RDONLY);
 	if (fd < 0)
