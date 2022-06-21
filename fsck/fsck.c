@@ -712,7 +712,10 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	int ret;
 	u32 cluster_size = 1 << node_blk->i.i_log_cluster_size;
 
-	if (!compr_supported && compressed) {
+	if (!compressed)
+		goto check_next;
+
+	if (!compr_supported || (node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		/*
 		 * The 'compression' flag in i_flags affects the traverse of
 		 * the node tree.  Thus, it must be fixed unconditionally
@@ -727,6 +730,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		}
 		i_flags &= ~F2FS_COMPR_FL;
 	}
+check_next:
 	memset(&child, 0, sizeof(child));
 	child.links = 2;
 	child.p_ino = nid;
