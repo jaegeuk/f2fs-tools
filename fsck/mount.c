@@ -1115,7 +1115,7 @@ static void *get_checkpoint_version(block_t cp_addr)
 {
 	void *cp_page;
 
-	cp_page = malloc(PAGE_SIZE);
+	cp_page = malloc(F2FS_BLKSIZE);
 	ASSERT(cp_page);
 
 	if (dev_read_block(cp_page, cp_addr) < 0)
@@ -1821,7 +1821,7 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 
 	start = start_sum_block(sbi);
 
-	kaddr = (char *)malloc(PAGE_SIZE);
+	kaddr = malloc(F2FS_BLKSIZE);
 	ASSERT(kaddr);
 
 	ret = dev_read_block(kaddr, start++);
@@ -1856,7 +1856,7 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 			if (offset + SUMMARY_SIZE <=
 					PAGE_CACHE_SIZE - SUM_FOOTER_SIZE)
 				continue;
-			memset(kaddr, 0, PAGE_SIZE);
+			memset(kaddr, 0, F2FS_BLKSIZE);
 			ret = dev_read_block(kaddr, start++);
 			ASSERT(ret >= 0);
 			offset = 0;
