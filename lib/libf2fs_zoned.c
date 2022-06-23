@@ -200,21 +200,26 @@ int f2fs_get_zone_blocks(int i)
 	return 0;
 }
 
-int f2fs_report_zone(int i, uint64_t sector, void *blkzone)
+int f2fs_report_zone(int i, uint64_t sector, struct blk_zone *blkzone)
 {
-	struct blk_zone *blkz = (struct blk_zone *)blkzone;
-	struct blk_zone_report *rep;
+	struct one_zone_report {
+		struct blk_zone_report	rep;
+		struct blk_zone		zone;
+	} *rep;
 	int ret = -1;
 
-	rep = calloc(1, sizeof(struct blk_zone_report) +
-		     sizeof(struct blk_zone));
+	static_assert(sizeof(*rep) == sizeof(rep->rep) + sizeof(rep->zone), "");
+
+	rep = calloc(1, sizeof(*rep));
 	if (!rep) {
 		ERR_MSG("No memory for report zones\n");
 		return -ENOMEM;
 	}
 
-	rep->sector = sector;
-	rep->nr_zones = 1;
+	rep->rep = (struct blk_zone_report){
+		.sector = sector,
+		.nr_zones = 1,
+	};
 	ret = ioctl(c.devices[i].fd, BLKREPORTZONE, rep);
 	if (ret != 0) {
 		ret = -errno;
@@ -222,7 +227,7 @@ int f2fs_report_zone(int i, uint64_t sector, void *blkzone)
 		goto out;
 	}
 
-	*blkz = *(struct blk_zone *)(rep + 1);
+	*blkzone = rep->zone;
 out:
 	free(rep);
 	return ret;
@@ -531,7 +536,8 @@ uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb)
 
 #else
 
-int f2fs_report_zone(int i, uint64_t UNUSED(sector), void *UNUSED(blkzone))
+int f2fs_report_zone(int i, uint64_t UNUSED(sector),
+		     struct blk_zone *UNUSED(blkzone))
 {
 	ERR_MSG("%d: Unsupported zoned block device\n", i);
 	return -1;
