@@ -1854,7 +1854,7 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 			curseg->sum_blk->entries[j] = *s;
 			offset += SUMMARY_SIZE;
 			if (offset + SUMMARY_SIZE <=
-					PAGE_CACHE_SIZE - SUM_FOOTER_SIZE)
+					F2FS_BLKSIZE - SUM_FOOTER_SIZE)
 				continue;
 			memset(kaddr, 0, F2FS_BLKSIZE);
 			ret = dev_read_block(kaddr, start++);
@@ -1914,7 +1914,7 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 			blk_addr = GET_SUM_BLKADDR(sbi, segno);
 	}
 
-	sum_blk = (struct f2fs_summary_block *)malloc(PAGE_SIZE);
+	sum_blk = malloc(sizeof(*sum_blk));
 	ASSERT(sum_blk);
 
 	ret = dev_read_block(sum_blk, blk_addr);
@@ -1924,7 +1924,7 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 		restore_node_summary(sbi, segno, sum_blk);
 
 	curseg = CURSEG_I(sbi, type);
-	memcpy(curseg->sum_blk, sum_blk, PAGE_CACHE_SIZE);
+	memcpy(curseg->sum_blk, sum_blk, sizeof(*sum_blk));
 	reset_curseg(sbi, type);
 	free(sum_blk);
 }
@@ -1990,7 +1990,7 @@ static int build_curseg(struct f2fs_sb_info *sbi)
 	SM_I(sbi)->curseg_array = array;
 
 	for (i = 0; i < NR_CURSEG_TYPE; i++) {
-		array[i].sum_blk = calloc(PAGE_CACHE_SIZE, 1);
+		array[i].sum_blk = calloc(sizeof(*(array[i].sum_blk)), 1);
 		if (!array[i].sum_blk) {
 			MSG(1, "\tError: Calloc failed for build_curseg!!\n");
 			goto seg_cleanup;
