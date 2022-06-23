@@ -206,7 +206,8 @@ int f2fs_report_zone(int i, uint64_t sector, void *blkzone)
 	struct blk_zone_report *rep;
 	int ret = -1;
 
-	rep = malloc(sizeof(struct blk_zone_report) + sizeof(struct blk_zone));
+	rep = calloc(1, sizeof(struct blk_zone_report) +
+		     sizeof(struct blk_zone));
 	if (!rep) {
 		ERR_MSG("No memory for report zones\n");
 		return -ENOMEM;
