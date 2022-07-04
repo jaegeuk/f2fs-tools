@@ -50,6 +50,18 @@ AC_ARG_WITH([blkid],
 	[],
 	[with_blkid=check])
 
+AC_ARG_WITH([lzo2],
+	[AS_HELP_STRING([--without-lzo2],
+	  [Ignore presence of liblzo2 and disable lzo2 support])],
+	[],
+	[with_lzo2=check])
+
+AC_ARG_WITH([lz4],
+	[AS_HELP_STRING([--without-lz4],
+	  [Ignore presence of liblz4 and disable lz4 support])],
+	[],
+	[with_lz4=check])
+
 # Checks for programs.
 AC_PROG_CC
 AM_PROG_AR
@@ -71,17 +83,29 @@ AS_IF([test "x$with_blkid" != xno],
         fi
 	], -lblkid)])
 
-AC_CHECK_LIB([lzo2], [main],
-	[AC_SUBST([liblzo2_LIBS], ["-llzo2"])
-		AC_DEFINE([HAVE_LIBLZO2], [1],
-		[Define if you have liblzo2])
-	], [], [])
+AS_IF([test "x$with_lzo2" != xno],
+	[AC_CHECK_LIB([lzo2], [main],
+		[AC_SUBST([liblzo2_LIBS], ["-llzo2"])
+			AC_DEFINE([HAVE_LIBLZO2], [1],
+			[Define if you have liblzo2])
+		],
+		[if test "x$with_lzo2" != xcheck; then
+			AC_MSG_FAILURE(
+                [--with-lzo2 was given, but test for lzo2 failed])
+        fi
+	], -llzo2)])
 
-AC_CHECK_LIB([lz4], [main],
-	[AC_SUBST([liblz4_LIBS], ["-llz4"])
-		AC_DEFINE([HAVE_LIBLZ4], [1],
-		[Define if you have liblz4])
-	], [], [])
+AS_IF([test "x$with_lz4" != xno],
+	[AC_CHECK_LIB([lz4], [main],
+		[AC_SUBST([liblz4_LIBS], ["-llz4"])
+			AC_DEFINE([HAVE_LIBLZ4], [1],
+			[Define if you have liblz4])
+		],
+		[if test "x$with_lz4" != xcheck; then
+			AC_MSG_FAILURE(
+                [--with-lz4 was given, but test for lz4 failed])
+        fi
+	], -llz4)])
 
 AS_IF([test "x$with_selinux" != xno],
 	[AC_CHECK_LIB([selinux], [getcon],
