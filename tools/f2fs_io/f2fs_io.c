@@ -1270,6 +1270,33 @@ static void do_rename(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define gc_desc "trigger filesystem GC"
+#define gc_help "f2fs_io gc sync_mode [file_path]\n\n"
+
+static void do_gc(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	u32 sync;
+	int ret, fd;
+
+	if (argc != 3) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	sync = atoi(argv[1]);
+
+	fd = xopen(argv[2], O_RDONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_GARBAGE_COLLECT, &sync);
+	if (ret < 0)
+		die_errno("F2FS_IOC_GARBAGE_COLLECT failed");
+
+	printf("trigger %s gc ret=%d\n",
+		sync ? "synchronous" : "asynchronous", ret);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1301,6 +1328,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(compress),
 	CMD(get_filename_encrypt_mode),
 	CMD(rename),
+	CMD(gc),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
