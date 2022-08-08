@@ -812,12 +812,6 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return -1;
 	}
 
-	if (F2FS_BLKSIZE != PAGE_CACHE_SIZE) {
-		MSG(0, "Invalid page_cache_size (%d), supports only 4KB\n",
-			PAGE_CACHE_SIZE);
-		return -1;
-	}
-
 	blocksize = 1 << get_sb(log_blocksize);
 	if (F2FS_BLKSIZE != blocksize) {
 		MSG(0, "Invalid blocksize (%u), supports only 4KB\n",

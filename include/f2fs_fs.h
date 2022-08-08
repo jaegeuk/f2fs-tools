@@ -349,10 +349,6 @@ static inline uint64_t bswap_64(uint64_t val)
 		snprintf(buf, len, #member)
 
 /* these are defined in kernel */
-#ifndef PAGE_SIZE
-#define PAGE_SIZE		4096
-#endif
-#define PAGE_CACHE_SIZE		4096
 #define BITS_PER_BYTE		8
 #ifndef SECTOR_SHIFT
 #define SECTOR_SHIFT		9
@@ -949,9 +945,10 @@ static_assert(sizeof(struct f2fs_extent) == 12, "");
 				DEFAULT_INLINE_XATTR_ADDRS -		\
 				F2FS_TOTAL_EXTRA_ATTR_SIZE -		\
 				DEF_INLINE_RESERVED_SIZE))
-#define INLINE_DATA_OFFSET	(PAGE_CACHE_SIZE - sizeof(struct node_footer) \
-				- sizeof(__le32)*(DEF_ADDRS_PER_INODE + 5 - \
-				DEF_INLINE_RESERVED_SIZE))
+#define INLINE_DATA_OFFSET	(F2FS_BLKSIZE -				\
+				sizeof(struct node_footer) -		\
+				sizeof(__le32) * (DEF_ADDRS_PER_INODE +	\
+				5 - DEF_INLINE_RESERVED_SIZE))
 
 #define DEF_DIR_LEVEL		0
 
@@ -1093,7 +1090,7 @@ static_assert(sizeof(struct f2fs_node) == 4096, "");
 /*
  * For NAT entries
  */
-#define NAT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_nat_entry))
+#define NAT_ENTRY_PER_BLOCK (F2FS_BLKSIZE / sizeof(struct f2fs_nat_entry))
 #define NAT_BLOCK_OFFSET(start_nid) (start_nid / NAT_ENTRY_PER_BLOCK)
 
 #define DEFAULT_NAT_ENTRY_RATIO		20
@@ -1120,7 +1117,7 @@ static_assert(sizeof(struct f2fs_nat_block) == 4095, "");
  * Not allow to change this.
  */
 #define SIT_VBLOCK_MAP_SIZE 64
-#define SIT_ENTRY_PER_BLOCK (PAGE_CACHE_SIZE / sizeof(struct f2fs_sit_entry))
+#define SIT_ENTRY_PER_BLOCK (F2FS_BLKSIZE / sizeof(struct f2fs_sit_entry))
 
 /*
  * F2FS uses 4 bytes to represent block address. As a result, supported size of
