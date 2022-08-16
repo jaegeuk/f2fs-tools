@@ -467,7 +467,8 @@ static int f2fs_prepare_super_block(void)
 
 	total_zones = get_sb(segment_count) / (c.segs_per_zone) -
 							total_meta_zones;
-
+	if (total_zones == 0)
+		goto too_small;
 	set_sb(section_count, total_zones * c.secs_per_zone);
 
 	set_sb(segment_count_main, get_sb(section_count) * c.segs_per_sec);
@@ -497,8 +498,7 @@ static int f2fs_prepare_super_block(void)
 			c.sector_size < zone_align_start_offset) ||
 		(get_sb(segment_count_main) - NR_CURSEG_TYPE) <
 						c.reserved_segments) {
-		MSG(0, "\tError: Device size is not sufficient for F2FS volume\n");
-		return -1;
+		goto too_small;
 	}
 
 	if (c.vol_uuid) {
@@ -612,6 +612,10 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	return 0;
+
+too_small:
+	MSG(0, "\tError: Device size is not sufficient for F2FS volume\n");
+	return -1;
 }
 
 static int f2fs_init_sit_area(void)
