@@ -318,7 +318,7 @@ static int configure_files(void)
 #else
 	sehnd = selinux_android_file_context_handle();
 	if (!sehnd) {
-		ERR_MSG("Failed to get android file_contexts\n", c.mount_point);
+		ERR_MSG("Failed to get android file_contexts\n");
 		return -EINVAL;
 	}
 #endif
