@@ -969,49 +969,6 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					c.sb_version, c.version);
-#if defined(__APPLE__)
-		if (!c.no_kernel_check &&
-			memcmp(c.sb_version, c.version,	VERSION_NAME_LEN)) {
-			c.auto_fix = 0;
-			c.fix_on = 1;
-			memcpy(sbi->raw_super->version,
-					c.version, VERSION_NAME_LEN);
-			update_superblock(sbi->raw_super, SB_MASK(sb_addr));
-		}
-#else
-		if (!c.no_kernel_check) {
-			struct timespec t;
-			u32 prev_time, cur_time, time_diff;
-			__le32 *ver_ts_ptr = (__le32 *)(sbi->raw_super->version
-						+ VERSION_NAME_LEN);
-
-			t.tv_sec = t.tv_nsec = 0;
-			clock_gettime(CLOCK_REALTIME, &t);
-			cur_time = (u32)t.tv_sec;
-			prev_time = le32_to_cpu(*ver_ts_ptr);
-
-			MSG(0, "Info: version timestamp cur: %u, prev: %u\n",
-					cur_time, prev_time);
-			if (!memcmp(c.sb_version, c.version,
-						VERSION_NAME_LEN)) {
-				/* valid prev_time */
-				if (prev_time != 0 && cur_time > prev_time) {
-					time_diff = cur_time - prev_time;
-					if (time_diff < CHECK_PERIOD)
-						goto out;
-					c.auto_fix = 0;
-					c.fix_on = 1;
-				}
-			} else {
-				memcpy(sbi->raw_super->version,
-						c.version, VERSION_NAME_LEN);
-			}
-
-			*ver_ts_ptr = cpu_to_le32(cur_time);
-			update_superblock(sbi->raw_super, SB_MASK(sb_addr));
-		}
-out:
-#endif
 		print_sb_state(sbi->raw_super);
 		return 0;
 	}
@@ -3582,6 +3539,48 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
+	if (c.func == FSCK) {
+#if defined(__APPLE__)
+		if (!c.no_kernel_check &&
+			memcmp(c.sb_version, c.version,	VERSION_NAME_LEN)) {
+			c.auto_fix = 0;
+			c.fix_on = 1;
+			memcpy(sbi->raw_super->version,
+					c.version, VERSION_NAME_LEN);
+			update_superblock(sbi->raw_super, SB_MASK_ALL);
+		}
+#else
+		if (!c.no_kernel_check) {
+			u32 prev_time, cur_time, time_diff;
+			__le32 *ver_ts_ptr = (__le32 *)(sbi->raw_super->version
+						+ VERSION_NAME_LEN);
+
+			cur_time = (u32)get_cp(elapsed_time);
+			prev_time = le32_to_cpu(*ver_ts_ptr);
+
+			MSG(0, "Info: version timestamp cur: %u, prev: %u\n",
+					cur_time, prev_time);
+			if (!memcmp(c.sb_version, c.version,
+						VERSION_NAME_LEN)) {
+				/* valid prev_time */
+				if (prev_time != 0 && cur_time > prev_time) {
+					time_diff = cur_time - prev_time;
+					if (time_diff < CHECK_PERIOD)
+						goto out;
+					c.auto_fix = 0;
+					c.fix_on = 1;
+				}
+			} else {
+				memcpy(sbi->raw_super->version,
+						c.version, VERSION_NAME_LEN);
+			}
+
+			*ver_ts_ptr = cpu_to_le32(cur_time);
+			update_superblock(sbi->raw_super, SB_MASK_ALL);
+		}
+#endif
+	}
+out:
 	print_ckpt_info(sbi);
 
 	if (c.quota_fix) {
