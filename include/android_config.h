@@ -69,6 +69,7 @@
 #define HAVE_GETMNTENT 1
 #define HAVE_LLSEEK 1
 #define HAVE_MEMSET 1
+#define HAVE_SPARSE_SPARSE_H 1
 #define HAVE_LIBLZ4 1
 
 #ifdef WITH_SLOAD
@@ -78,4 +79,5 @@
 
 #if defined(_WIN32)
 #define HAVE_LSEEK64
+#define HAVE_SPARSE_SPARSE_H 1
 #endif
