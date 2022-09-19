@@ -513,7 +513,9 @@ static void do_erase(int argc, char **argv, const struct cmd_desc *cmd)
 "  osync         : O_SYNC\n"				\
 "  atomic_commit : atomic write & commit\n"		\
 "  atomic_abort  : atomic write & abort\n"		\
-"{delay} is in ms unit and optional only for atomic_commit and atomic_abort\n"
+"  atomic_rcommit: atomic replace & commit\n"	\
+"  atomic_rabort : atomic replace & abort\n"	\
+"{delay} is in ms unit and optional only for atomic operations\n"
 
 static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -524,7 +526,7 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	int flags = 0;
 	int fd;
 	u64 total_time = 0, max_time = 0, max_time_t = 0;
-	bool atomic_commit = false, atomic_abort = false;
+	bool atomic_commit = false, atomic_abort = false, replace = false;
 	int useconds = 0;
 
 	srand(time(0));
@@ -551,18 +553,25 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	else if (strcmp(argv[4], "inc_num") && strcmp(argv[4], "rand"))
 		die("Wrong pattern type");
 
-	if (!strcmp(argv[5], "dio"))
+	if (!strcmp(argv[5], "dio")) {
 		flags |= O_DIRECT;
-	else if (!strcmp(argv[5], "dsync"))
+	} else if (!strcmp(argv[5], "dsync")) {
 		flags |= O_DIRECT | O_DSYNC;
-	else if (!strcmp(argv[5], "osync"))
+	} else if (!strcmp(argv[5], "osync")) {
 		flags |= O_SYNC;
-	else if (!strcmp(argv[5], "atomic_commit"))
+	} else if (!strcmp(argv[5], "atomic_commit")) {
 		atomic_commit = true;
-	else if (!strcmp(argv[5], "atomic_abort"))
+	} else if (!strcmp(argv[5], "atomic_abort")) {
 		atomic_abort = true;
-	else if (strcmp(argv[5], "buffered"))
+	} else if (!strcmp(argv[5], "atomic_rcommit")) {
+		atomic_commit = true;
+		replace = true;
+	} else if (!strcmp(argv[5], "atomic_rabort")) {
+		atomic_abort = true;
+		replace = true;
+	} else if (strcmp(argv[5], "buffered")) {
 		die("Wrong IO type");
+	}
 
 	fd = xopen(argv[6], O_CREAT | O_WRONLY | flags, 0755);
 
@@ -572,7 +581,11 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 		if (argc == 8)
 			useconds = atoi(argv[7]) * 1000;
 
-		ret = ioctl(fd, F2FS_IOC_START_ATOMIC_WRITE);
+		if (replace)
+			ret = ioctl(fd, F2FS_IOC_START_ATOMIC_REPLACE);
+		else
+			ret = ioctl(fd, F2FS_IOC_START_ATOMIC_WRITE);
+
 		if (ret < 0) {
 			fputs("setting atomic file mode failed\n", stderr);
 			exit(1);
