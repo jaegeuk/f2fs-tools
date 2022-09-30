@@ -987,7 +987,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 	}
 
 	/* Check zoned block device feature */
-	if (c.devices[0].zoned_model == F2FS_ZONED_HM &&
+	if (c.devices[0].zoned_model != F2FS_ZONED_NONE &&
 			!(sb->feature & cpu_to_le32(F2FS_FEATURE_BLKZONED))) {
 		MSG(0, "\tMissing zoned block device feature\n");
 		return -1;

@@ -454,7 +454,7 @@ static int f2fs_prepare_super_block(void)
 		 * not overlap to metadata area.
 		 */
 		for (i = 1; i < c.ndevs; i++) {
-			if (c.devices[i].zoned_model == F2FS_ZONED_HM &&
+			if (c.devices[i].zoned_model != F2FS_ZONED_NONE &&
 				c.devices[i].start_blkaddr < get_sb(main_blkaddr)) {
 				MSG(0, "\tError: Conventional device %s is too small,"
 					" (%"PRIu64" MiB needed).\n", c.devices[0].path,
