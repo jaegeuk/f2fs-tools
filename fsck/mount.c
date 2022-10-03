@@ -1095,6 +1095,14 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 		if (i == 0)
 			c.devices[i].end_blkaddr += get_sb(segment0_blkaddr);
 
+		if (c.zoned_model == F2FS_ZONED_NONE) {
+			if (c.devices[i].zoned_model == F2FS_ZONED_HM)
+				c.zoned_model = F2FS_ZONED_HM;
+			else if (c.devices[i].zoned_model == F2FS_ZONED_HA &&
+					c.zoned_model != F2FS_ZONED_HM)
+				c.zoned_model = F2FS_ZONED_HA;
+		}
+
 		c.ndevs = i + 1;
 		MSG(0, "Info: Device[%d] : %s blkaddr = %"PRIx64"--%"PRIx64"\n",
 				i, c.devices[i].path,
