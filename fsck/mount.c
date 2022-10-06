@@ -611,6 +611,42 @@ void print_sb_stop_reason(struct f2fs_super_block *sb)
 	MSG(0, "\n");
 }
 
+static char *errors_str[] = {
+	[ERROR_CORRUPTED_CLUSTER]		= "corrupted_cluster",
+	[ERROR_FAIL_DECOMPRESSION]		= "fail_decompression",
+	[ERROR_INVALID_BLKADDR]			= "invalid_blkaddr",
+	[ERROR_CORRUPTED_DIRENT]		= "corrupted_dirent",
+	[ERROR_CORRUPTED_INODE]			= "corrupted_inode",
+	[ERROR_INCONSISTENT_SUMMARY]		= "inconsistent_summary",
+	[ERROR_INCONSISTENT_FOOTER]		= "inconsistent_footer",
+	[ERROR_INCONSISTENT_SUM_TYPE]		= "inconsistent_sum_type",
+	[ERROR_CORRUPTED_JOURNAL]		= "corrupted_journal",
+	[ERROR_INCONSISTENT_NODE_COUNT]		= "inconsistent_node_count",
+	[ERROR_INCONSISTENT_BLOCK_COUNT]	= "inconsistent_block_count",
+	[ERROR_INVALID_CURSEG]			= "invalid_curseg",
+	[ERROR_INCONSISTENT_SIT]		= "inconsistent_sit",
+	[ERROR_CORRUPTED_VERITY_XATTR]		= "corrupted_verity_xattr",
+	[ERROR_CORRUPTED_XATTR]			= "corrupted_xattr",
+};
+
+void print_sb_errors(struct f2fs_super_block *sb)
+{
+	u8 *errors = sb->s_errors;
+	int i;
+
+	if (!c.fs_errors)
+		return;
+
+	MSG(0, "Info: fs errors: ");
+
+	for (i = 0; i < ERROR_MAX; i++) {
+		if (test_bit_le(i, errors))
+			MSG(0, "%s ",  errors_str[i]);
+	}
+
+	MSG(0, "\n");
+}
+
 bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 					block_t blkaddr, int type)
 {
@@ -996,12 +1032,14 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 
 		c.force_stop = is_checkpoint_stop(sbi->raw_super, false);
 		c.abnormal_stop = is_checkpoint_stop(sbi->raw_super, true);
+		c.fs_errors = is_inconsistent_error(sbi->raw_super);
 
 		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					c.sb_version, c.version);
 		print_sb_state(sbi->raw_super);
 		print_sb_stop_reason(sbi->raw_super);
+		print_sb_errors(sbi->raw_super);
 		return 0;
 	}
 
@@ -1247,6 +1285,18 @@ bool is_checkpoint_stop(struct f2fs_super_block *sb, bool abnormal)
 	return false;
 }
 
+bool is_inconsistent_error(struct f2fs_super_block *sb)
+{
+	int i;
+
+	for (i = 0; i < MAX_F2FS_ERRORS; i++) {
+		if (sb->s_errors[i])
+			return true;
+	}
+
+	return false;
+}
+
 /*
  * For a return value of 1, caller should further check for c.fix_on state
  * and take appropriate action.
@@ -1256,7 +1306,7 @@ static int f2fs_should_proceed(struct f2fs_super_block *sb, u32 flag)
 	if (!c.fix_on && (c.auto_fix || c.preen_mode)) {
 		if (flag & CP_FSCK_FLAG ||
 			flag & CP_QUOTA_NEED_FSCK_FLAG ||
-			c.abnormal_stop ||
+			c.abnormal_stop || c.fs_errors ||
 			(exist_qf_ino(sb) && (flag & CP_ERROR_FLAG))) {
 			c.fix_on = 1;
 		} else if (!c.preen_mode) {
