@@ -3351,6 +3351,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	/* fix global metadata */
 	if (force || (c.fix_on && f2fs_dev_is_writable())) {
 		struct f2fs_checkpoint *cp = F2FS_CKPT(sbi);
+		struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
 		if (force || c.bug_on || c.bug_nat_bits || c.quota_fixed) {
 			/* flush nats to write_nit_bits below */
@@ -3366,6 +3367,12 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			is_set_ckpt_flags(cp, CP_QUOTA_NEED_FSCK_FLAG)) {
 			write_checkpoints(sbi);
 		}
+
+		if (c.abnormal_stop) {
+			memset(sb->s_stop_reason, 0, MAX_STOP_REASON);
+			update_superblock(sb, SB_MASK_ALL);
+		}
+
 		/* to return FSCK_ERROR_CORRECTED */
 		ret = 0;
 	}

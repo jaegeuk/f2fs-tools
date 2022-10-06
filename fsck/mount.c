@@ -583,6 +583,34 @@ void print_sb_state(struct f2fs_super_block *sb)
 	MSG(0, "\n");
 }
 
+static char *stop_reason_str[] = {
+	[STOP_CP_REASON_SHUTDOWN]		= "shutdown",
+	[STOP_CP_REASON_FAULT_INJECT]		= "fault_inject",
+	[STOP_CP_REASON_META_PAGE]		= "meta_page",
+	[STOP_CP_REASON_WRITE_FAIL]		= "write_fail",
+	[STOP_CP_REASON_CORRUPTED_SUMMARY]	= "corrupted_summary",
+	[STOP_CP_REASON_UPDATE_INODE]		= "update_inode",
+	[STOP_CP_REASON_FLUSH_FAIL]		= "flush_fail",
+};
+
+void print_sb_stop_reason(struct f2fs_super_block *sb)
+{
+	u8 *reason = sb->s_stop_reason;
+	int i;
+
+	if (!c.force_stop)
+		return;
+
+	MSG(0, "Info: checkpoint stop reason: ");
+
+	for (i = 0; i < STOP_CP_REASON_MAX; i++) {
+		if (reason[i])
+			MSG(0, "%s(%d) ", stop_reason_str[i], reason[i]);
+	}
+
+	MSG(0, "\n");
+}
+
 bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 					block_t blkaddr, int type)
 {
@@ -966,10 +994,14 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 				VERSION_NAME_LEN);
 		get_kernel_version(c.init_version);
 
+		c.force_stop = is_checkpoint_stop(sbi->raw_super, false);
+		c.abnormal_stop = is_checkpoint_stop(sbi->raw_super, true);
+
 		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
 					c.sb_version, c.version);
 		print_sb_state(sbi->raw_super);
+		print_sb_stop_reason(sbi->raw_super);
 		return 0;
 	}
 
@@ -1201,6 +1233,20 @@ fail_no_cp:
 	return -EINVAL;
 }
 
+bool is_checkpoint_stop(struct f2fs_super_block *sb, bool abnormal)
+{
+	int i;
+
+	for (i = 0; i < STOP_CP_REASON_MAX; i++) {
+		if (abnormal && i == STOP_CP_REASON_SHUTDOWN)
+			continue;
+		if (sb->s_stop_reason[i])
+			return true;
+	}
+
+	return false;
+}
+
 /*
  * For a return value of 1, caller should further check for c.fix_on state
  * and take appropriate action.
@@ -1210,6 +1256,7 @@ static int f2fs_should_proceed(struct f2fs_super_block *sb, u32 flag)
 	if (!c.fix_on && (c.auto_fix || c.preen_mode)) {
 		if (flag & CP_FSCK_FLAG ||
 			flag & CP_QUOTA_NEED_FSCK_FLAG ||
+			c.abnormal_stop ||
 			(exist_qf_ino(sb) && (flag & CP_ERROR_FLAG))) {
 			c.fix_on = 1;
 		} else if (!c.preen_mode) {
