@@ -2777,6 +2777,14 @@ static void move_one_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left,
 	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))) {
 		if (i != CURSEG_HOT_DATA && i != CURSEG_HOT_NODE)
 			return;
+
+		if (i == CURSEG_HOT_DATA) {
+			left = 0;
+			from = SM_I(sbi)->main_blkaddr;
+		} else {
+			left = 1;
+			from = __end_block_addr(sbi);
+		}
 		goto bypass_ssa;
 	}
 

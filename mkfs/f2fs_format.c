@@ -544,10 +544,10 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
-		c.cur_seg[CURSEG_HOT_NODE] = 0;
+		c.cur_seg[CURSEG_HOT_NODE] = last_section(last_zone(total_zones));
 		c.cur_seg[CURSEG_WARM_NODE] = 0;
 		c.cur_seg[CURSEG_COLD_NODE] = 0;
-		c.cur_seg[CURSEG_HOT_DATA] = 1;
+		c.cur_seg[CURSEG_HOT_DATA] = 0;
 		c.cur_seg[CURSEG_COLD_DATA] = 0;
 		c.cur_seg[CURSEG_WARM_DATA] = 0;
 	} else if (c.heap) {
