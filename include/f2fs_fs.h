@@ -480,7 +480,6 @@ struct f2fs_configuration {
 	uint64_t wanted_total_sectors;
 	uint64_t wanted_sector_size;
 	uint64_t target_sectors;
-	uint64_t max_size;
 	uint32_t sectors_per_blk;
 	uint32_t blks_per_seg;
 	__u8 init_version[VERSION_LEN + 1];

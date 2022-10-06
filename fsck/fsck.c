@@ -3179,6 +3179,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct hard_link_node *node = NULL;
 	bool verify_failed = false;
+	uint64_t max_blks, data_secs, node_secs, free_blks;
 
 	if (c.show_file_map)
 		return 0;
@@ -3229,10 +3230,16 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		}
 		c.bug_on = 1;
 	}
-	printf("[FSCK] Max image size: %"PRIu64" MB, Free space: %u MB\n",
-		c.max_size >> 20,
-		(sbi->user_block_count - sbi->total_valid_block_count) >>
-		(20 - F2FS_BLKSIZE_BITS));
+
+	data_secs = round_up(sbi->total_valid_node_count, BLKS_PER_SEC(sbi));
+	node_secs = round_up(sbi->total_valid_block_count -
+				sbi->total_valid_node_count, BLKS_PER_SEC(sbi));
+	free_blks = (sbi->total_sections - data_secs - node_secs) *
+							BLKS_PER_SEC(sbi);
+	max_blks = SM_I(sbi)->main_blkaddr + (data_secs + node_secs) *
+							BLKS_PER_SEC(sbi);
+	printf("[FSCK] Max image size: %"PRIu64" MB, Free space: %"PRIu64" MB\n",
+						max_blks >> 8, free_blks >> 8);
 	printf("[FSCK] Unreachable nat entries                       ");
 	if (nr_unref_nid == 0x0) {
 		printf(" [Ok..] [0x%x]\n", nr_unref_nid);

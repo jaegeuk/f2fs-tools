@@ -421,6 +421,8 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 		sbi->log_blocks_per_seg);
 }
 
+#define BLKS_PER_SEC(sbi)						\
+	((sbi)->segs_per_sec * (sbi)->blocks_per_seg)
 #define GET_ZONENO_FROM_SEGNO(sbi, segno)                               \
 	((segno / sbi->segs_per_sec) / sbi->secs_per_zone)
 
