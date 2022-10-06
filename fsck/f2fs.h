@@ -416,8 +416,9 @@ static inline block_t __start_sum_addr(struct f2fs_sb_info *sbi)
 
 static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 {
-	block_t end = SM_I(sbi)->main_blkaddr;
-	return end + le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count);
+	return SM_I(sbi)->main_blkaddr +
+		(le32_to_cpu(F2FS_RAW_SUPER(sbi)->segment_count_main) <<
+		sbi->log_blocks_per_seg);
 }
 
 #define GET_ZONENO_FROM_SEGNO(sbi, segno)                               \
