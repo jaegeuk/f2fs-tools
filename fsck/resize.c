@@ -150,7 +150,7 @@ safe_resize:
 		c.new_overprovision = get_best_overprovision(sb);
 
 	c.new_reserved_segments =
-		(2 * (100 / c.new_overprovision + 1) + 6) *
+		(100 / c.new_overprovision + 1 + NR_CURSEG_TYPE) *
 						get_sb(segs_per_sec);
 
 	if ((get_sb(segment_count_main) - 2) < c.new_reserved_segments ||
@@ -475,8 +475,13 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	set_cp(overprov_segment_count, (get_newsb(segment_count_main) -
 			get_cp(rsvd_segment_count)) *
 			c.new_overprovision / 100);
+
+	/* give 2 sections (DATA and NODE) to trigger GC in advance */
+	if (get_cp(overprov_segment_count) < get_cp(rsvd_segment_count))
+		set_cp(overprov_segment_count, get_cp(rsvd_segment_count));
+
 	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
-						get_cp(rsvd_segment_count));
+						2 * get_sb(segs_per_sec));
 
 	DBG(0, "Info: Overprovision ratio = %.3lf%%\n", c.new_overprovision);
 	DBG(0, "Info: Overprovision segments = %u (GC reserved = %u)\n",
@@ -607,7 +612,8 @@ static int f2fs_resize_check(struct f2fs_sb_info *sbi, struct f2fs_super_block *
 	overprov_segment_count = (get_newsb(segment_count_main) -
 			c.new_reserved_segments) *
 			c.new_overprovision / 100;
-	overprov_segment_count += c.new_reserved_segments;
+
+	overprov_segment_count += 2 * get_newsb(segs_per_sec);
 
 	user_block_count = (get_newsb(segment_count_main) -
 			overprov_segment_count) * c.blks_per_seg;
