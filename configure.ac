@@ -191,6 +191,7 @@ AC_CHECK_FUNCS_ONCE([
 	lseek64
 	memset
 	setmntent
+	clock_gettime
 ])
 
 AS_IF([test "$ac_cv_header_byteswap_h" = "yes"],
