@@ -50,7 +50,7 @@ enum SB_ADDR {
 	SB_MAX_ADDR,
 };
 
-#define SB_MASK(i)	(1 << i)
+#define SB_MASK(i)	(1 << (i))
 #define SB_MASK_ALL	(SB_MASK(SB0_ADDR) | SB_MASK(SB1_ADDR))
 
 /* fsck.c */
