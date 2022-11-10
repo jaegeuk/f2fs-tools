@@ -273,8 +273,10 @@ void f2fs_parse_options(int argc, char *argv[])
 						atoi(optarg);
 				break;
 			case 'g':
-				if (!strcmp(optarg, "android"))
+				if (!strcmp(optarg, "android")) {
 					c.defset = CONF_ANDROID;
+					MSG(0, "Info: Set conf for android\n");
+				}
 				break;
 			case 'l':
 				c.layout = 1;
@@ -408,14 +410,6 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							c.dbg_lv);
-				break;
-			case 'g':
-				if (!strcmp(optarg, "android")) {
-					c.defset = CONF_ANDROID;
-					MSG(0, "Info: Set conf for android\n");
-					break;
-				}
-				err = EWRONG_OPT;
 				break;
 			case 'i':
 				if (strncmp(optarg, "0x", 2))
