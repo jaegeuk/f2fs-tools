@@ -742,8 +742,10 @@ check_next:
 
 	if (ftype == F2FS_FT_DIR) {
 		f2fs_set_main_bitmap(sbi, ni->blk_addr, CURSEG_HOT_NODE);
-		memcpy(child.p_name, node_blk->i.i_name,
-					node_blk->i.i_namelen);
+		namelen = le32_to_cpu(node_blk->i.i_namelen);
+		if (namelen > F2FS_NAME_LEN)
+			namelen = F2FS_NAME_LEN;
+		memcpy(child.p_name, node_blk->i.i_name, namelen);
 	} else {
 		if (f2fs_test_main_bitmap(sbi, ni->blk_addr) == 0) {
 			f2fs_set_main_bitmap(sbi, ni->blk_addr,
