@@ -706,7 +706,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	int ofs;
 	char *en;
 	u32 namelen;
-	unsigned int idx = 0;
+	unsigned int addrs, idx = 0;
 	unsigned short i_gc_failures;
 	int need_fix = 0;
 	int ret;
@@ -932,17 +932,16 @@ check_next:
 	}
 
 	/* check data blocks in inode */
+	addrs = ADDRS_PER_INODE(&node_blk->i);
 	if (cur_qtype != -1) {
+		u64 addrs_per_blk = (u64)ADDRS_PER_BLOCK(&node_blk->i);
 		qf_szchk_type[cur_qtype] = QF_SZCHK_REGFILE;
-		qf_maxsize[cur_qtype] = (ADDRS_PER_INODE(&node_blk->i) +
-				2 * ADDRS_PER_BLOCK(&node_blk->i) +
-				2 * ADDRS_PER_BLOCK(&node_blk->i) *
-				NIDS_PER_BLOCK +
-				(u64) ADDRS_PER_BLOCK(&node_blk->i) *
-				NIDS_PER_BLOCK * NIDS_PER_BLOCK) * F2FS_BLKSIZE;
+		qf_maxsize[cur_qtype] = (u64)(addrs + 2 * addrs_per_blk +
+				2 * addrs_per_blk * NIDS_PER_BLOCK +
+				addrs_per_blk * NIDS_PER_BLOCK *
+				NIDS_PER_BLOCK) * F2FS_BLKSIZE;
 	}
-	for (idx = 0; idx < ADDRS_PER_INODE(&node_blk->i);
-						idx++, child.pgofs++) {
+	for (idx = 0; idx < addrs; idx++, child.pgofs++) {
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs + idx]);
 
 		/* check extent info */
