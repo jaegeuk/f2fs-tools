@@ -51,7 +51,6 @@ stamp-h1
 /tools/parse.f2fs
 /tools/f2fscrypt
 /tools/f2fs_io/f2fs_io
-/tools/sg_write_buffer/sg_write_buffer
 
 # cscope files
 cscope.*

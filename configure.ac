@@ -260,7 +260,6 @@ AC_CONFIG_FILES([
 	mkfs/Makefile
 	fsck/Makefile
 	tools/Makefile
-	tools/sg_write_buffer/Makefile
 	tools/f2fs_io/Makefile
 ])
 
