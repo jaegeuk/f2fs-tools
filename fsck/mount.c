@@ -866,15 +866,15 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 	unsigned int segment_count, segs_per_sec, secs_per_zone, segs_per_zone;
 	unsigned int total_sections, blocks_per_seg;
 
-	if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) &&
-					verify_sb_chksum(sb))
-		return -1;
-
 	if (F2FS_SUPER_MAGIC != get_sb(magic)) {
 		MSG(0, "Magic Mismatch, valid(0x%x) - read(0x%x)\n",
 			F2FS_SUPER_MAGIC, get_sb(magic));
 		return -1;
 	}
+
+	if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) &&
+					verify_sb_chksum(sb))
+		return -1;
 
 	blocksize = 1 << get_sb(log_blocksize);
 	if (F2FS_BLKSIZE != blocksize) {
