@@ -1195,16 +1195,17 @@ static void do_get_filename_encrypt_mode (int argc, char **argv,
 						const struct cmd_desc *cmd)
 {
 	static const char *enc_name[] = {
-		"invalid", /* FS_ENCRYPTION_MODE_INVALID (0) */
-		"aes-256-xts", /* FS_ENCRYPTION_MODE_AES_256_XTS (1) */
-		"aes-256-gcm", /* FS_ENCRYPTION_MODE_AES_256_GCM (2) */
-		"aes-256-cbc", /* FS_ENCRYPTION_MODE_AES_256_CBC (3) */
-		"aes-256-cts", /* FS_ENCRYPTION_MODE_AES_256_CTS (4) */
-		"aes-128-cbc", /* FS_ENCRYPTION_MODE_AES_128_CBC (5) */
-		"aes-128-cts", /* FS_ENCRYPTION_MODE_AES_128_CTS (6) */
-		"speck128-256-xts", /* FS_ENCRYPTION_MODE_SPECK128_256_XTS (7) */
-		"speck128-256-cts", /* FS_ENCRYPTION_MODE_SPECK128_256_CTS (8) */
-		"adiantum", /* FS_ENCRYPTION_MODE_ADIANTUM (9) */
+		"invalid", /* FSCRYPT_MODE_INVALID (0) */
+		"aes-256-xts", /* FSCRYPT_MODE_AES_256_XTS (1) */
+		"aes-256-gcm", /* FSCRYPT_MODE_AES_256_GCM (2) */
+		"aes-256-cbc", /* FSCRYPT_MODE_AES_256_CBC (3) */
+		"aes-256-cts", /* FSCRYPT_MODE_AES_256_CTS (4) */
+		"aes-128-cbc", /* FSCRYPT_MODE_AES_128_CBC (5) */
+		"aes-128-cts", /* FSCRYPT_MODE_AES_128_CTS (6) */
+		"speck128-256-xts", /* FSCRYPT_MODE_SPECK128_256_XTS (7) */
+		"speck128-256-cts", /* FSCRYPT_MODE_SPECK128_256_CTS (8) */
+		"adiantum", /* FSCRYPT_MODE_ADIANTUM (9) */
+		"aes-256-hctr2", /* FSCRYPT_MODE_AES_256_HCTR2 (10) */
 	};
 	int fd, mode, ret;
 	struct fscrypt_get_policy_ex_arg arg;
