@@ -129,6 +129,10 @@ static bool is_wiped_device(int i)
 	int nblocks = 4096;	/* 16MB size */
 	int j;
 
+	/* let's trim the other devices except the first device */
+	if (i > 0)
+		return false;
+
 	buf = malloc(F2FS_BLKSIZE);
 	if (buf == NULL) {
 		MSG(1, "\tError: Malloc Failed for buf!!!\n");
