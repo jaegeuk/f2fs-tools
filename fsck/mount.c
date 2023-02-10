@@ -80,7 +80,7 @@ unsigned int get_usable_seg_count(struct f2fs_sb_info *sbi)
 {
 	unsigned int i, usable_seg_count = 0;
 
-	for (i = 0; i < TOTAL_SEGS(sbi); i++)
+	for (i = 0; i < MAIN_SEGS(sbi); i++)
 		if (is_usable_seg(sbi, i))
 			usable_seg_count++;
 
@@ -96,7 +96,7 @@ bool is_usable_seg(struct f2fs_sb_info *UNUSED(sbi), unsigned int UNUSED(segno))
 
 unsigned int get_usable_seg_count(struct f2fs_sb_info *sbi)
 {
-	return TOTAL_SEGS(sbi);
+	return MAIN_SEGS(sbi);
 }
 
 #endif
@@ -105,7 +105,7 @@ u32 get_free_segments(struct f2fs_sb_info *sbi)
 {
 	u32 i, free_segs = 0;
 
-	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+	for (i = 0; i < MAIN_SEGS(sbi); i++) {
 		struct seg_entry *se = get_seg_entry(sbi, i);
 
 		if (se->valid_blocks == 0x0 && !IS_CUR_SEGNO(sbi, i) &&
@@ -1789,13 +1789,13 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 
 	SM_I(sbi)->sit_info = sit_i;
 
-	sit_i->sentries = calloc(TOTAL_SEGS(sbi) * sizeof(struct seg_entry), 1);
+	sit_i->sentries = calloc(MAIN_SEGS(sbi) * sizeof(struct seg_entry), 1);
 	if (!sit_i->sentries) {
 		MSG(1, "\tError: Calloc failed for build_sit_info!\n");
 		goto free_sit_info;
 	}
 
-	bitmap_size = TOTAL_SEGS(sbi) * SIT_VBLOCK_MAP_SIZE;
+	bitmap_size = MAIN_SEGS(sbi) * SIT_VBLOCK_MAP_SIZE;
 
 	if (need_fsync_data_record(sbi))
 		bitmap_size += bitmap_size;
@@ -1808,7 +1808,7 @@ int build_sit_info(struct f2fs_sb_info *sbi)
 
 	bitmap = sit_i->bitmap;
 
-	for (start = 0; start < TOTAL_SEGS(sbi); start++) {
+	for (start = 0; start < MAIN_SEGS(sbi); start++) {
 		sit_i->sentries[start].cur_valid_map = bitmap;
 		bitmap += SIT_VBLOCK_MAP_SIZE;
 
@@ -2060,7 +2060,7 @@ static int build_curseg(struct f2fs_sb_info *sbi)
 			blk_off = get_cp(cur_node_blkoff[i - CURSEG_HOT_NODE]);
 			segno = get_cp(cur_node_segno[i - CURSEG_HOT_NODE]);
 		}
-		ASSERT(segno < TOTAL_SEGS(sbi));
+		ASSERT(segno < MAIN_SEGS(sbi));
 		ASSERT(blk_off < DEFAULT_BLOCKS_PER_SEGMENT);
 
 		array[i].segno = segno;
@@ -2422,7 +2422,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 		segno = start_blk * sit_i->sents_per_block;
 		end = (start_blk + readed) * sit_i->sents_per_block;
 
-		for (; segno < end && segno < TOTAL_SEGS(sbi); segno++) {
+		for (; segno < end && segno < MAIN_SEGS(sbi); segno++) {
 			se = &sit_i->sentries[segno];
 
 			get_current_sit_page(sbi, segno, sit_blk);
@@ -2448,7 +2448,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	for (i = 0; i < sits_in_cursum(journal); i++) {
 		segno = le32_to_cpu(segno_in_journal(journal, i));
 
-		if (segno >= TOTAL_SEGS(sbi)) {
+		if (segno >= MAIN_SEGS(sbi)) {
 			MSG(0, "\tError: build_sit_entries: segno(%u) is invalid!!!\n", segno);
 			journal->n_sits = cpu_to_le16(i);
 			c.fix_on = 1;
@@ -2525,7 +2525,7 @@ void build_sit_area_bitmap(struct f2fs_sb_info *sbi)
 
 	ASSERT(fsck->sit_area_bitmap_sz == fsck->main_area_bitmap_sz);
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno++) {
 		se = get_seg_entry(sbi, segno);
 
 		memcpy(ptr, se->cur_valid_map, SIT_VBLOCK_MAP_SIZE);
@@ -2571,7 +2571,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 
 	ptr = fsck->main_area_bitmap;
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno++) {
 		struct f2fs_sit_entry *sit;
 		struct seg_entry *se;
 		u16 valid_blocks = 0;
@@ -2694,7 +2694,7 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 	sit_blk = calloc(BLOCK_SZ, 1);
 	ASSERT(sit_blk);
 	/* update free segments */
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno++) {
 		struct f2fs_sit_entry *sit;
 		struct seg_entry *se;
 
@@ -3400,7 +3400,7 @@ static int find_fsync_inode(struct f2fs_sb_info *sbi, struct list_head *head)
 	struct f2fs_node *node_blk;
 	block_t blkaddr;
 	unsigned int loop_cnt = 0;
-	unsigned int free_blocks = TOTAL_SEGS(sbi) * sbi->blocks_per_seg -
+	unsigned int free_blocks = MAIN_SEGS(sbi) * sbi->blocks_per_seg -
 						sbi->total_valid_block_count;
 	int err = 0;
 

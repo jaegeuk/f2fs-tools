@@ -2064,7 +2064,7 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 	unsigned int i;
 
 	/* 1. check sit usage with CP: curseg is lost? */
-	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+	for (i = 0; i < MAIN_SEGS(sbi); i++) {
 		se = get_seg_entry(sbi, i);
 		if (se->valid_blocks != 0)
 			sit_valid_segs++;
@@ -2607,7 +2607,7 @@ int check_sit_types(struct f2fs_sb_info *sbi)
 	unsigned int i;
 	int err = 0;
 
-	for (i = 0; i < TOTAL_SEGS(sbi); i++) {
+	for (i = 0; i < MAIN_SEGS(sbi); i++) {
 		struct seg_entry *se;
 
 		se = get_seg_entry(sbi, i);

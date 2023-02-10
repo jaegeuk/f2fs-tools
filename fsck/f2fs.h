@@ -463,6 +463,7 @@ static inline block_t __end_block_addr(struct f2fs_sb_info *sbi)
 #define GET_R2L_SEGNO(sbi, segno)	(segno + FREE_I_START_SEGNO(sbi))
 
 #define MAIN_SEGS(sbi)	(SM_I(sbi)->main_segments)
+#define TOTAL_SEGS(sbi)	(SM_I(sbi)->segment_count)
 #define TOTAL_BLKS(sbi)	(TOTAL_SEGS(sbi) << (sbi)->log_blocks_per_seg)
 #define MAX_BLKADDR(sbi)	(SEG0_BLKADDR(sbi) + TOTAL_BLKS(sbi))
 
@@ -511,7 +512,6 @@ struct fsync_inode_entry {
 	((segno) % sit_i->sents_per_block)
 #define SIT_BLOCK_OFFSET(sit_i, segno)                                  \
 	((segno) / SIT_ENTRY_PER_BLOCK)
-#define TOTAL_SEGS(sbi) (SM_I(sbi)->main_segments)
 
 static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
 {

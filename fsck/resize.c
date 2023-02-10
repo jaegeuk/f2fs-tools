@@ -175,7 +175,7 @@ static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 
 	ASSERT(raw != NULL);
 
-	for (i = TOTAL_SEGS(sbi) - 1; i >= 0; i--) {
+	for (i = MAIN_SEGS(sbi) - 1; i >= 0; i--) {
 		se = get_seg_entry(sbi, i);
 		if (!se->valid_blocks)
 			continue;
@@ -240,7 +240,7 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
 	block_t end_sum_blkaddr = get_newsb(main_blkaddr);
 	block_t expand_sum_blkaddr = new_sum_blkaddr +
-					TOTAL_SEGS(sbi) - offset;
+					MAIN_SEGS(sbi) - offset;
 	block_t blkaddr;
 	int ret;
 	void *zero_block = calloc(BLOCK_SZ, 1);
@@ -258,7 +258,7 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 		}
 	} else {
 		blkaddr = end_sum_blkaddr - 1;
-		offset = TOTAL_SEGS(sbi) - 1;
+		offset = MAIN_SEGS(sbi) - 1;
 		while (blkaddr >= new_sum_blkaddr) {
 			if (blkaddr >= expand_sum_blkaddr) {
 				ret = dev_write_block(zero_block, blkaddr--);
@@ -412,7 +412,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 		DBG(3, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
 	}
 
-	for (segno = 0; segno < TOTAL_SEGS(sbi); segno++) {
+	for (segno = 0; segno < MAIN_SEGS(sbi); segno++) {
 		struct f2fs_sit_entry *sit;
 
 		se = get_seg_entry(sbi, segno);
