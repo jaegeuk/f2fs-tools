@@ -1045,12 +1045,9 @@ int get_device_info(int i)
 			return -1;
 		}
 
-		if (!is_power_of_2(dev->zone_size)) {
-			MSG(0, "\tError: zoned: illegal zone size %" PRIu64 "u (not a power of 2)\n",
+		if (!is_power_of_2(dev->zone_size))
+			MSG(0, "\tInfo: zoned: zone size %" PRIu64 "u (not a power of 2)\n",
 					dev->zone_size);
-			free(stat_buf);
-			return -1;
-		}
 
 		/*
 		 * Check zone configuration: for the first disk of a
