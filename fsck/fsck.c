@@ -2462,6 +2462,9 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
 	if (i >= MAX_DEVICES)
 		return -EINVAL;
 
+	if (c.devices[i].zoned_model != F2FS_ZONED_HM)
+		return 0;
+
 	/* get write pointer position of the zone the curseg points to */
 	cs_sector = (cs_block - c.devices[i].start_blkaddr)
 		<< log_sectors_per_block;
