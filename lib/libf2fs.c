@@ -1046,7 +1046,7 @@ int get_device_info(int i)
 		}
 
 		if (!is_power_of_2(dev->zone_size))
-			MSG(0, "\tInfo: zoned: zone size %" PRIu64 "u (not a power of 2)\n",
+			MSG(0, "Info: zoned: zone size %" PRIu64 "u (not a power of 2)\n",
 					dev->zone_size);
 
 		/*
