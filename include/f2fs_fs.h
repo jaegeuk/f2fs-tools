@@ -375,6 +375,10 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #define LPF "lost+found"
 
+/* one for gc buffer, the other for node */
+#define MIN_RSVD_SECS	(NR_CURSEG_TYPE + 2U)
+#define CONFIG_RSVD_DEFAULT_OP_RATIO	3.0
+
 enum f2fs_config_func {
 	MKFS,
 	FSCK,
@@ -460,6 +464,7 @@ typedef struct {
 #define ALIGN_UP(addrs, size)	ALIGN_DOWN(((addrs) + (size) - 1), (size))
 
 struct f2fs_configuration {
+	uint32_t conf_reserved_sections;
 	uint32_t reserved_segments;
 	uint32_t new_reserved_segments;
 	int sparse_mode;
@@ -1618,6 +1623,20 @@ extern uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb);
 #define ZONE_ALIGN(blks)	SIZE_ALIGN(blks, c.blks_per_seg * \
 					c.segs_per_zone)
 
+static inline double get_reserved(struct f2fs_super_block *sb, double ovp)
+{
+	double reserved;
+	uint32_t usable_main_segs = f2fs_get_usable_segments(sb);
+	uint32_t segs_per_sec = round_up(usable_main_segs, get_sb(section_count));
+
+	if (c.conf_reserved_sections)
+		reserved = c.conf_reserved_sections * segs_per_sec;
+	else
+		reserved = (100 / ovp + 1 + NR_CURSEG_TYPE) * segs_per_sec;
+
+	return reserved;
+}
+
 static inline double get_best_overprovision(struct f2fs_super_block *sb)
 {
 	double reserved, ovp, candidate, end, diff, space;
@@ -1635,8 +1654,7 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 	}
 
 	for (; candidate <= end; candidate += diff) {
-		reserved = (100 / candidate + 1 + NR_CURSEG_TYPE) *
-				round_up(usable_main_segs, get_sb(section_count));
+		reserved = get_reserved(sb, candidate);
 		ovp = (usable_main_segs - reserved) * candidate / 100;
 		if (ovp < 0)
 			continue;

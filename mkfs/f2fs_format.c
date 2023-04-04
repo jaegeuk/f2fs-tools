@@ -483,9 +483,7 @@ static int f2fs_prepare_super_block(void)
 	if (c.overprovision == 0)
 		c.overprovision = get_best_overprovision(sb);
 
-	c.reserved_segments =
-			(100 / c.overprovision + 1 + NR_CURSEG_TYPE) *
-			round_up(f2fs_get_usable_segments(sb), get_sb(section_count));
+	c.reserved_segments = get_reserved(sb, c.overprovision);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
 		c.overprovision = 0;
@@ -765,11 +763,31 @@ static int f2fs_write_check_point_pack(void)
 			get_cp(rsvd_segment_count)) *
 			c.overprovision / 100);
 
-	if (get_cp(overprov_segment_count) < get_cp(rsvd_segment_count))
+	if (!(c.conf_reserved_sections) &&
+	    get_cp(overprov_segment_count) < get_cp(rsvd_segment_count))
 		set_cp(overprov_segment_count, get_cp(rsvd_segment_count));
 
-	set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
-			2 * get_sb(segs_per_sec));
+	/*
+	 * If conf_reserved_sections has a non zero value, overprov_segment_count
+	 * is set to overprov_segment_count + rsvd_segment_count.
+	 */
+	if (c.conf_reserved_sections) {
+		/*
+		 * Overprovision segments must be bigger than two sections.
+		 * In non configurable reserved section case, overprovision
+		 * segments are always bigger than two sections.
+		 */
+		if (get_cp(overprov_segment_count) < 2 * get_sb(segs_per_sec)) {
+			MSG(0, "\tError: Not enough overprovision segments (%u)\n",
+			    get_cp(overprov_segment_count));
+			goto free_cp_payload;
+		}
+		set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
+				get_cp(rsvd_segment_count));
+	 } else {
+		set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
+				2 * get_sb(segs_per_sec));
+	 }
 
 	if (f2fs_get_usable_segments(sb) <= get_cp(overprov_segment_count)) {
 		MSG(0, "\tError: Not enough segments to create F2FS Volume\n");

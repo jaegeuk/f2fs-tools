@@ -92,6 +92,10 @@ mkfs.f2fs \- create an F2FS file system
 [
 .B \-V
 ]
+[
+.B \-Z
+.I #-of-reserved-sections
+]
 .I device
 .I [sectors]
 .SH DESCRIPTION
@@ -264,6 +268,14 @@ Number of sectors. Default is determined by device size.
 .TP
 .BI \-V
 Print the version number and exit.
+.TP
+.BI \-Z " #-of-reserved-sections"
+Specify the number of GC reserved sections for zoned device. If specified
+to non-zero, reserved segments count is set to the larger size between 8
+sections and the input value. If specified to zero, the best number will be
+assigned automatically according to the partition size.
+If overprovision-ratio-percentage is not specified, it will set to default
+3.0%. Without '-m' option, the filesystem doesn't support the feature.
 .TP
 .BI \-h,\ \-\-help
 Print usage and exit.

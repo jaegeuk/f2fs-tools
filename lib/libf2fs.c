@@ -1066,6 +1066,24 @@ int get_device_info(int i)
 				dev->nr_rnd_zones);
 		MSG(0, "      %zu blocks per zone\n",
 				dev->zone_blocks);
+
+		if (c.conf_reserved_sections) {
+			if (c.conf_reserved_sections < MIN_RSVD_SECS) {
+				MSG(0, "      Too small sections are reserved(%u secs)\n",
+				    c.conf_reserved_sections);
+				c.conf_reserved_sections = MIN_RSVD_SECS;
+				MSG(0, "      It is operated as a minimum reserved sections(%u secs)\n",
+				    c.conf_reserved_sections);
+			} else {
+				MSG(0, "      %u sections are reserved\n",
+				c.conf_reserved_sections);
+			}
+			if (!c.overprovision) {
+				c.overprovision = CONFIG_RSVD_DEFAULT_OP_RATIO;
+				MSG(0, "      Overprovision ratio is set to default(%.1lf%%)\n",
+				    c.overprovision);
+			}
+		}
 	}
 #endif
 	/* adjust wanted_total_sectors */
