@@ -1168,6 +1168,10 @@ static_assert(sizeof(struct f2fs_nat_block) == 4095, "");
 #define MAX_SIT_BITMAP_SIZE    (SEG_ALIGN(SIZE_ALIGN(F2FS_MAX_SEGMENT, \
 						SIT_ENTRY_PER_BLOCK)) * \
 						c.blks_per_seg / 8)
+#define MAX_CP_PAYLOAD         (SEG_ALIGN(SIZE_ALIGN(UINT32_MAX, NAT_ENTRY_PER_BLOCK)) * \
+						DEFAULT_NAT_ENTRY_RATIO / 100 * \
+						c.blks_per_seg / 8 + \
+						MAX_SIT_BITMAP_SIZE - MAX_BITMAP_SIZE_IN_CKPT)
 
 /*
  * Note that f2fs_sit_entry->vblocks has the following bit-field information.

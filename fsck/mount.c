@@ -1208,7 +1208,7 @@ int get_valid_checkpoint(struct f2fs_sb_info *sbi)
 	int ret;
 
 	cp_payload = get_sb(cp_payload);
-	if (cp_payload > F2FS_BLK_ALIGN(MAX_SIT_BITMAP_SIZE))
+	if (cp_payload > F2FS_BLK_ALIGN(MAX_CP_PAYLOAD))
 		return -EINVAL;
 
 	cp_blks = 1 + cp_payload;
