@@ -1311,6 +1311,30 @@ static void do_gc(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define checkpoint_desc "trigger filesystem checkpoint"
+#define checkpoint_help "f2fs_io checkpoint [file_path]\n\n"
+
+static void do_checkpoint(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret, fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	ret = ioctl(fd, F2FS_IOC_WRITE_CHECKPOINT);
+	if (ret < 0)
+		die_errno("F2FS_IOC_WRITE_CHECKPOINT failed");
+
+	printf("trigger filesystem checkpoint ret=%d\n", ret);
+	exit(0);
+}
+
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1343,6 +1367,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(get_filename_encrypt_mode),
 	CMD(rename),
 	CMD(gc),
+	CMD(checkpoint),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
