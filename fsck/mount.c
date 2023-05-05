@@ -302,7 +302,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 		}
 		if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
 			DISP_u64(inode, i_compr_blocks);
-			DISP_u32(inode, i_compress_algrithm);
+			DISP_u32(inode, i_compress_algorithm);
 			DISP_u32(inode, i_log_cluster_size);
 			DISP_u32(inode, i_compress_flag);
 		}

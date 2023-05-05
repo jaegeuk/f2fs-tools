@@ -633,7 +633,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		get_node_info(sbi, de->ino, &ni);
 		ASSERT(dev_read_block(node_blk, ni.blk_addr) >= 0);
 		/* update inode meta */
-		node_blk->i.i_compress_algrithm = c.compress.alg;
+		node_blk->i.i_compress_algorithm = c.compress.alg;
 		node_blk->i.i_log_cluster_size =
 				c.compress.cc.log_cluster_size;
 		node_blk->i.i_flags = cpu_to_le32(F2FS_COMPR_FL);

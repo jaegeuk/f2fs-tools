@@ -1074,7 +1074,7 @@ struct f2fs_inode {
 			__le64 i_crtime;	/* creation time */
 			__le32 i_crtime_nsec;	/* creation time in nano scale */
 			__le64 i_compr_blocks;	/* # of compressed blocks */
-			__u8 i_compress_algrithm;	/* compress algrithm */
+			__u8 i_compress_algorithm;	/* compress algorithm */
 			__u8 i_log_cluster_size;	/* log of cluster size */
 			__le16 i_compress_flag;		/* compress flag */
 						/* 0 bit: chksum flag
