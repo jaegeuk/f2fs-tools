@@ -282,6 +282,17 @@ static inline uint64_t bswap_64(uint64_t val)
 		printf("%-30s" fmt, #member, ((ptr)->member));	\
 	} while (0)
 
+#define DISP_u8(ptr, member)						\
+	do {								\
+		assert(sizeof((ptr)->member) == 1);			\
+		if (c.layout)						\
+			printf("%-30s %u\n",				\
+			#member":", ((ptr)->member));			\
+		else							\
+			printf("%-30s" "\t\t[0x%8x : %u]\n",		\
+			#member, ((ptr)->member), ((ptr)->member));	\
+	} while (0)
+
 #define DISP_u16(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 2);			\
