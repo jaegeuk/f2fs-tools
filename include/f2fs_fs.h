@@ -849,7 +849,7 @@ struct f2fs_super_block {
 	__u8 s_errors[MAX_F2FS_ERRORS];		/* reason of image corrupts */
 	__u8 reserved[258];		/* valid reserved region */
 	__le32 crc;			/* checksum of superblock */
-};
+} __attribute__((packed));
 
 static_assert(sizeof(struct f2fs_super_block) == 3072, "");
 
