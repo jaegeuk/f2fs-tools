@@ -11,6 +11,7 @@
 #include "fsck.h"
 #include "node.h"
 #include "xattr.h"
+#include "quota.h"
 #include <locale.h>
 #include <stdbool.h>
 #include <time.h>
@@ -19,6 +20,9 @@
 #endif
 #ifdef HAVE_SYS_ACL_H
 #include <sys/acl.h>
+#endif
+#ifdef HAVE_UUID_UUID_H
+#include <uuid/uuid.h>
 #endif
 
 #ifndef ACL_UNDEFINED_TAG
@@ -365,6 +369,40 @@ void print_node_info(struct f2fs_sb_info *sbi,
 	}
 }
 
+void print_extention_list(struct f2fs_super_block *sb, int cold)
+{
+	int start, end, i;
+
+	if (cold) {
+		DISP_u32(sb, extension_count);
+
+		start = 0;
+		end = le32_to_cpu(sb->extension_count);
+	} else {
+		DISP_u8(sb, hot_ext_count);
+
+		start = le32_to_cpu(sb->extension_count);
+		end = start + sb->hot_ext_count;
+	}
+
+	printf("%s file extentsions\n", cold ? "cold" : "hot");
+
+	for (i = start; i < end; i++) {
+		if (c.layout) {
+			printf("%-30s %-8.8s\n", "extension_list",
+						sb->extension_list[i]);
+		} else {
+			if (i % 4 == 0)
+				printf("%-30s\t\t[", "");
+
+			printf("%-8.8s", sb->extension_list[i]);
+
+			if (i % 4 == 4 - 1 || i == end - start - 1)
+				printf("]\n");
+		}
+	}
+}
+
 static void DISP_label(const char *name)
 {
 	char buffer[MAX_VOLUME_NAME];
@@ -376,8 +414,14 @@ static void DISP_label(const char *name)
 		printf("%-30s" "\t\t[%s]\n", "volum_name", buffer);
 }
 
+void print_sb_debug_info(struct f2fs_super_block *sb);
 void print_raw_sb_info(struct f2fs_super_block *sb)
 {
+#ifdef HAVE_LIBUUID
+	char uuid[40];
+	char encrypt_pw_salt[40];
+#endif
+
 	if (c.layout)
 		goto printout;
 	if (!c.dbg_lv)
@@ -390,8 +434,6 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 printout:
 	DISP_u32(sb, magic);
 	DISP_u32(sb, major_ver);
-
-	DISP_label((const char *)sb->volume_name);
 
 	DISP_u32(sb, minor_ver);
 	DISP_u32(sb, log_sectorsize);
@@ -423,9 +465,39 @@ printout:
 	DISP_u32(sb, root_ino);
 	DISP_u32(sb, node_ino);
 	DISP_u32(sb, meta_ino);
+
+#ifdef HAVE_LIBUUID
+	uuid_unparse(sb->uuid, uuid);
+	DISP_raw_str("%-.36s", uuid);
+#endif
+
+	DISP_label((const char *)sb->volume_name);
+
+	print_extention_list(sb, 1);
+	print_extention_list(sb, 0);
+
 	DISP_u32(sb, cp_payload);
+
+	DISP_str("%-.252s", sb, version);
+	DISP_str("%-.252s", sb, init_version);
+
+	DISP_u32(sb, feature);
+	DISP_u8(sb, encryption_level);
+
+#ifdef HAVE_LIBUUID
+	uuid_unparse(sb->encrypt_pw_salt, encrypt_pw_salt);
+	DISP_raw_str("%-.36s", encrypt_pw_salt);
+#endif
+
+	DISP_u32(sb, qf_ino[USRQUOTA]);
+	DISP_u32(sb, qf_ino[GRPQUOTA]);
+	DISP_u32(sb, qf_ino[PRJQUOTA]);
+
+	DISP_u16(sb, s_encoding);
 	DISP_u32(sb, crc);
-	DISP("%-.252s", sb, version);
+
+	print_sb_debug_info(sb);
+
 	printf("\n");
 }
 
@@ -645,6 +717,33 @@ void print_sb_errors(struct f2fs_super_block *sb)
 	}
 
 	MSG(0, "\n");
+}
+
+void print_sb_debug_info(struct f2fs_super_block *sb)
+{
+	u8 *reason = sb->s_stop_reason;
+	u8 *errors = sb->s_errors;
+	int i;
+
+	for (i = 0; i < STOP_CP_REASON_MAX; i++) {
+		if (!reason[i])
+			continue;
+		if (c.layout)
+			printf("%-30s %s(%s, %d)\n", "", "stop_reason",
+				stop_reason_str[i], reason[i]);
+		else
+			printf("%-30s\t\t[%-20s : %u]\n", "",
+				stop_reason_str[i], reason[i]);
+	}
+
+	for (i = 0; i < ERROR_MAX; i++) {
+		if (!test_bit_le(i, errors))
+			continue;
+		if (c.layout)
+			printf("%-30s %s(%s)\n", "", "errors", errors_str[i]);
+		else
+			printf("%-30s\t\t[%-20s]\n", "", errors_str[i]);
+	}
 }
 
 bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,

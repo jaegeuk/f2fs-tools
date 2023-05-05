@@ -29,6 +29,7 @@
 #ifndef HAVE_LIBUUID
 #define uuid_parse(a, b) -1
 #define uuid_generate(a)
+#define uuid_unparse(a, b) -1
 #endif
 
 #include "quota.h"

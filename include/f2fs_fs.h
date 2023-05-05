@@ -282,6 +282,25 @@ static inline uint64_t bswap_64(uint64_t val)
 		printf("%-30s" fmt, #member, ((ptr)->member));	\
 	} while (0)
 
+#define DISP_raw_str(fmt, member)					\
+	do {								\
+		if (c.layout)						\
+			printf("%-30s " fmt "\n", #member":", member);	\
+		else							\
+			printf("%-30s" "\t\t[" fmt "]\n",		\
+			#member, member);				\
+	} while (0)
+
+#define DISP_str(fmt, ptr, member)					\
+	do {								\
+		if (c.layout)						\
+			printf("%-30s " fmt "\n",			\
+			#member":", ((ptr)->member));			\
+		else							\
+			printf("%-30s" "\t\t[" fmt "]\n",		\
+			#member, ((ptr)->member));			\
+	} while (0)
+
 #define DISP_u8(ptr, member)						\
 	do {								\
 		assert(sizeof((ptr)->member) == 1);			\
