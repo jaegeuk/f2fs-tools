@@ -365,7 +365,7 @@ void print_node_info(struct f2fs_sb_info *sbi,
 	}
 }
 
-static void DISP_label(uint16_t *name)
+static void DISP_label(const char *name)
 {
 	char buffer[MAX_VOLUME_NAME];
 
@@ -391,7 +391,7 @@ printout:
 	DISP_u32(sb, magic);
 	DISP_u32(sb, major_ver);
 
-	DISP_label(sb->volume_name);
+	DISP_label((const char *)sb->volume_name);
 
 	DISP_u32(sb, minor_ver);
 	DISP_u32(sb, log_sectorsize);

@@ -1430,8 +1430,8 @@ enum {
 	SSR
 };
 
-extern int utf8_to_utf16(uint16_t *, const char *, size_t, size_t);
-extern int utf16_to_utf8(char *, const uint16_t *, size_t, size_t);
+extern int utf8_to_utf16(char *, const char *, size_t, size_t);
+extern int utf16_to_utf8(char *, const char *, size_t, size_t);
 extern int log_base_2(uint32_t);
 extern unsigned int addrs_per_inode(struct f2fs_inode *);
 extern unsigned int addrs_per_block(struct f2fs_inode *);

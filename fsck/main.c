@@ -1051,7 +1051,7 @@ static int do_label(struct f2fs_sb_info *sbi)
 	if (!c.vol_label) {
 		char label[MAX_VOLUME_NAME];
 
-		utf16_to_utf8(label, sb->volume_name,
+		utf16_to_utf8(label, (const char *)sb->volume_name,
 			      MAX_VOLUME_NAME, MAX_VOLUME_NAME);
 		MSG(0, "Info: volume label = %s\n", label);
 		return 0;
@@ -1062,7 +1062,7 @@ static int do_label(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
-	utf8_to_utf16(sb->volume_name, (const char *)c.vol_label,
+	utf8_to_utf16((char *)sb->volume_name, (const char *)c.vol_label,
 		      MAX_VOLUME_NAME, strlen(c.vol_label));
 
 	update_superblock(sb, SB_MASK_ALL);

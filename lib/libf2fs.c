@@ -115,31 +115,40 @@ static uint16_t *wchar_to_utf16(uint16_t *output, wchar_t wc, size_t outsize)
 	return output + 2;
 }
 
-int utf8_to_utf16(uint16_t *output, const char *input, size_t outsize,
+int utf8_to_utf16(char *output, const char *input, size_t outsize,
 		size_t insize)
 {
 	const char *inp = input;
-	uint16_t *outp = output;
+	uint16_t *outp;
 	wchar_t wc;
+	uint16_t *volume_name = calloc(sizeof(uint16_t), MAX_VOLUME_NAME);
+
+	if (!volume_name)
+		return -ENOMEM;
+
+	outp = volume_name;
 
 	while ((size_t)(inp - input) < insize && *inp) {
 		inp = utf8_to_wchar(inp, &wc, insize - (inp - input));
 		if (inp == NULL) {
 			DBG(0, "illegal UTF-8 sequence\n");
+			free(volume_name);
 			return -EILSEQ;
 		}
-		outp = wchar_to_utf16(outp, wc, outsize - (outp - output));
+		outp = wchar_to_utf16(outp, wc, outsize - (outp - volume_name));
 		if (outp == NULL) {
 			DBG(0, "name is too long\n");
+			free(volume_name);
 			return -ENAMETOOLONG;
 		}
 	}
 	*outp = cpu_to_le16(0);
+	memcpy(output, volume_name, sizeof(uint16_t) * MAX_VOLUME_NAME);
+	free(volume_name);
 	return 0;
 }
 
-static const uint16_t *utf16_to_wchar(const uint16_t *input, wchar_t *wc,
-		size_t insize)
+static uint16_t *utf16_to_wchar(uint16_t *input, wchar_t *wc, size_t insize)
 {
 	if ((le16_to_cpu(input[0]) & 0xfc00) == 0xd800) {
 		if (insize < 2 || (le16_to_cpu(input[1]) & 0xfc00) != 0xdc00)
@@ -201,26 +210,36 @@ static char *wchar_to_utf8(char *output, wchar_t wc, size_t outsize)
 	return output;
 }
 
-int utf16_to_utf8(char *output, const uint16_t *input, size_t outsize,
+int utf16_to_utf8(char *output, const char *input, size_t outsize,
 		size_t insize)
 {
-	const uint16_t *inp = input;
 	char *outp = output;
 	wchar_t wc;
+	uint16_t *inp;
+	uint16_t *volume_name = calloc(sizeof(uint16_t), MAX_VOLUME_NAME);
 
-	while ((size_t)(inp - input) < insize && le16_to_cpu(*inp)) {
-		inp = utf16_to_wchar(inp, &wc, insize - (inp - input));
+	if (!volume_name)
+		return -ENOMEM;
+
+	memcpy(volume_name, input, sizeof(uint16_t) * MAX_VOLUME_NAME);
+	inp = volume_name;
+
+	while ((size_t)(inp - volume_name) < insize && le16_to_cpu(*inp)) {
+		inp = utf16_to_wchar(inp, &wc, insize - (inp - volume_name));
 		if (inp == NULL) {
 			DBG(0, "illegal UTF-16 sequence\n");
+			free(volume_name);
 			return -EILSEQ;
 		}
 		outp = wchar_to_utf8(outp, wc, outsize - (outp - output));
 		if (outp == NULL) {
 			DBG(0, "name is too long\n");
+			free(volume_name);
 			return -ENAMETOOLONG;
 		}
 	}
 	*outp = '\0';
+	free(volume_name);
 	return 0;
 }
 
