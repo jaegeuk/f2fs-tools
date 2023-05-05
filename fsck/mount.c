@@ -304,7 +304,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 			DISP_u64(inode, i_compr_blocks);
 			DISP_u32(inode, i_compress_algrithm);
 			DISP_u32(inode, i_log_cluster_size);
-			DISP_u32(inode, i_padding);
+			DISP_u32(inode, i_compress_flag);
 		}
 	}
 

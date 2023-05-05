@@ -1289,7 +1289,7 @@ static int f2fs_write_root_inode(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
 		raw_node->i.i_compress_algrithm = 0;
 		raw_node->i.i_log_cluster_size = 0;
-		raw_node->i.i_padding = 0;
+		raw_node->i.i_compress_flag = 0;
 	}
 
 	data_blk_nor = get_sb(main_blkaddr) +
@@ -1611,7 +1611,7 @@ static int f2fs_write_lpf_inode(void)
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
 		raw_node->i.i_compress_algrithm = 0;
 		raw_node->i.i_log_cluster_size = 0;
-		raw_node->i.i_padding = 0;
+		raw_node->i.i_compress_flag = 0;
 	}
 
 	data_blk_nor = f2fs_add_default_dentry_lpf();
