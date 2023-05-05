@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <stddef.h>
 #include <string.h>
 #include <time.h>
@@ -1741,19 +1742,15 @@ static inline void show_version(const char *prog)
 #endif
 }
 
-static inline void f2fs_init_qf_inode(struct f2fs_super_block *sb,
-		struct f2fs_node *raw_node, int qtype, time_t mtime)
+static inline void f2fs_init_inode(struct f2fs_super_block *sb,
+		struct f2fs_node *raw_node, nid_t ino, time_t mtime, mode_t mode)
 {
-	raw_node->footer.nid = sb->qf_ino[qtype];
-	raw_node->footer.ino = sb->qf_ino[qtype];
+	raw_node->footer.nid = cpu_to_le32(ino);
+	raw_node->footer.ino = cpu_to_le32(ino);
 	raw_node->footer.cp_ver = cpu_to_le64(1);
-	raw_node->i.i_mode = cpu_to_le16(0x8180);
-	raw_node->i.i_links = cpu_to_le32(1);
+
 	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
 	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
-
-	raw_node->i.i_size = cpu_to_le64(1024 * 6); /* Hard coded */
-	raw_node->i.i_blocks = cpu_to_le64(1);
 
 	raw_node->i.i_atime = cpu_to_le32(mtime);
 	raw_node->i.i_atime_nsec = 0;
@@ -1763,9 +1760,15 @@ static inline void f2fs_init_qf_inode(struct f2fs_super_block *sb,
 	raw_node->i.i_mtime_nsec = 0;
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
-	raw_node->i.i_flags = FS_IMMUTABLE_FL;
-	raw_node->i.i_current_depth = cpu_to_le32(0);
+	raw_node->i.i_flags = 0;
+	raw_node->i.i_current_depth = cpu_to_le32(S_ISDIR(mode) ? 1 : 0);
 	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
+	raw_node->i.i_mode = cpu_to_le16(mode);
+	raw_node->i.i_links = cpu_to_le32(S_ISDIR(mode) ? 2 : 1);
+
+	/* for dentry block in directory */
+	raw_node->i.i_size = cpu_to_le64(1 << get_sb(log_blocksize));
+	raw_node->i.i_blocks = cpu_to_le64(2);
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
 		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
@@ -1774,6 +1777,18 @@ static inline void f2fs_init_qf_inode(struct f2fs_super_block *sb,
 
 	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
 		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+		raw_node->i.i_crtime = cpu_to_le32(mtime);
+		raw_node->i.i_crtime_nsec = 0;
+	}
+
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+		raw_node->i.i_compr_blocks = 0;
+		raw_node->i.i_compress_algorithm = 0;
+		raw_node->i.i_log_cluster_size = 0;
+		raw_node->i.i_compress_flag = 0;
+	}
 
 	raw_node->i.i_ext.fofs = 0;
 	raw_node->i.i_ext.blk_addr = 0;

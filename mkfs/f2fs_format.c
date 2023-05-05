@@ -1233,7 +1233,7 @@ static int f2fs_discard_obsolete_dnode(void)
 static int f2fs_write_root_inode(void)
 {
 	struct f2fs_node *raw_node = NULL;
-	uint64_t blk_size_bytes, data_blk_nor;
+	uint64_t data_blk_nor;
 	uint64_t main_area_node_seg_blk_offset = 0;
 
 	raw_node = calloc(F2FS_BLKSIZE, 1);
@@ -1242,64 +1242,20 @@ static int f2fs_write_root_inode(void)
 		return -1;
 	}
 
-	raw_node->footer.nid = sb->root_ino;
-	raw_node->footer.ino = sb->root_ino;
-	raw_node->footer.cp_ver = cpu_to_le64(1);
+	f2fs_init_inode(sb, raw_node, le32_to_cpu(sb->root_ino),
+						mkfs_time, 0x41ed);
+
+	if (c.lpf_ino)
+		raw_node->i.i_links = cpu_to_le32(3);
+
 	raw_node->footer.next_blkaddr = cpu_to_le32(
 			get_sb(main_blkaddr) +
 			c.cur_seg[CURSEG_HOT_NODE] *
 			c.blks_per_seg + 1);
 
-	raw_node->i.i_mode = cpu_to_le16(0x41ed);
-	if (c.lpf_ino)
-		raw_node->i.i_links = cpu_to_le32(3);
-	else
-		raw_node->i.i_links = cpu_to_le32(2);
-	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
-	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
-
-	blk_size_bytes = 1 << get_sb(log_blocksize);
-	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes); /* dentry */
-	raw_node->i.i_blocks = cpu_to_le64(2);
-
-	raw_node->i.i_atime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_atime_nsec = 0;
-	raw_node->i.i_ctime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_ctime_nsec = 0;
-	raw_node->i.i_mtime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_mtime_nsec = 0;
-	raw_node->i.i_generation = 0;
-	raw_node->i.i_xattr_nid = 0;
-	raw_node->i.i_flags = 0;
-	raw_node->i.i_current_depth = cpu_to_le32(1);
-	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
-		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
-		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
-	}
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
-		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
-		raw_node->i.i_crtime = cpu_to_le32(mkfs_time);
-		raw_node->i.i_crtime_nsec = 0;
-	}
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
-		raw_node->i.i_compress_algorithm = 0;
-		raw_node->i.i_log_cluster_size = 0;
-		raw_node->i.i_compress_flag = 0;
-	}
-
 	data_blk_nor = get_sb(main_blkaddr) +
 		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg;
 	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
-
-	raw_node->i.i_ext.fofs = 0;
-	raw_node->i.i_ext.blk_addr = 0;
-	raw_node->i.i_ext.len = 0;
 
 	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
 	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
@@ -1403,13 +1359,17 @@ static int f2fs_write_qf_inode(int qtype, int offset)
 		MSG(1, "\tError: Calloc Failed for raw_node!!!\n");
 		return -1;
 	}
-	f2fs_init_qf_inode(sb, raw_node, qtype, mkfs_time);
+	f2fs_init_inode(sb, raw_node,
+			le32_to_cpu(sb->qf_ino[qtype]), mkfs_time, 0x8180);
+
+	raw_node->i.i_size = cpu_to_le64(1024 * 6);
+	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
+	raw_node->i.i_flags = FS_IMMUTABLE_FL;
 
 	raw_node->footer.next_blkaddr = cpu_to_le32(
 			get_sb(main_blkaddr) +
 			c.cur_seg[CURSEG_HOT_NODE] *
 			c.blks_per_seg + 1 + qtype + 1);
-	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
 
 	data_blk_nor = get_sb(main_blkaddr) +
 		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg + 1
@@ -1552,7 +1512,7 @@ static block_t f2fs_add_default_dentry_lpf(void)
 static int f2fs_write_lpf_inode(void)
 {
 	struct f2fs_node *raw_node;
-	uint64_t blk_size_bytes, main_area_node_seg_blk_offset;
+	uint64_t main_area_node_seg_blk_offset;
 	block_t data_blk_nor;
 	int err = 0;
 
@@ -1564,56 +1524,16 @@ static int f2fs_write_lpf_inode(void)
 		return -1;
 	}
 
-	raw_node->footer.nid = cpu_to_le32(c.lpf_ino);
-	raw_node->footer.ino = raw_node->footer.nid;
-	raw_node->footer.cp_ver = cpu_to_le64(1);
+	f2fs_init_inode(sb, raw_node, c.lpf_ino, mkfs_time, 0x41c0);
+
+	raw_node->i.i_pino = le32_to_cpu(sb->root_ino);
+	raw_node->i.i_namelen = le32_to_cpu(strlen(LPF));
+	memcpy(raw_node->i.i_name, LPF, strlen(LPF));
+
 	raw_node->footer.next_blkaddr = cpu_to_le32(
 			get_sb(main_blkaddr) +
 			c.cur_seg[CURSEG_HOT_NODE] * c.blks_per_seg +
 			1 + c.quota_inum + 1);
-
-	raw_node->i.i_mode = cpu_to_le16(0x41c0); /* 0700 */
-	raw_node->i.i_links = cpu_to_le32(2);
-	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
-	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
-
-	blk_size_bytes = 1 << get_sb(log_blocksize);
-	raw_node->i.i_size = cpu_to_le64(1 * blk_size_bytes);
-	raw_node->i.i_blocks = cpu_to_le64(2);
-
-	raw_node->i.i_atime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_atime_nsec = 0;
-	raw_node->i.i_ctime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_ctime_nsec = 0;
-	raw_node->i.i_mtime = cpu_to_le32(mkfs_time);
-	raw_node->i.i_mtime_nsec = 0;
-	raw_node->i.i_generation = 0;
-	raw_node->i.i_xattr_nid = 0;
-	raw_node->i.i_flags = 0;
-	raw_node->i.i_pino = le32_to_cpu(sb->root_ino);
-	raw_node->i.i_namelen = le32_to_cpu(strlen(LPF));
-	memcpy(raw_node->i.i_name, LPF, strlen(LPF));
-	raw_node->i.i_current_depth = cpu_to_le32(1);
-	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
-		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
-		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
-	}
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
-		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
-		raw_node->i.i_crtime = cpu_to_le32(mkfs_time);
-		raw_node->i.i_crtime_nsec = 0;
-	}
-
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
-		raw_node->i.i_compress_algorithm = 0;
-		raw_node->i.i_log_cluster_size = 0;
-		raw_node->i.i_compress_flag = 0;
-	}
 
 	data_blk_nor = f2fs_add_default_dentry_lpf();
 	if (data_blk_nor == 0) {
