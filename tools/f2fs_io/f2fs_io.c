@@ -1357,6 +1357,41 @@ static void do_precache_extents(int argc, char **argv, const struct cmd_desc *cm
 	exit(0);
 }
 
+#define move_range_desc "moving a range of data blocks from source file to destination file"
+#define move_range_help						\
+"f2fs_io move_range [src_path] [dst_path] [src_start] [dst_start] "	\
+"[length]\n\n"								\
+"  src_path  : path to source file\n"					\
+"  dst_path  : path to destination file\n"				\
+"  src_start : start offset of src file move region, unit: bytes\n"	\
+"  dst_start : start offset of dst file move region, unit: bytes\n"	\
+"  length    : size to move\n"						\
+
+static void do_move_range(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	struct f2fs_move_range range;
+	int ret, fd;
+
+	if (argc != 6) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_RDWR, 0);
+	range.dst_fd = xopen(argv[2], O_RDWR | O_CREAT, 0644);
+	range.pos_in = atoi(argv[3]);
+	range.pos_out = atoi(argv[4]);
+	range.len = atoi(argv[5]);
+
+	ret = ioctl(fd, F2FS_IOC_MOVE_RANGE, &range);
+	if (ret < 0)
+		die_errno("F2FS_IOC_MOVE_RANGE failed");
+
+	printf("move range ret=%d\n", ret);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1391,6 +1426,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(gc),
 	CMD(checkpoint),
 	CMD(precache_extents),
+	CMD(move_range),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 

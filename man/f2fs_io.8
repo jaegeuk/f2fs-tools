@@ -138,8 +138,12 @@ Trigger filesystem GC
 .TP
 \fBcheckpoint\fR \fI[file]\fR
 Trigger filesystem checkpoint
+.TP
 \fBprecache_extents\fR \fI[file]\fR
 Trigger precache extents
+.TP
+\fBmove_range\fR \fI[src_path] [dst_path] [src_start] [dst_start] [length]\fR
+Move a range of data blocks from source file to destination file
 .SH AUTHOR
 This version of
 .B f2fs_io
