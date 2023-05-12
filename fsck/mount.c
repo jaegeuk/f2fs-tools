@@ -2782,8 +2782,11 @@ void flush_journal_entries(struct f2fs_sb_info *sbi)
 	int n_nats = flush_nat_journal_entries(sbi);
 	int n_sits = flush_sit_journal_entries(sbi);
 
-	if (n_nats || n_sits)
+	if (n_nats || n_sits) {
+		MSG(0, "Info: flush_journal_entries() n_nats: %d, n_sits: %d\n",
+							n_nats, n_sits);
 		write_checkpoints(sbi);
+	}
 }
 
 void flush_sit_entries(struct f2fs_sb_info *sbi)
@@ -3259,6 +3262,8 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 
 	ret = f2fs_fsync_device();
 	ASSERT(ret >= 0);
+
+	MSG(0, "Info: write_checkpoint() cur_cp:%d\n", sbi->cur_cp);
 }
 
 void write_checkpoints(struct f2fs_sb_info *sbi)

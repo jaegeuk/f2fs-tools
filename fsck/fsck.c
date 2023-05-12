@@ -2407,6 +2407,8 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 
 	ret = f2fs_fsync_device();
 	ASSERT(ret >= 0);
+
+	MSG(0, "Info: fix_checkpoint() cur_cp:%d\n", sbi->cur_cp);
 }
 
 static void fix_checkpoints(struct f2fs_sb_info *sbi)
@@ -3284,7 +3286,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (sbi->total_valid_block_count == fsck->chk.valid_blk_cnt) {
 		printf(" [Ok..] [0x%x]\n", (u32)fsck->chk.valid_blk_cnt);
 	} else {
-		printf(" [Fail] [0x%x]\n", (u32)fsck->chk.valid_blk_cnt);
+		printf(" [Fail] [0x%x, 0x%x]\n", sbi->total_valid_block_count,
+					(u32)fsck->chk.valid_blk_cnt);
 		verify_failed = true;
 	}
 
@@ -3292,7 +3295,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (sbi->total_valid_node_count == fsck->chk.valid_node_cnt) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.valid_node_cnt);
 	} else {
-		printf(" [Fail] [0x%x]\n", fsck->chk.valid_node_cnt);
+		printf(" [Fail] [0x%x, 0x%x]\n", sbi->total_valid_node_count,
+						fsck->chk.valid_node_cnt);
 		verify_failed = true;
 	}
 
@@ -3300,7 +3304,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (sbi->total_valid_node_count == fsck->chk.valid_nat_entry_cnt) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.valid_nat_entry_cnt);
 	} else {
-		printf(" [Fail] [0x%x]\n", fsck->chk.valid_nat_entry_cnt);
+		printf(" [Fail] [0x%x, 0x%x]\n", sbi->total_valid_node_count,
+						fsck->chk.valid_nat_entry_cnt);
 		verify_failed = true;
 	}
 
@@ -3308,7 +3313,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	if (sbi->total_valid_inode_count == fsck->chk.valid_inode_cnt) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.valid_inode_cnt);
 	} else {
-		printf(" [Fail] [0x%x]\n", fsck->chk.valid_inode_cnt);
+		printf(" [Fail] [0x%x, 0x%x]\n", sbi->total_valid_inode_count,
+						fsck->chk.valid_inode_cnt);
 		verify_failed = true;
 	}
 
@@ -3317,7 +3323,9 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 						fsck->chk.sit_free_segs) {
 		printf(" [Ok..] [0x%x]\n", fsck->chk.sit_free_segs);
 	} else {
-		printf(" [Fail] [0x%x]\n", fsck->chk.sit_free_segs);
+		printf(" [Fail] [0x%x, 0x%x]\n",
+			le32_to_cpu(F2FS_CKPT(sbi)->free_segment_count),
+			fsck->chk.sit_free_segs);
 		verify_failed = true;
 	}
 
