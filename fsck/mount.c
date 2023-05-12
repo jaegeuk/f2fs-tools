@@ -3132,6 +3132,24 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 	free(nat_block);
 }
 
+void update_nat_journal_blkaddr(struct f2fs_sb_info *sbi, u32 nid,
+					block_t blkaddr)
+{
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
+	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	int i;
+
+	for (i = 0; i < nats_in_cursum(journal); i++) {
+		if (le32_to_cpu(nid_in_journal(journal, i)) == nid) {
+			nat_in_journal(journal, i).block_addr =
+						cpu_to_le32(blkaddr);
+			MSG(0, "update nat(nid:%d) blkaddr [0x%x] in journal\n",
+							nid, blkaddr);
+			return;
+		}
+	}
+}
+
 void duplicate_checkpoint(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);

@@ -885,6 +885,10 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 		}
 	}
 	fsck_chk_orphan_node(sbi);
+
+	if (fsck_sanity_check_nat(sbi, sbi->root_ino_num))
+		fsck_chk_root_inode(sbi);
+
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
 			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, &cbc, NULL);
 	fsck_chk_quota_files(sbi);

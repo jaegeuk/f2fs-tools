@@ -167,9 +167,11 @@ extern int fsck_chk_quota_node(struct f2fs_sb_info *);
 extern int fsck_chk_quota_files(struct f2fs_sb_info *);
 extern int fsck_sanity_check_nid(struct f2fs_sb_info *, u32,
 					enum FILE_TYPE, enum NODE_TYPE);
+extern int fsck_sanity_check_nat(struct f2fs_sb_info *sbi, u32 nid);
 extern int fsck_chk_node_blk(struct f2fs_sb_info *, struct f2fs_inode *, u32,
 		enum FILE_TYPE, enum NODE_TYPE, u32 *,
 		struct f2fs_compr_blk_cnt *, struct child_info *);
+extern int fsck_chk_root_inode(struct f2fs_sb_info *);
 extern void fsck_chk_inode_blk(struct f2fs_sb_info *, u32, enum FILE_TYPE,
 		struct f2fs_node *, u32 *, struct f2fs_compr_blk_cnt *,
 		struct node_info *, struct child_info *);
@@ -208,6 +210,8 @@ extern void update_sum_entry(struct f2fs_sb_info *, block_t,
 				struct f2fs_summary *);
 extern void get_node_info(struct f2fs_sb_info *, nid_t, struct node_info *);
 extern void nullify_nat_entry(struct f2fs_sb_info *, u32);
+extern void update_nat_journal_blkaddr(struct f2fs_sb_info *sbi, u32 nid,
+					block_t blkaddr);
 extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern void build_sit_area_bitmap(struct f2fs_sb_info *);

@@ -386,14 +386,9 @@ err:
 	return -1;
 }
 
-static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
-			struct f2fs_node *node_blk,
-			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-			struct node_info *ni)
+static int sanity_check_nat(struct f2fs_sb_info *sbi, u32 nid,
+						struct node_info *ni)
 {
-	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
-	int ret;
-
 	if (!IS_VALID_NID(sbi, nid)) {
 		ASSERT_MSG("nid is not valid. [0x%x]", nid);
 		return -EINVAL;
@@ -414,6 +409,28 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		ASSERT_MSG("blkaddress is not valid. [0x%x]", ni->blk_addr);
 		return -EINVAL;
 	}
+
+	return 0;
+}
+
+int fsck_sanity_check_nat(struct f2fs_sb_info *sbi, u32 nid)
+{
+	struct node_info ni;
+
+	return sanity_check_nat(sbi, nid, &ni);
+}
+
+static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
+			struct f2fs_node *node_blk,
+			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
+			struct node_info *ni)
+{
+	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	int ret;
+
+	ret = sanity_check_nat(sbi, nid, ni);
+	if (ret)
+		return ret;
 
 	ret = dev_read_block(node_blk, ni->blk_addr);
 	ASSERT(ret >= 0);
@@ -607,6 +624,123 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 err:
 	free(node_blk);
 	return -EINVAL;
+}
+
+static bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr)
+{
+	struct seg_entry *se;
+	u32 offset;
+
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk_addr));
+	offset = OFFSET_IN_SEG(sbi, blk_addr);
+
+	return f2fs_test_bit(offset,
+			(const char *)se->cur_valid_map) != 0;
+}
+
+int fsck_chk_root_inode(struct f2fs_sb_info *sbi)
+{
+	struct f2fs_node *node_blk;
+	int segment_count = SM_I(sbi)->main_segments;
+	int segno;
+	bool valid_bitmap = true;
+	block_t last_blkaddr = NULL_ADDR;
+	nid_t root_ino = sbi->root_ino_num;
+	u64 last_ctime = 0;
+	u32 last_ctime_nsec = 0;
+	int ret = -EINVAL;
+
+	node_blk = calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk);
+
+	MSG(0, "Info: root inode is corrupted, search and relink it\n");
+
+retry:
+	for (segno = 0; segno < segment_count; segno++) {
+		struct seg_entry *se = get_seg_entry(sbi, segno);
+		block_t blkaddr = START_BLOCK(sbi, segno);
+		int ret;
+		int i;
+
+		if (IS_DATASEG(se->type))
+			continue;
+
+		dev_readahead(blkaddr << F2FS_BLKSIZE_BITS,
+				sbi->blocks_per_seg << F2FS_BLKSIZE_BITS);
+
+		for (i = 0; i < sbi->blocks_per_seg; i++, blkaddr++) {
+			if (valid_bitmap ^ is_sit_bitmap_set(sbi, blkaddr))
+				continue;
+
+			ret = dev_read_block(node_blk, blkaddr);
+			ASSERT(ret >= 0);
+
+			if (le32_to_cpu(node_blk->footer.ino) !=
+					root_ino ||
+				le32_to_cpu(node_blk->footer.nid) !=
+					root_ino)
+				continue;
+
+			if (!IS_INODE(node_blk))
+				continue;
+
+			if (le32_to_cpu(node_blk->i.i_generation) ||
+					le32_to_cpu(node_blk->i.i_namelen))
+				continue;
+			break;
+		}
+
+		if (i == sbi->blocks_per_seg)
+			continue;
+
+		if (valid_bitmap) {
+			last_blkaddr = blkaddr;
+			MSG(0, "Info: possible root inode blkaddr: 0x%x\n",
+								last_blkaddr);
+			goto fix;
+		}
+
+		if (last_blkaddr == NULL_ADDR)
+			goto init;
+		if (le64_to_cpu(node_blk->i.i_ctime) < last_ctime)
+			continue;
+		if (le64_to_cpu(node_blk->i.i_ctime) == last_ctime &&
+			le32_to_cpu(node_blk->i.i_ctime_nsec) <=
+			last_ctime_nsec)
+			continue;
+init:
+		last_blkaddr = blkaddr;
+		last_ctime = le64_to_cpu(node_blk->i.i_ctime);
+		last_ctime_nsec = le32_to_cpu(node_blk->i.i_ctime_nsec);
+
+		MSG(0, "Info: possible root inode blkaddr: %u\n",
+							last_blkaddr);
+	}
+
+	if (valid_bitmap) {
+		valid_bitmap = false;
+		goto retry;
+	}
+fix:
+	if (!last_blkaddr) {
+		MSG(0, "Info: there is no valid root inode\n");
+	} else if (c.fix_on) {
+		struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+
+		FIX_MSG("Relink root inode, blkaddr: 0x%x", last_blkaddr);
+		update_nat_journal_blkaddr(sbi, root_ino, last_blkaddr);
+		update_nat_blkaddr(sbi, root_ino, root_ino, last_blkaddr);
+
+		if (f2fs_test_bit(root_ino, fsck->nat_area_bitmap))
+			f2fs_clear_bit(root_ino, fsck->nat_area_bitmap);
+		fsck->chk.valid_nat_entry_cnt++;
+
+		if (!f2fs_test_sit_bitmap(sbi, last_blkaddr))
+			f2fs_set_sit_bitmap(sbi, last_blkaddr);
+		ret = 0;
+	}
+	free(node_blk);
+	return ret;
 }
 
 static inline void get_extent_info(struct extent_info *ext,
