@@ -25,17 +25,7 @@ void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 	nid_t xnid = le32_to_cpu(inode->i.i_xattr_nid);
 
 	if (c.func == FSCK && xnid) {
-		struct f2fs_node *node_blk = NULL;
-		struct node_info ni;
-		int ret;
-
-		node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
-		ASSERT(node_blk != NULL);
-
-		ret = fsck_sanity_check_nid(sbi, xnid, node_blk,
-					F2FS_FT_XATTR, TYPE_XATTR, &ni);
-		free(node_blk);
-		if (ret)
+		if (fsck_sanity_check_nid(sbi, xnid, F2FS_FT_XATTR, TYPE_XATTR))
 			return NULL;
 	}
 

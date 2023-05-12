@@ -515,11 +515,19 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 }
 
 int fsck_sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
-			struct f2fs_node *node_blk,
-			enum FILE_TYPE ftype, enum NODE_TYPE ntype,
-			struct node_info *ni)
+			enum FILE_TYPE ftype, enum NODE_TYPE ntype)
 {
-	return sanity_check_nid(sbi, nid, node_blk, ftype, ntype, ni);
+	struct f2fs_node *node_blk = NULL;
+	struct node_info ni;
+	int ret;
+
+	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	ASSERT(node_blk != NULL);
+
+	ret = sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni);
+
+	free(node_blk);
+	return ret;
 }
 
 static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
