@@ -767,6 +767,7 @@ bool f2fs_is_valid_blkaddr(struct f2fs_sb_info *sbi,
 			return 0;
 		break;
 	case META_POR:
+	case DATA_GENERIC:
 		if (blkaddr >= MAX_BLKADDR(sbi) ||
 			blkaddr < MAIN_BLKADDR(sbi))
 			return 0;
@@ -1596,7 +1597,8 @@ static int f2fs_early_init_nid_bitmap(struct f2fs_sb_info *sbi)
 		block_t addr;
 
 		addr = le32_to_cpu(nat_in_journal(journal, i).block_addr);
-		if (!IS_VALID_BLK_ADDR(sbi, addr)) {
+		if (addr != NULL_ADDR &&
+			!f2fs_is_valid_blkaddr(sbi, addr, DATA_GENERIC)) {
 			MSG(0, "\tError: f2fs_init_nid_bitmap: addr(%u) is invalid!!!\n", addr);
 			journal->n_nats = cpu_to_le16(i);
 			c.fix_on = 1;

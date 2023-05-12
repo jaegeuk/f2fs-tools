@@ -108,6 +108,7 @@ enum {
 	META_SSA,
 	META_MAX,
 	META_POR,
+	DATA_GENERIC,
 };
 
 #define MAX_RA_BLOCKS	64
@@ -518,20 +519,6 @@ static inline bool IS_VALID_NID(struct f2fs_sb_info *sbi, u32 nid)
 	return (nid < (NAT_ENTRY_PER_BLOCK *
 			le32_to_cpu(F2FS_RAW_SUPER(sbi)->segment_count_nat)
 			<< (sbi->log_blocks_per_seg - 1)));
-}
-
-static inline bool IS_VALID_BLK_ADDR(struct f2fs_sb_info *sbi, u32 addr)
-{
-	if (addr == NULL_ADDR || addr == NEW_ADDR)
-		return 1;
-
-	if (addr >= le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count) ||
-				addr < SM_I(sbi)->main_blkaddr) {
-		DBG(1, "block addr [0x%x]\n", addr);
-		return 0;
-	}
-	/* next block offset will be checked at the end of fsck. */
-	return 1;
 }
 
 static inline bool is_valid_data_blkaddr(block_t blkaddr)

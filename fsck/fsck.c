@@ -236,7 +236,7 @@ static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 
 	get_node_info(sbi, nid, &ni);
 
-	if (!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+	if (!f2fs_is_valid_blkaddr(sbi, ni.blk_addr, DATA_GENERIC))
 		goto out;
 
 	/* read node_block */
@@ -405,12 +405,12 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 		return -EINVAL;
 	}
 
-	if (ni->blk_addr == NEW_ADDR) {
-		ASSERT_MSG("nid is NEW_ADDR. [0x%x]", nid);
+	if (!is_valid_data_blkaddr(ni->blk_addr)) {
+		ASSERT_MSG("nid->blk_addr is 0x%x. [0x%x]", ni->blk_addr, nid);
 		return -EINVAL;
 	}
 
-	if (!IS_VALID_BLK_ADDR(sbi, ni->blk_addr)) {
+	if (!f2fs_is_valid_blkaddr(sbi, ni->blk_addr, DATA_GENERIC)) {
 		ASSERT_MSG("blkaddress is not valid. [0x%x]", ni->blk_addr);
 		return -EINVAL;
 	}
@@ -676,7 +676,7 @@ void fsck_reada_node_block(struct f2fs_sb_info *sbi, u32 nid)
 
 	if (nid != 0 && IS_VALID_NID(sbi, nid)) {
 		get_node_info(sbi, nid, &ni);
-		if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+		if (f2fs_is_valid_blkaddr(sbi, ni.blk_addr, DATA_GENERIC))
 			dev_reada_block(ni.blk_addr);
 	}
 }
@@ -1612,7 +1612,8 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 			struct node_info ni;
 
 			get_node_info(sbi, ino, &ni);
-			if (IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+			if (f2fs_is_valid_blkaddr(sbi, ni.blk_addr,
+							DATA_GENERIC)) {
 				dev_reada_block(ni.blk_addr);
 				name_len = le16_to_cpu(dentry[i].name_len);
 				if (name_len > 0)
@@ -1867,7 +1868,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, int casefolded,
 		return 0;
 	}
 
-	if (!IS_VALID_BLK_ADDR(sbi, blk_addr)) {
+	if (!f2fs_is_valid_blkaddr(sbi, blk_addr, DATA_GENERIC)) {
 		ASSERT_MSG("blkaddress is not valid. [0x%x]", blk_addr);
 		return -EINVAL;
 	}
@@ -1939,7 +1940,8 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
 				get_node_info(sbi, ino, &ni);
 				if (!IS_VALID_NID(sbi, ino) ||
-				    !IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+					!f2fs_is_valid_blkaddr(sbi, ni.blk_addr,
+								DATA_GENERIC)) {
 					free(orphan_blk);
 					free(new_blk);
 					return -EINVAL;
@@ -1997,7 +1999,8 @@ int fsck_chk_quota_node(struct f2fs_sb_info *sbi)
 		if (c.preen_mode == PREEN_MODE_1 && !c.fix_on) {
 			get_node_info(sbi, ino, &ni);
 			if (!IS_VALID_NID(sbi, ino) ||
-					!IS_VALID_BLK_ADDR(sbi, ni.blk_addr))
+				!f2fs_is_valid_blkaddr(sbi, ni.blk_addr,
+							DATA_GENERIC))
 				return -EINVAL;
 			continue;
 		}
@@ -2136,7 +2139,7 @@ int fsck_chk_meta(struct f2fs_sb_info *sbi)
 			 */
 			continue;
 
-		if (!IS_VALID_BLK_ADDR(sbi, blk)) {
+		if (!f2fs_is_valid_blkaddr(sbi, blk, DATA_GENERIC)) {
 			MSG(0, "\tError: nat entry[ino %u block_addr 0x%x]"
 				" is in valid\n",
 				ino, blk);

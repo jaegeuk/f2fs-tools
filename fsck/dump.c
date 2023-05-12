@@ -278,7 +278,8 @@ static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr)
 		return;
 
 	/* get data */
-	if (blkaddr == NEW_ADDR || !IS_VALID_BLK_ADDR(sbi, blkaddr)) {
+	if (blkaddr == NEW_ADDR ||
+			!f2fs_is_valid_blkaddr(sbi, blkaddr, DATA_GENERIC)) {
 		memset(buf, 0, F2FS_BLKSIZE);
 	} else {
 		int ret;
@@ -588,7 +589,7 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 	DBG(1, "nat_entry.version     [0x%x]\n", ni.version);
 	DBG(1, "nat_entry.ino         [0x%x]\n", ni.ino);
 
-	if (!IS_VALID_BLK_ADDR(sbi, ni.blk_addr)) {
+	if (!f2fs_is_valid_blkaddr(sbi, ni.blk_addr, DATA_GENERIC)) {
 		MSG(force, "Invalid node blkaddr: %u\n\n", ni.blk_addr);
 		goto out;
 	}
