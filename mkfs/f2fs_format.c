@@ -1364,7 +1364,7 @@ static int f2fs_write_qf_inode(int qtype, int offset)
 
 	raw_node->i.i_size = cpu_to_le64(1024 * 6);
 	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
-	raw_node->i.i_flags = FS_IMMUTABLE_FL;
+	raw_node->i.i_flags = F2FS_NOATIME_FL | F2FS_IMMUTABLE_FL;
 
 	raw_node->footer.next_blkaddr = cpu_to_le32(
 			get_sb(main_blkaddr) +

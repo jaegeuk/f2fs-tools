@@ -750,7 +750,12 @@ enum {
 #define QUOTA_DATA(i)		(2)
 #define QUOTA_INO(sb,t)	(le32_to_cpu((sb)->qf_ino[t]))
 
-#define FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
+/*
+ * On-disk inode flags (f2fs_inode::i_flags)
+ */
+#define F2FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
+#define F2FS_NOATIME_FL			0x00000080 /* do not update atime */
+
 
 #define F2FS_ENC_UTF8_12_1	1
 #define F2FS_ENC_STRICT_MODE_FL	(1 << 0)

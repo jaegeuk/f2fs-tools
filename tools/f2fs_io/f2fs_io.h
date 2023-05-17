@@ -167,6 +167,10 @@ struct fscrypt_get_policy_ex_arg {
 #define F2FS_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
 #define F2FS_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
 
+#ifndef FS_IMMUTABLE_FL
+#define FS_IMMUTABLE_FL			0x00000010 /* Immutable file */
+#endif
+
 #ifndef FS_ENCRYPT_FL
 #define FS_ENCRYPT_FL			0x00000800 /* Encrypted file */
 #endif
