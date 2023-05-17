@@ -1413,36 +1413,16 @@ static int f2fs_write_qf_inode(int qtype, int offset)
 	return 0;
 }
 
-static int f2fs_update_nat_root(void)
+static int f2fs_update_nat_default(void)
 {
 	struct f2fs_nat_block *nat_blk = NULL;
 	uint64_t nat_seg_blk_offset = 0;
-	enum quota_type qtype;
-	int i;
 
 	nat_blk = calloc(F2FS_BLKSIZE, 1);
 	if(nat_blk == NULL) {
 		MSG(1, "\tError: Calloc Failed for nat_blk!!!\n");
 		return -1;
 	}
-
-	/* update quota */
-	for (qtype = i = 0; qtype < F2FS_MAX_QUOTAS; qtype++) {
-		if (!((1 << qtype) & c.quota_bits))
-			continue;
-		nat_blk->entries[sb->qf_ino[qtype]].block_addr =
-				cpu_to_le32(get_sb(main_blkaddr) +
-				c.cur_seg[CURSEG_HOT_NODE] *
-				c.blks_per_seg + i + 1);
-		nat_blk->entries[sb->qf_ino[qtype]].ino = sb->qf_ino[qtype];
-		i++;
-	}
-
-	/* update root */
-	nat_blk->entries[get_sb(root_ino)].block_addr = cpu_to_le32(
-		get_sb(main_blkaddr) +
-		c.cur_seg[CURSEG_HOT_NODE] * c.blks_per_seg);
-	nat_blk->entries[get_sb(root_ino)].ino = sb->root_ino;
 
 	/* update node nat */
 	nat_blk->entries[get_sb(node_ino)].block_addr = cpu_to_le32(1);
@@ -1660,7 +1640,7 @@ static int f2fs_create_root_dir(void)
 	}
 #endif
 
-	err = f2fs_update_nat_root();
+	err = f2fs_update_nat_default();
 	if (err < 0) {
 		MSG(1, "\tError: Failed to update NAT for root!!!\n");
 		goto exit;
