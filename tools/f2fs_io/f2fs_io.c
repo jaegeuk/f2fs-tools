@@ -809,8 +809,8 @@ static void do_fiemap(int argc, char **argv, const struct cmd_desc *cmd)
 	}
 
 	memset(fm, 0, sizeof(struct fiemap));
-	start = atoi(argv[1]) * F2FS_BLKSIZE;
-	length = atoi(argv[2]) * F2FS_BLKSIZE;
+	start = (u64)atoi(argv[1]) * F2FS_BLKSIZE;
+	length = (u64)atoi(argv[2]) * F2FS_BLKSIZE;
 	fm->fm_start = start;
 	fm->fm_length = length;
 
