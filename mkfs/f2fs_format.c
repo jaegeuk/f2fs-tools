@@ -1230,11 +1230,24 @@ static int f2fs_discard_obsolete_dnode(void)
 }
 #endif
 
+static block_t alloc_next_free_block(int curseg_type, int blkcnt)
+{
+	block_t blkaddr;
+
+	blkaddr = get_sb(main_blkaddr) +
+		c.cur_seg[curseg_type] * c.blks_per_seg +
+		c.curseg_offset[curseg_type];
+
+	c.curseg_offset[curseg_type] += blkcnt;
+
+	return blkaddr;
+}
+
 static int f2fs_write_root_inode(void)
 {
 	struct f2fs_node *raw_node = NULL;
-	uint64_t data_blk_nor;
-	uint64_t main_area_node_seg_blk_offset = 0;
+	block_t data_blkaddr;
+	block_t node_blkaddr;
 
 	raw_node = calloc(F2FS_BLKSIZE, 1);
 	if (raw_node == NULL) {
@@ -1248,24 +1261,15 @@ static int f2fs_write_root_inode(void)
 	if (c.lpf_ino)
 		raw_node->i.i_links = cpu_to_le32(3);
 
-	raw_node->footer.next_blkaddr = cpu_to_le32(
-			get_sb(main_blkaddr) +
-			c.cur_seg[CURSEG_HOT_NODE] *
-			c.blks_per_seg + 1);
+	data_blkaddr = alloc_next_free_block(CURSEG_HOT_DATA, 1);
+	raw_node->i.i_addr[get_extra_isize(raw_node)] =
+				cpu_to_le32(data_blkaddr);
 
-	data_blk_nor = get_sb(main_blkaddr) +
-		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg;
-	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
+	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE, 1);
+	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
-	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
-	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
-					c.blks_per_seg;
-
-	DBG(1, "\tWriting root inode (hot node), %x %x %x at offset 0x%08"PRIu64"\n",
-			get_sb(main_blkaddr),
-			c.cur_seg[CURSEG_HOT_NODE],
-			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
+	DBG(1, "\tWriting root inode (hot node), offset 0x%x\n", node_blkaddr);
+	if (write_inode(raw_node, node_blkaddr) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1346,11 +1350,11 @@ static int f2fs_write_default_quota(int qtype, unsigned int blkaddr,
 	return 0;
 }
 
-static int f2fs_write_qf_inode(int qtype, int offset)
+static int f2fs_write_qf_inode(int qtype)
 {
 	struct f2fs_node *raw_node = NULL;
-	uint64_t data_blk_nor;
-	uint64_t main_area_node_seg_blk_offset = 0;
+	block_t data_blkaddr;
+	block_t node_blkaddr;
 	__le32 raw_id;
 	int i;
 
@@ -1366,14 +1370,10 @@ static int f2fs_write_qf_inode(int qtype, int offset)
 	raw_node->i.i_blocks = cpu_to_le64(1 + QUOTA_DATA(qtype));
 	raw_node->i.i_flags = F2FS_NOATIME_FL | F2FS_IMMUTABLE_FL;
 
-	raw_node->footer.next_blkaddr = cpu_to_le32(
-			get_sb(main_blkaddr) +
-			c.cur_seg[CURSEG_HOT_NODE] *
-			c.blks_per_seg + 1 + qtype + 1);
+	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE, 1);
+	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
-	data_blk_nor = get_sb(main_blkaddr) +
-		c.cur_seg[CURSEG_HOT_DATA] * c.blks_per_seg + 1
-		+ offset * QUOTA_DATA(i);
+	data_blkaddr = alloc_next_free_block(CURSEG_HOT_DATA, QUOTA_DATA(i));
 
 	if (qtype == 0)
 		raw_id = raw_node->i.i_uid;
@@ -1385,24 +1385,17 @@ static int f2fs_write_qf_inode(int qtype, int offset)
 		ASSERT(0);
 
 	/* write two blocks */
-	if (f2fs_write_default_quota(qtype, data_blk_nor, raw_id)) {
+	if (f2fs_write_default_quota(qtype, data_blkaddr, raw_id)) {
 		free(raw_node);
 		return -1;
 	}
 
 	for (i = 0; i < QUOTA_DATA(qtype); i++)
 		raw_node->i.i_addr[get_extra_isize(raw_node) + i] =
-					cpu_to_le32(data_blk_nor + i);
+					cpu_to_le32(data_blkaddr + i);
 
-	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
-	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
-					c.blks_per_seg + offset + 1;
-
-	DBG(1, "\tWriting quota inode (hot node), %x %x %x at offset 0x%08"PRIu64"\n",
-			get_sb(main_blkaddr),
-			c.cur_seg[CURSEG_HOT_NODE],
-			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
+	DBG(1, "\tWriting quota inode (hot node), offset 0x%x\n", node_blkaddr);
+	if (write_inode(raw_node, node_blkaddr) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1492,8 +1485,8 @@ static block_t f2fs_add_default_dentry_lpf(void)
 static int f2fs_write_lpf_inode(void)
 {
 	struct f2fs_node *raw_node;
-	uint64_t main_area_node_seg_blk_offset;
-	block_t data_blk_nor;
+	block_t data_blkaddr;
+	block_t node_blkaddr;
 	int err = 0;
 
 	ASSERT(c.lpf_ino);
@@ -1510,28 +1503,20 @@ static int f2fs_write_lpf_inode(void)
 	raw_node->i.i_namelen = le32_to_cpu(strlen(LPF));
 	memcpy(raw_node->i.i_name, LPF, strlen(LPF));
 
-	raw_node->footer.next_blkaddr = cpu_to_le32(
-			get_sb(main_blkaddr) +
-			c.cur_seg[CURSEG_HOT_NODE] * c.blks_per_seg +
-			1 + c.quota_inum + 1);
+	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE, 1);
+	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
-	data_blk_nor = f2fs_add_default_dentry_lpf();
-	if (data_blk_nor == 0) {
+	data_blkaddr = f2fs_add_default_dentry_lpf();
+	if (data_blkaddr == 0) {
 		MSG(1, "\tError: Failed to add default dentries for lost+found!!!\n");
 		err = -1;
 		goto exit;
 	}
-	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blk_nor);
+	raw_node->i.i_addr[get_extra_isize(raw_node)] = cpu_to_le32(data_blkaddr);
 
-	main_area_node_seg_blk_offset = get_sb(main_blkaddr);
-	main_area_node_seg_blk_offset += c.cur_seg[CURSEG_HOT_NODE] *
-		c.blks_per_seg + c.quota_inum + 1;
-
-	DBG(1, "\tWriting lost+found inode (hot node), %x %x %x at offset 0x%08"PRIu64"\n",
-			get_sb(main_blkaddr),
-			c.cur_seg[CURSEG_HOT_NODE],
-			c.blks_per_seg, main_area_node_seg_blk_offset);
-	if (write_inode(raw_node, main_area_node_seg_blk_offset) < 0) {
+	DBG(1, "\tWriting lost+found inode (hot node), offset 0x%x\n",
+								node_blkaddr);
+	if (write_inode(raw_node, node_blkaddr) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		err = -1;
 		goto exit;
@@ -1606,7 +1591,7 @@ static int f2fs_add_default_dentry_root(void)
 static int f2fs_create_root_dir(void)
 {
 	enum quota_type qtype;
-	int err = 0, i = 0;
+	int err = 0;
 
 	err = f2fs_write_root_inode();
 	if (err < 0) {
@@ -1617,7 +1602,7 @@ static int f2fs_create_root_dir(void)
 	for (qtype = 0; qtype < F2FS_MAX_QUOTAS; qtype++)  {
 		if (!((1 << qtype) & c.quota_bits))
 			continue;
-		err = f2fs_write_qf_inode(qtype, i++);
+		err = f2fs_write_qf_inode(qtype);
 		if (err < 0) {
 			MSG(1, "\tError: Failed to write quota inode!!!\n");
 			goto exit;

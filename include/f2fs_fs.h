@@ -603,6 +603,8 @@ struct f2fs_configuration {
 
 	/* compression support for sload.f2fs */
 	compress_config_t compress;
+
+	block_t curseg_offset[6];
 };
 
 #ifdef CONFIG_64BIT
