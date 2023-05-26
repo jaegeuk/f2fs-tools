@@ -494,119 +494,6 @@ typedef struct {
 #define ALIGN_DOWN(addrs, size)	(((addrs) / (size)) * (size))
 #define ALIGN_UP(addrs, size)	ALIGN_DOWN(((addrs) + (size) - 1), (size))
 
-struct f2fs_configuration {
-	uint32_t conf_reserved_sections;
-	uint32_t reserved_segments;
-	uint32_t new_reserved_segments;
-	int sparse_mode;
-	int zoned_mode;
-	int zoned_model;
-	size_t zone_blocks;
-	double overprovision;
-	double new_overprovision;
-	uint32_t cur_seg[6];
-	uint32_t segs_per_sec;
-	uint32_t secs_per_zone;
-	uint32_t segs_per_zone;
-	uint32_t start_sector;
-	uint32_t total_segments;
-	uint32_t sector_size;
-	uint64_t device_size;
-	uint64_t total_sectors;
-	uint64_t wanted_total_sectors;
-	uint64_t wanted_sector_size;
-	uint64_t target_sectors;
-	uint32_t sectors_per_blk;
-	uint32_t blks_per_seg;
-	__u8 init_version[VERSION_LEN + 1];
-	__u8 sb_version[VERSION_LEN + 1];
-	__u8 version[VERSION_LEN + 1];
-	char *vol_label;
-	char *vol_uuid;
-	uint16_t s_encoding;
-	uint16_t s_encoding_flags;
-	int heap;
-	int32_t kd;
-	int32_t dump_fd;
-	struct device_info devices[MAX_DEVICES];
-	int ndevs;
-	char *extension_list[2];
-	const char *rootdev_name;
-	int dbg_lv;
-	int show_dentry;
-	int trim;
-	int trimmed;
-	int func;
-	void *private;
-	int dry_run;
-	int no_kernel_check;
-	int fix_on;
-	int force;
-	int defset;
-	int bug_on;
-	int force_stop;
-	int abnormal_stop;
-	int fs_errors;
-	int bug_nat_bits;
-	bool quota_fixed;
-	int alloc_failed;
-	int auto_fix;
-	int layout;
-	int show_file_map;
-	u64 show_file_map_max_offset;
-	int quota_fix;
-	int preen_mode;
-	int ro;
-	int preserve_limits;		/* preserve quota limits */
-	int large_nat_bitmap;
-	int fix_chksum;			/* fix old cp.chksum position */
-	__le32 feature;			/* defined features */
-	unsigned int quota_bits;	/* quota bits */
-	time_t fixed_time;
-
-	/* mkfs parameters */
-	int fake_seed;
-	uint32_t next_free_nid;
-	uint32_t quota_inum;
-	uint32_t quota_dnum;
-	uint32_t lpf_inum;
-	uint32_t lpf_dnum;
-	uint32_t lpf_ino;
-	uint32_t root_uid;
-	uint32_t root_gid;
-
-	/* defragmentation parameters */
-	int defrag_shrink;
-	uint64_t defrag_start;
-	uint64_t defrag_len;
-	uint64_t defrag_target;
-
-	/* sload parameters */
-	char *from_dir;
-	char *mount_point;
-	char *target_out_dir;
-	char *fs_config_file;
-#ifdef HAVE_LIBSELINUX
-	struct selinux_opt seopt_file[8];
-	int nr_opt;
-#endif
-	int preserve_perms;
-
-	/* resize parameters */
-	int safe_resize;
-
-	/* precomputed fs UUID checksum for seeding other checksums */
-	uint32_t chksum_seed;
-
-	/* cache parameters */
-	dev_cache_config_t cache_config;
-
-	/* compression support for sload.f2fs */
-	compress_config_t compress;
-
-	block_t curseg_offset[6];
-};
-
 #ifdef CONFIG_64BIT
 #define BITS_PER_LONG	64
 #else
@@ -721,6 +608,12 @@ enum {
 	NO_CHECK_TYPE
 };
 
+enum {
+	CURSEG_RO_HOT_DATA,
+	CURSEG_RO_HOT_NODE,
+	NR_RO_CURSEG_TYPE,
+};
+
 #define F2FS_MIN_SEGMENTS	9 /* SB + 2 (CP + SIT + NAT) + SSA + MAIN */
 
 /*
@@ -749,7 +642,7 @@ enum {
 #define F2FS_META_INO(sbi)	(sbi->meta_ino_num)
 
 #define F2FS_MAX_QUOTAS		3
-#define QUOTA_DATA(i)		(2)
+#define QUOTA_DATA		2
 #define QUOTA_INO(sb,t)	(le32_to_cpu((sb)->qf_ino[t]))
 
 /*
@@ -1469,6 +1362,120 @@ enum FILE_TYPE {
 enum {
 	LFS = 0,
 	SSR
+};
+
+#define MAX_CACHE_SUMS			8
+
+struct f2fs_configuration {
+	uint32_t conf_reserved_sections;
+	uint32_t reserved_segments;
+	uint32_t new_reserved_segments;
+	int sparse_mode;
+	int zoned_mode;
+	int zoned_model;
+	size_t zone_blocks;
+	double overprovision;
+	double new_overprovision;
+	uint32_t cur_seg[NR_CURSEG_TYPE];
+	uint32_t segs_per_sec;
+	uint32_t secs_per_zone;
+	uint32_t segs_per_zone;
+	uint32_t start_sector;
+	uint32_t total_segments;
+	uint32_t sector_size;
+	uint64_t device_size;
+	uint64_t total_sectors;
+	uint64_t wanted_total_sectors;
+	uint64_t wanted_sector_size;
+	uint64_t target_sectors;
+	uint32_t sectors_per_blk;
+	uint32_t blks_per_seg;
+	__u8 init_version[VERSION_LEN + 1];
+	__u8 sb_version[VERSION_LEN + 1];
+	__u8 version[VERSION_LEN + 1];
+	char *vol_label;
+	char *vol_uuid;
+	uint16_t s_encoding;
+	uint16_t s_encoding_flags;
+	int heap;
+	int32_t kd;
+	int32_t dump_fd;
+	struct device_info devices[MAX_DEVICES];
+	int ndevs;
+	char *extension_list[2];
+	const char *rootdev_name;
+	int dbg_lv;
+	int show_dentry;
+	int trim;
+	int trimmed;
+	int func;
+	void *private;
+	int dry_run;
+	int no_kernel_check;
+	int fix_on;
+	int force;
+	int defset;
+	int bug_on;
+	int force_stop;
+	int abnormal_stop;
+	int fs_errors;
+	int bug_nat_bits;
+	bool quota_fixed;
+	int alloc_failed;
+	int auto_fix;
+	int layout;
+	int show_file_map;
+	u64 show_file_map_max_offset;
+	int quota_fix;
+	int preen_mode;
+	int ro;
+	int preserve_limits;		/* preserve quota limits */
+	int large_nat_bitmap;
+	int fix_chksum;			/* fix old cp.chksum position */
+	__le32 feature;			/* defined features */
+	unsigned int quota_bits;	/* quota bits */
+	time_t fixed_time;
+
+	/* mkfs parameters */
+	int fake_seed;
+	uint32_t next_free_nid;
+	uint32_t lpf_ino;
+	uint32_t root_uid;
+	uint32_t root_gid;
+
+	/* defragmentation parameters */
+	int defrag_shrink;
+	uint64_t defrag_start;
+	uint64_t defrag_len;
+	uint64_t defrag_target;
+
+	/* sload parameters */
+	char *from_dir;
+	char *mount_point;
+	char *target_out_dir;
+	char *fs_config_file;
+#ifdef HAVE_LIBSELINUX
+	struct selinux_opt seopt_file[8];
+	int nr_opt;
+#endif
+	int preserve_perms;
+
+	/* resize parameters */
+	int safe_resize;
+
+	/* precomputed fs UUID checksum for seeding other checksums */
+	uint32_t chksum_seed;
+
+	/* cache parameters */
+	dev_cache_config_t cache_config;
+
+	/* compression support for sload.f2fs */
+	compress_config_t compress;
+
+	block_t curseg_offset[NR_CURSEG_TYPE];
+	struct f2fs_journal sit_jnl;
+	struct f2fs_journal nat_jnl;
+	struct f2fs_summary sum[NR_CURSEG_TYPE][MAX_CACHE_SUMS];
 };
 
 extern int utf8_to_utf16(char *, const char *, size_t, size_t);
