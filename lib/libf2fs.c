@@ -609,7 +609,7 @@ __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *cp)
 
 int write_inode(struct f2fs_node *inode, u64 blkaddr)
 {
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		inode->i.i_inode_checksum =
 			cpu_to_le32(f2fs_inode_chksum(inode));
 	return dev_write_block(inode, blkaddr);
@@ -1321,15 +1321,15 @@ unsigned int calc_extra_isize(void)
 {
 	unsigned int size = offsetof(struct f2fs_inode, i_projid);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+	if (c.feature & F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)
 		size = offsetof(struct f2fs_inode, i_projid);
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
+	if (c.feature & F2FS_FEATURE_PRJQUOTA)
 		size = offsetof(struct f2fs_inode, i_inode_checksum);
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		size = offsetof(struct f2fs_inode, i_crtime);
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME))
+	if (c.feature & F2FS_FEATURE_INODE_CRTIME)
 		size = offsetof(struct f2fs_inode, i_compr_blocks);
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION))
+	if (c.feature & F2FS_FEATURE_COMPRESSION)
 		size = offsetof(struct f2fs_inode, i_extra_end);
 
 	return size - F2FS_EXTRA_ISIZE_OFFSET;

@@ -520,7 +520,7 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 	memcpy(node_blk->i.i_name, de->name, de->len);
 	node_blk->i.i_name[de->len] = 0;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+	if (c.feature & F2FS_FEATURE_EXTRA_ATTR) {
 		node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
 		node_blk->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
@@ -542,7 +542,7 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 		de->link = NULL;
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		node_blk->i.i_inode_checksum =
 			cpu_to_le32(f2fs_inode_chksum(node_blk));
 }

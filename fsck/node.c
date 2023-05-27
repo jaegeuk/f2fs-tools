@@ -142,7 +142,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 			type = CURSEG_WARM_NODE;
 	}
 
-	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+	if ((get_sb(feature) & F2FS_FEATURE_RO) &&
 					type != CURSEG_HOT_NODE)
 		type = CURSEG_HOT_NODE;
 

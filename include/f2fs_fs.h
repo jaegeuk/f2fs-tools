@@ -1432,7 +1432,7 @@ struct f2fs_configuration {
 	int preserve_limits;		/* preserve quota limits */
 	int large_nat_bitmap;
 	int fix_chksum;			/* fix old cp.chksum position */
-	__le32 feature;			/* defined features */
+	unsigned int feature;			/* defined features */
 	unsigned int quota_bits;	/* quota bits */
 	time_t fixed_time;
 
@@ -1553,7 +1553,7 @@ static inline int __get_extra_isize(struct f2fs_inode *inode)
 extern struct f2fs_configuration c;
 static inline int get_inline_xattr_addrs(struct f2fs_inode *inode)
 {
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+	if (c.feature & F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)
 		return le16_to_cpu(inode->i_inline_xattr_size);
 	else if (inode->i_inline & F2FS_INLINE_XATTR ||
 			inode->i_inline & F2FS_INLINE_DENTRY)
@@ -1784,20 +1784,20 @@ static inline void f2fs_init_inode(struct f2fs_super_block *sb,
 	raw_node->i.i_size = cpu_to_le64(1 << get_sb(log_blocksize));
 	raw_node->i.i_blocks = cpu_to_le64(2);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+	if (c.feature & F2FS_FEATURE_EXTRA_ATTR) {
 		raw_node->i.i_inline = F2FS_EXTRA_ATTR;
 		raw_node->i.i_extra_isize = cpu_to_le16(calc_extra_isize());
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
+	if (c.feature & F2FS_FEATURE_PRJQUOTA)
 		raw_node->i.i_projid = cpu_to_le32(F2FS_DEF_PROJID);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+	if (c.feature & F2FS_FEATURE_INODE_CRTIME) {
 		raw_node->i.i_crtime = cpu_to_le32(mtime);
 		raw_node->i.i_crtime_nsec = 0;
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+	if (c.feature & F2FS_FEATURE_COMPRESSION) {
 		raw_node->i.i_compr_blocks = 0;
 		raw_node->i.i_compress_algorithm = 0;
 		raw_node->i.i_log_cluster_size = 0;
@@ -1844,7 +1844,7 @@ static inline int set_feature_bits(struct feature *table, char *features)
 {
 	u32 mask = feature_map(table, features);
 	if (mask) {
-		c.feature |= cpu_to_le32(mask);
+		c.feature |= mask;
 	} else {
 		MSG(0, "Error: Wrong features %s\n", features);
 		return -1;

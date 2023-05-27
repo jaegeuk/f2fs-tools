@@ -292,19 +292,19 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 			le32_to_cpu(inode->i_ext.blk_addr),
 			le32_to_cpu(inode->i_ext.len));
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+	if (c.feature & F2FS_FEATURE_EXTRA_ATTR) {
 		DISP_u16(inode, i_extra_isize);
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR))
+		if (c.feature & F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)
 			DISP_u16(inode, i_inline_xattr_size);
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_PRJQUOTA))
+		if (c.feature & F2FS_FEATURE_PRJQUOTA)
 			DISP_u32(inode, i_projid);
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 			DISP_u32(inode, i_inode_checksum);
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+		if (c.feature & F2FS_FEATURE_INODE_CRTIME) {
 			DISP_u64(inode, i_crtime);
 			DISP_u32(inode, i_crtime_nsec);
 		}
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+		if (c.feature & F2FS_FEATURE_COMPRESSION) {
 			DISP_u64(inode, i_compr_blocks);
 			DISP_u8(inode, i_compress_algorithm);
 			DISP_u8(inode, i_log_cluster_size);
@@ -601,50 +601,50 @@ void print_cp_state(u32 flag)
 
 void print_sb_state(struct f2fs_super_block *sb)
 {
-	__le32 f = sb->feature;
+	unsigned int f = get_sb(feature);
 	int i;
 
 	MSG(0, "Info: superblock features = %x : ", f);
-	if (f & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
+	if (f & F2FS_FEATURE_ENCRYPT) {
 		MSG(0, "%s", " encrypt");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_VERITY)) {
+	if (f & F2FS_FEATURE_VERITY) {
 		MSG(0, "%s", " verity");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_BLKZONED)) {
+	if (f & F2FS_FEATURE_BLKZONED) {
 		MSG(0, "%s", " blkzoned");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+	if (f & F2FS_FEATURE_EXTRA_ATTR) {
 		MSG(0, "%s", " extra_attr");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_PRJQUOTA)) {
+	if (f & F2FS_FEATURE_PRJQUOTA) {
 		MSG(0, "%s", " project_quota");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) {
+	if (f & F2FS_FEATURE_INODE_CHKSUM) {
 		MSG(0, "%s", " inode_checksum");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) {
+	if (f & F2FS_FEATURE_FLEXIBLE_INLINE_XATTR) {
 		MSG(0, "%s", " flexible_inline_xattr");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
+	if (f & F2FS_FEATURE_QUOTA_INO) {
 		MSG(0, "%s", " quota_ino");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_INODE_CRTIME)) {
+	if (f & F2FS_FEATURE_INODE_CRTIME) {
 		MSG(0, "%s", " inode_crtime");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
+	if (f & F2FS_FEATURE_LOST_FOUND) {
 		MSG(0, "%s", " lost_found");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_SB_CHKSUM)) {
+	if (f & F2FS_FEATURE_SB_CHKSUM) {
 		MSG(0, "%s", " sb_checksum");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+	if (f & F2FS_FEATURE_CASEFOLD) {
 		MSG(0, "%s", " casefold");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_COMPRESSION)) {
+	if (f & F2FS_FEATURE_COMPRESSION) {
 		MSG(0, "%s", " compression");
 	}
-	if (f & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (f & F2FS_FEATURE_RO) {
 		MSG(0, "%s", " ro");
 	}
 	MSG(0, "\n");
@@ -1020,7 +1020,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return -1;
 	}
 
-	if (!(get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+	if (!(get_sb(feature) & F2FS_FEATURE_RO) &&
 			(total_sections > segment_count ||
 			total_sections < F2FS_MIN_SEGMENTS ||
 			segs_per_sec > segment_count || !segs_per_sec)) {
@@ -1088,7 +1088,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 
 	/* Check zoned block device feature */
 	if (c.devices[0].zoned_model != F2FS_ZONED_NONE &&
-			!(sb->feature & cpu_to_le32(F2FS_FEATURE_BLKZONED))) {
+			!(get_sb(feature) & F2FS_FEATURE_BLKZONED)) {
 		MSG(0, "\tMissing zoned block device feature\n");
 		return -1;
 	}
@@ -1456,7 +1456,7 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 	ovp_segments = get_cp(overprov_segment_count);
 	reserved_segments = get_cp(rsvd_segment_count);
 
-	if (!(get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+	if (!(get_sb(feature) & F2FS_FEATURE_RO) &&
 		(fsmeta < F2FS_MIN_SEGMENT || ovp_segments == 0 ||
 					reserved_segments == 0)) {
 		MSG(0, "\tWrong layout: check mkfs.f2fs version\n");
@@ -1465,7 +1465,7 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 
 	user_block_count = get_cp(user_block_count);
 	segment_count_main = get_sb(segment_count_main) +
-				(cpu_to_le32(F2FS_FEATURE_RO) ? 1 : 0);
+				((get_sb(feature) & F2FS_FEATURE_RO) ? 1 : 0);
 	log_blocks_per_seg = get_sb(log_blocks_per_seg);
 	if (!user_block_count || user_block_count >=
 			segment_count_main << log_blocks_per_seg) {
@@ -1530,7 +1530,7 @@ int sanity_check_ckpt(struct f2fs_sb_info *sbi)
 			NR_CURSEG_TYPE) {
 		MSG(0, "\tWrong cp_pack_start_sum(%u) or cp_payload(%u)\n",
 			cp_pack_start_sum, cp_payload);
-		if ((get_sb(feature) & F2FS_FEATURE_SB_CHKSUM))
+		if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM)
 			return 1;
 		set_sb(cp_payload, cp_pack_start_sum - 1);
 		update_superblock(sb, SB_MASK_ALL);
@@ -2095,7 +2095,7 @@ void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
 	int type, ret;
 	struct seg_entry *se;
 
-	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))
+	if (get_sb(feature) & F2FS_FEATURE_RO)
 		return;
 
 	segno = GET_SEGNO(sbi, blk_addr);
@@ -2941,7 +2941,7 @@ next_segment:
 						START_BLOCK(sbi, segno + 1);
 			continue;
 		}
-		if (!(get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+		if (!(get_sb(feature) & F2FS_FEATURE_RO) &&
 						IS_CUR_SEGNO(sbi, segno))
 			goto next_segment;
 		if (vblocks == 0 && not_enough)
@@ -2983,7 +2983,7 @@ static void move_one_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left,
 	u64 ssa_blk, to;
 	int ret;
 
-	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))) {
+	if ((get_sb(feature) & F2FS_FEATURE_RO)) {
 		if (i != CURSEG_HOT_DATA && i != CURSEG_HOT_NODE)
 			return;
 
@@ -3258,7 +3258,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
 		ASSERT(ret >= 0);
 
-		if (!(get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))) {
+		if (!(get_sb(feature) & F2FS_FEATURE_RO)) {
 			/* update original SSA too */
 			ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
 			ret = dev_write_block(curseg->sum_blk, ssa_blk);
@@ -3453,25 +3453,27 @@ static int tune_sb_features(struct f2fs_sb_info *sbi)
 	int sb_changed = 0;
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
-	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) &&
-			c.feature & cpu_to_le32(F2FS_FEATURE_ENCRYPT)) {
-		sb->feature |= cpu_to_le32(F2FS_FEATURE_ENCRYPT);
+	if (!(get_sb(feature) & F2FS_FEATURE_ENCRYPT) &&
+			c.feature & F2FS_FEATURE_ENCRYPT) {
+		sb->feature = cpu_to_le32(get_sb(feature) |
+					F2FS_FEATURE_ENCRYPT);
 		MSG(0, "Info: Set Encryption feature\n");
 		sb_changed = 1;
 	}
-	if (!(sb->feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) &&
-		c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+	if (!(get_sb(feature) & F2FS_FEATURE_CASEFOLD) &&
+		c.feature & F2FS_FEATURE_CASEFOLD) {
 		if (!c.s_encoding) {
 			ERR_MSG("ERROR: Must specify encoding to enable casefolding.\n");
 			return -1;
 		}
-		sb->feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
+		sb->feature = cpu_to_le32(get_sb(feature) |
+					F2FS_FEATURE_CASEFOLD);
 		MSG(0, "Info: Set Casefold feature\n");
 		sb_changed = 1;
 	}
 	/* TODO: quota needs to allocate inode numbers */
 
-	c.feature = sb->feature;
+	c.feature = get_sb(feature);
 	if (!sb_changed)
 		return 0;
 
@@ -3831,7 +3833,7 @@ out:
 		return -1;
 
 	/* precompute checksum seed for metadata */
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		c.chksum_seed = f2fs_cal_crc32(~0, sb->uuid, sizeof(sb->uuid));
 
 	sbi->total_valid_node_count = get_cp(valid_node_count);

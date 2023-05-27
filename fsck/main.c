@@ -367,7 +367,7 @@ void f2fs_parse_options(int argc, char *argv[])
 					MSG(0, "\tError: Unknown flag %s\n", token);
 					fsck_usage();
 				}
-				c.feature |= cpu_to_le32(F2FS_FEATURE_CASEFOLD);
+				c.feature |= F2FS_FEATURE_CASEFOLD;
 				break;
 			case 'V':
 				show_version(prog);
@@ -877,7 +877,7 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 	cbc.cnt = 0;
 	cbc.cheader_pgofs = CHEADER_PGOFS_NONE;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_QUOTA_INO)) {
+	if (c.feature & F2FS_FEATURE_QUOTA_INO) {
 		ret = quota_init_context(sbi);
 		if (ret) {
 			ASSERT_MSG("quota_init_context failure: %d", ret);
@@ -939,7 +939,7 @@ static int do_defrag(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
-	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (get_sb(feature) & F2FS_FEATURE_RO) {
 		MSG(0, "Not support on readonly image.\n");
 		return -1;
 	}

@@ -152,7 +152,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 	int need_fix = 0, ret = 0;
 	int type;
 
-	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))
+	if (get_sb(feature) & F2FS_FEATURE_RO)
 		return 0;
 
 	segno = GET_SEGNO(sbi, blk_addr);
@@ -277,7 +277,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 	int need_fix = 0, ret = 0;
 	int type;
 
-	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO))
+	if (get_sb(feature) & F2FS_FEATURE_RO)
 		return 0;
 
 	segno = GET_SEGNO(sbi, blk_addr);
@@ -839,7 +839,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i_links = le32_to_cpu(node_blk->i.i_links);
 	u64 i_size = le64_to_cpu(node_blk->i.i_size);
 	u64 i_blocks = le64_to_cpu(node_blk->i.i_blocks);
-	bool compr_supported = c.feature & cpu_to_le32(F2FS_FEATURE_COMPRESSION);
+	bool compr_supported = c.feature & F2FS_FEATURE_COMPRESSION;
 	u32 i_flags = le32_to_cpu(node_blk->i.i_flags);
 	bool compressed = i_flags & F2FS_COMPR_FL;
 	bool compr_rel = node_blk->i.i_inline & F2FS_COMPRESS_RELEASED;
@@ -939,7 +939,7 @@ check_next:
 	child.last_blk = 0;
 
 	if (f2fs_has_extra_isize(&node_blk->i)) {
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+		if (c.feature & F2FS_FEATURE_EXTRA_ATTR) {
 			unsigned int isize =
 				le16_to_cpu(node_blk->i.i_extra_isize);
 			if (isize > 4 * DEF_ADDRS_PER_INODE) {
@@ -967,8 +967,7 @@ check_next:
 			}
 		}
 
-		if ((c.feature &
-			cpu_to_le32(F2FS_FEATURE_FLEXIBLE_INLINE_XATTR)) &&
+		if ((c.feature & F2FS_FEATURE_FLEXIBLE_INLINE_XATTR) &&
 			(node_blk->i.i_inline & F2FS_INLINE_XATTR)) {
 			unsigned int inline_size =
 				le16_to_cpu(node_blk->i.i_inline_xattr_size);
@@ -993,7 +992,7 @@ check_next:
 
 	if ((node_blk->i.i_flags & cpu_to_le32(F2FS_CASEFOLD_FL)) &&
 	    (ftype != F2FS_FT_DIR ||
-	     !(c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)))) {
+	     !(c.feature & F2FS_FEATURE_CASEFOLD))) {
 		ASSERT_MSG("[0x%x] unexpected casefold flag", nid);
 		if (c.fix_on) {
 			FIX_MSG("ino[0x%x] clear casefold flag", nid);
@@ -1314,7 +1313,7 @@ skip_blkcnt_fix:
 	if (need_fix && f2fs_dev_is_writable())
 		node_blk->i.i_ext.len = 0;
 
-	if ((c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM)) &&
+	if ((c.feature & F2FS_FEATURE_INODE_CHKSUM) &&
 				f2fs_has_extra_isize(&node_blk->i)) {
 		__u32 provided, calculated;
 
@@ -2690,7 +2689,7 @@ int check_curseg_offset(struct f2fs_sb_info *sbi, int type)
 	struct seg_entry *se;
 	int j, nblocks;
 
-	if (get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO) &&
+	if ((get_sb(feature) & F2FS_FEATURE_RO) &&
 			type != CURSEG_HOT_DATA && type != CURSEG_HOT_NODE)
 		return 0;
 
@@ -3290,7 +3289,7 @@ int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
 		se = get_seg_entry(sbi, curseg->segno);
 		sum_blk = curseg->sum_blk;
 
-		if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+		if ((get_sb(feature) & F2FS_FEATURE_RO) &&
 			(i != CURSEG_HOT_DATA && i != CURSEG_HOT_NODE))
 			continue;
 
@@ -3351,7 +3350,7 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			force = 1;
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
+	if (c.feature & F2FS_FEATURE_LOST_FOUND) {
 		for (i = 0; i < fsck->nr_nat_entries; i++)
 			if (f2fs_test_bit(i, fsck->nat_area_bitmap) != 0)
 				break;

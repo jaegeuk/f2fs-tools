@@ -260,7 +260,7 @@ static int f2fs_prepare_super_block(void)
 		zone_size_bytes * zone_size_bytes -
 		(uint64_t) c.start_sector * DEFAULT_SECTOR_SIZE;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+	if (c.feature & F2FS_FEATURE_RO)
 		zone_align_start_offset = 8192;
 
 	if (c.start_sector % DEFAULT_SECTORS_PER_BLOCK) {
@@ -413,7 +413,7 @@ static int f2fs_prepare_super_block(void)
 			get_sb(segment_count_nat))) *
 			c.blks_per_seg;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+	if (c.feature & F2FS_FEATURE_RO)
 		blocks_for_ssa = 0;
 	else
 		blocks_for_ssa = total_valid_blks_available /
@@ -487,11 +487,11 @@ static int f2fs_prepare_super_block(void)
 
 	c.reserved_segments = get_reserved(sb, c.overprovision);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (c.feature & F2FS_FEATURE_RO) {
 		c.overprovision = 0;
 		c.reserved_segments = 0;
 	}
-	if ((!(c.feature & cpu_to_le32(F2FS_FEATURE_RO)) &&
+	if ((!(c.feature & F2FS_FEATURE_RO) &&
 		c.overprovision == 0) ||
 		c.total_segments < F2FS_MIN_SEGMENTS ||
 		(c.devices[0].total_sectors *
@@ -511,7 +511,7 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	/* precompute checksum seed for metadata */
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		c.chksum_seed = f2fs_cal_crc32(~0, sb->uuid, sizeof(sb->uuid));
 
 	utf8_to_utf16((char *)sb->volume_name, (const char *)c.vol_label,
@@ -529,10 +529,10 @@ static int f2fs_prepare_super_block(void)
 					qtype, c.next_free_nid - 1);
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_LOST_FOUND))
+	if (c.feature & F2FS_FEATURE_LOST_FOUND)
 		c.lpf_ino = c.next_free_nid++;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+	if (c.feature & F2FS_FEATURE_RO)
 		avail_zones = 2;
 	else
 		avail_zones = 6;
@@ -543,7 +543,7 @@ static int f2fs_prepare_super_block(void)
 		return -1;
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (c.feature & F2FS_FEATURE_RO) {
 		c.cur_seg[CURSEG_HOT_NODE] = last_section(last_zone(total_zones));
 		c.cur_seg[CURSEG_WARM_NODE] = 0;
 		c.cur_seg[CURSEG_COLD_NODE] = 0;
@@ -579,7 +579,7 @@ static int f2fs_prepare_super_block(void)
 	}
 
 	/* if there is redundancy, reassign it */
-	if (!(c.feature & cpu_to_le32(F2FS_FEATURE_RO)))
+	if (!(c.feature & F2FS_FEATURE_RO))
 		verify_cur_segs();
 
 	cure_extension_list();
@@ -596,14 +596,14 @@ static int f2fs_prepare_super_block(void)
 	memcpy(sb->version, c.version, VERSION_LEN);
 	memcpy(sb->init_version, c.version, VERSION_LEN);
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_CASEFOLD)) {
+	if (c.feature & F2FS_FEATURE_CASEFOLD) {
 		set_sb(s_encoding, c.s_encoding);
 		set_sb(s_encoding_flags, c.s_encoding_flags);
 	}
 
-	sb->feature = c.feature;
+	sb->feature = cpu_to_le32(c.feature);
 
-	if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) {
+	if (c.feature & F2FS_FEATURE_SB_CHKSUM) {
 		set_sb(checksum_offset, SB_CHKSUM_OFFSET);
 		set_sb(crc, f2fs_cal_crc32(F2FS_SUPER_MAGIC, sb,
 						SB_CHKSUM_OFFSET));
@@ -800,7 +800,7 @@ static int f2fs_write_check_point_pack(void)
 					c.reserved_segments);
 
 	/* main segments - reserved segments - (node + data segments) */
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (c.feature & F2FS_FEATURE_RO) {
 		set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 2);
 		set_cp(user_block_count, ((get_cp(free_segment_count) + 2 -
 			get_cp(overprov_segment_count)) * c.blks_per_seg));
@@ -892,7 +892,7 @@ static int f2fs_write_check_point_pack(void)
 	/* sit_journal */
 	journal = &c.sit_jnl;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (c.feature & F2FS_FEATURE_RO) {
 		i = CURSEG_RO_HOT_DATA;
 		vblocks = le16_to_cpu(journal->sit_j.entries[i].se.vblocks);
 		journal->sit_j.entries[i].segno = cp->cur_data_segno[0];
@@ -1103,7 +1103,7 @@ static int f2fs_discard_obsolete_dnode(void)
 	uint64_t start_inode_pos = get_sb(main_blkaddr);
 	uint64_t last_inode_pos;
 
-	if (c.zoned_mode || c.feature & cpu_to_le32(F2FS_FEATURE_RO))
+	if (c.zoned_mode || c.feature & F2FS_FEATURE_RO)
 		return 0;
 
 	raw_node = calloc(sizeof(struct f2fs_node), 1);
@@ -1169,7 +1169,7 @@ void update_sit_journal(int curseg_type)
 	unsigned short vblocks;
 	int idx = curseg_type;
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (c.feature & F2FS_FEATURE_RO) {
 		if (curseg_type < NR_CURSEG_DATA_TYPE)
 			idx = CURSEG_RO_HOT_DATA;
 		else
@@ -1598,7 +1598,7 @@ static int f2fs_create_root_dir(void)
 		}
 	}
 
-	if (c.feature & cpu_to_le32(F2FS_FEATURE_LOST_FOUND)) {
+	if (c.feature & F2FS_FEATURE_LOST_FOUND) {
 		err = f2fs_write_lpf_inode();
 		if (err < 0) {
 			MSG(1, "\tError: Failed to write lost+found inode!!!\n");

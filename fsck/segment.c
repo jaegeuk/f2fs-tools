@@ -57,7 +57,7 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 
 	blkaddr = SM_I(sbi)->main_blkaddr;
 
-	if (sbi->raw_super->feature & cpu_to_le32(F2FS_FEATURE_RO)) {
+	if (le32_to_cpu(sbi->raw_super->feature) & F2FS_FEATURE_RO) {
 		if (IS_NODESEG(type)) {
 			type = CURSEG_HOT_NODE;
 			blkaddr = __end_block_addr(sbi);
@@ -123,7 +123,7 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 	unsigned int blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 	int ret;
 
-	if ((get_sb(feature) & cpu_to_le32(F2FS_FEATURE_RO)) &&
+	if ((get_sb(feature) & F2FS_FEATURE_RO) &&
 					type != CURSEG_HOT_DATA)
 		type = CURSEG_HOT_DATA;
 
@@ -608,7 +608,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		node_blk->i.i_inline |= F2FS_INLINE_DATA;
 		node_blk->i.i_inline |= F2FS_DATA_EXIST;
 
-		if (c.feature & cpu_to_le32(F2FS_FEATURE_EXTRA_ATTR)) {
+		if (c.feature & F2FS_FEATURE_EXTRA_ATTR) {
 			node_blk->i.i_inline |= F2FS_EXTRA_ATTR;
 			node_blk->i.i_extra_isize =
 					cpu_to_le16(calc_extra_isize());
@@ -710,7 +710,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 	if (n < 0)
 		return -1;
 
-	if (!c.compress.enabled || (c.feature & cpu_to_le32(F2FS_FEATURE_RO)))
+	if (!c.compress.enabled || (c.feature & F2FS_FEATURE_RO))
 		update_largest_extent(sbi, de->ino);
 	update_free_segments(sbi);
 
