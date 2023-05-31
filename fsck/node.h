@@ -18,9 +18,9 @@
 
 #include "fsck.h"
 
-static inline int IS_INODE(struct f2fs_node *node)
+static inline bool IS_INODE(struct f2fs_node *node)
 {
-	return ((node)->footer.nid == (node)->footer.ino);
+	return node->footer.ino == node->footer.nid;
 }
 
 static inline unsigned int ADDRS_PER_PAGE(struct f2fs_sb_info *sbi,
