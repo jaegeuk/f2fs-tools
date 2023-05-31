@@ -56,19 +56,17 @@ static int get_zone_idx_from_dev(struct f2fs_sb_info *sbi,
 {
 	block_t seg_start_blkaddr = START_BLOCK(sbi, segno);
 
-	return (seg_start_blkaddr - c.devices[dev_idx].start_blkaddr) >>
-			log_base_2(sbi->segs_per_sec * sbi->blocks_per_seg);
+	return (seg_start_blkaddr - c.devices[dev_idx].start_blkaddr) /
+			(sbi->segs_per_sec * sbi->blocks_per_seg);
 }
 
 bool is_usable_seg(struct f2fs_sb_info *sbi, unsigned int segno)
 {
-	unsigned int secno = segno / sbi->segs_per_sec;
 	block_t seg_start = START_BLOCK(sbi, segno);
-	block_t blocks_per_sec = sbi->blocks_per_seg * sbi->segs_per_sec;
 	unsigned int dev_idx = get_device_idx(sbi, segno);
 	unsigned int zone_idx = get_zone_idx_from_dev(sbi, segno, dev_idx);
-	unsigned int sec_off = SM_I(sbi)->main_blkaddr >>
-						log_base_2(blocks_per_sec);
+	unsigned int sec_start_blkaddr = START_BLOCK(sbi,
+			GET_SEG_FROM_SEC(sbi, segno / sbi->segs_per_sec));
 
 	if (zone_idx < c.devices[dev_idx].nr_rnd_zones)
 		return true;
@@ -76,7 +74,7 @@ bool is_usable_seg(struct f2fs_sb_info *sbi, unsigned int segno)
 	if (c.devices[dev_idx].zoned_model != F2FS_ZONED_HM)
 		return true;
 
-	return seg_start < ((sec_off + secno) * blocks_per_sec) +
+	return seg_start < sec_start_blkaddr +
 				c.devices[dev_idx].zone_cap_blocks[zone_idx];
 }
 
