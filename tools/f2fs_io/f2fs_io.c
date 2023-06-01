@@ -1392,6 +1392,40 @@ static void do_move_range(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define gc_range_desc "trigger filesystem gc_range"
+#define gc_range_help "f2fs_io gc_range [sync_mode] [start] [length] [file_path]\n\n"\
+"  sync_mode : 0: asynchronous, 1: synchronous\n"			\
+"  start     : start offset of defragment region, unit: 4kb\n"	\
+"  length    : bytes number of defragment region, unit: 4kb\n"	\
+
+static void do_gc_range(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	struct f2fs_gc_range range;
+	int ret, fd;
+
+	if (argc != 5) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	range.sync = atoi(argv[1]);
+	range.start = (u64)atoi(argv[2]);
+	range.len = (u64)atoi(argv[3]);
+
+	fd = xopen(argv[4], O_RDWR, 0);
+
+	ret = ioctl(fd, F2FS_IOC_GARBAGE_COLLECT_RANGE, &range);
+	if (ret < 0) {
+		die_errno("F2FS_IOC_GARBAGE_COLLECT_RANGE failed");
+	}
+
+	printf("trigger %s gc_range [%lu, %lu] ret=%d\n",
+		range.sync ? "synchronous" : "asynchronous",
+		range.start, range.len, ret);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1427,6 +1461,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(checkpoint),
 	CMD(precache_extents),
 	CMD(move_range),
+	CMD(gc_range),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
