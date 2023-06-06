@@ -2842,9 +2842,6 @@ static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
 	int ret, j;
 
-	if (c.zoned_model != F2FS_ZONED_HM)
-		return true;
-
 	for (j = 0; j < MAX_DEVICES; j++) {
 		if (!c.devices[j].path)
 			break;
@@ -2855,6 +2852,9 @@ static bool write_pointer_at_zone_start(struct f2fs_sb_info *sbi,
 
 	if (j >= MAX_DEVICES)
 		return false;
+
+	if (c.devices[j].zoned_model != F2FS_ZONED_HM)
+		return true;
 
 	sector = (block - c.devices[j].start_blkaddr) << log_sectors_per_block;
 	ret = f2fs_report_zone(j, sector, &blkz);
