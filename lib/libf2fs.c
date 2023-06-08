@@ -497,8 +497,8 @@ f2fs_hash_t f2fs_dentry_hash(int encoding, int casefolded,
 
 	if (len && casefolded) {
 		buff = malloc(sizeof(char) * PATH_MAX);
-		if (!buff)
-			return -ENOMEM;
+		ASSERT(buff);
+
 		dlen = table->ops->casefold(table, name, len, buff, PATH_MAX);
 		if (dlen < 0) {
 			free(buff);
