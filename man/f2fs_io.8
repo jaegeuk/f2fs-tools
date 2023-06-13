@@ -43,10 +43,27 @@ going down with fsck mark
 \fBpinfile\fR \fI[get|set] [file]\fR
 Get or set the pinning status on a file.
 .TP
-\fBfallocate\fR \fI[keep_size] [offset] [length] [file]\fR
+\fBfallocate\fR \fI[-c] [-i] [-p] [-z] [keep_size] [offset] [length] [file]\fR
 Request that space be allocated on a file.  The
 .I keep_size
 parameter can be either 1 or 0.
+The
+.I pattern
+parameter can be:
+.RS 1.2in
+.TP
+.B -c
+collapse range
+.TP
+.B -i
+insert range
+.TP
+.B -p
+punch hole
+.TP
+.B -z
+zero range
+.RE
 .TP
 \fBwrite\fR \fI[chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path]\fR
 Write a given pattern to
