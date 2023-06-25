@@ -171,7 +171,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 		need_fix = 1;
 		se = get_seg_entry(sbi, segno);
 		if(IS_NODESEG(se->type)) {
-			FIX_MSG("Summary footer indicates a node segment: 0x%x", segno);
+			ASSERT_MSG("Summary footer indicates a node segment: 0x%x", segno);
 			sum_blk->footer.entry_type = SUM_TYPE_NODE;
 		} else {
 			ret = -EINVAL;
@@ -197,7 +197,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 			ASSERT_MSG("Invalid node seg summary\n");
 			ret = -EINVAL;
 		} else {
-			FIX_MSG("Set node summary 0x%x -> [0x%x] [0x%x]",
+			ASSERT_MSG("Set node summary 0x%x -> [0x%x] [0x%x]",
 						segno, nid, blk_addr);
 			sum_entry->nid = cpu_to_le32(nid);
 			need_fix = 1;
@@ -296,7 +296,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		need_fix = 1;
 		se = get_seg_entry(sbi, segno);
 		if (IS_DATASEG(se->type)) {
-			FIX_MSG("Summary footer indicates a data segment: 0x%x", segno);
+			ASSERT_MSG("Summary footer indicates a data segment: 0x%x", segno);
 			sum_blk->footer.entry_type = SUM_TYPE_DATA;
 		} else {
 			ret = -EINVAL;
@@ -329,7 +329,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 			/* delete wrong index */
 			ret = -EINVAL;
 		} else {
-			FIX_MSG("Set data summary 0x%x -> [0x%x] [0x%x] [0x%x]",
+			ASSERT_MSG("Set data summary 0x%x -> [0x%x] [0x%x] [0x%x]",
 					segno, parent_nid, version, idx_in_node);
 			sum_entry->nid = cpu_to_le32(parent_nid);
 			sum_entry->version = version;
