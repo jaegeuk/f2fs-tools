@@ -1430,7 +1430,7 @@ int fsck_chk_idnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				FIX_MSG("Set indirect node 0x%x -> 0", i);
 			}
 skip:
-			child->pgofs += ADDRS_PER_BLOCK(&node_blk->i);
+			child->pgofs += ADDRS_PER_BLOCK(inode);
 		}
 	}
 
@@ -1472,8 +1472,7 @@ int fsck_chk_didnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 				FIX_MSG("Set double indirect node 0x%x -> 0", i);
 			}
 skip:
-			child->pgofs += ADDRS_PER_BLOCK(&node_blk->i) *
-							NIDS_PER_BLOCK;
+			child->pgofs += ADDRS_PER_BLOCK(inode) * NIDS_PER_BLOCK;
 		}
 	}
 
