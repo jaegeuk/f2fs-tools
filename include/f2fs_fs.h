@@ -1359,7 +1359,9 @@ enum FILE_TYPE {
 
 #define LINUX_S_IFMT  00170000
 #define LINUX_S_IFREG  0100000
+#define LINUX_S_IFDIR  0040000
 #define LINUX_S_ISREG(m)	(((m) & LINUX_S_IFMT) == LINUX_S_IFREG)
+#define LINUX_S_ISDIR(m)	(((m) & LINUX_S_IFMT) == LINUX_S_IFDIR)
 
 /* from f2fs/segment.h */
 enum {
@@ -1778,10 +1780,10 @@ static inline void f2fs_init_inode(struct f2fs_super_block *sb,
 	raw_node->i.i_generation = 0;
 	raw_node->i.i_xattr_nid = 0;
 	raw_node->i.i_flags = 0;
-	raw_node->i.i_current_depth = cpu_to_le32(S_ISDIR(mode) ? 1 : 0);
+	raw_node->i.i_current_depth = cpu_to_le32(LINUX_S_ISDIR(mode) ? 1 : 0);
 	raw_node->i.i_dir_level = DEF_DIR_LEVEL;
 	raw_node->i.i_mode = cpu_to_le16(mode);
-	raw_node->i.i_links = cpu_to_le32(S_ISDIR(mode) ? 2 : 1);
+	raw_node->i.i_links = cpu_to_le32(LINUX_S_ISDIR(mode) ? 2 : 1);
 
 	/* for dentry block in directory */
 	raw_node->i.i_size = cpu_to_le64(1 << get_sb(log_blocksize));
