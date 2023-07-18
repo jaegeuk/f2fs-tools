@@ -1447,7 +1447,7 @@ static void do_gc_range(int argc, char **argv, const struct cmd_desc *cmd)
 		die_errno("F2FS_IOC_GARBAGE_COLLECT_RANGE failed");
 	}
 
-	printf("trigger %s gc_range [%lu, %lu] ret=%d\n",
+	printf("trigger %s gc_range [%"PRIu64", %"PRIu64"] ret=%d\n",
 		range.sync ? "synchronous" : "asynchronous",
 		range.start, range.len, ret);
 	exit(0);
