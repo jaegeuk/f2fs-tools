@@ -261,6 +261,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 {
 	struct f2fs_inode *inode = &node->i;
 	void *xattr_addr;
+	void *last_base_addr;
 	struct f2fs_xattr_entry *ent;
 	char en[F2FS_PRINT_NAMELEN];
 	unsigned int i = 0;
@@ -357,13 +358,22 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	DISP_u32(inode, i_nid[4]);	/* double indirect */
 
 	xattr_addr = read_all_xattrs(sbi, node);
-	if (xattr_addr) {
-		list_for_each_xattr(ent, xattr_addr) {
-			print_xattr_entry(ent);
-		}
-		free(xattr_addr);
-	}
+	if (!xattr_addr)
+		goto out;
 
+	last_base_addr = (void *)xattr_addr + XATTR_SIZE(&node->i);
+
+	list_for_each_xattr(ent, xattr_addr) {
+		if ((void *)(ent) + sizeof(__u32) > last_base_addr ||
+			(void *)XATTR_NEXT_ENTRY(ent) > last_base_addr) {
+			MSG(0, "xattr entry crosses the end of xattr space\n");
+			break;
+		}
+		print_xattr_entry(ent);
+	}
+	free(xattr_addr);
+
+out:
 	printf("\n");
 }
 

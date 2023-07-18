@@ -171,6 +171,12 @@ static inline int f2fs_acl_count(int size)
 			!IS_XATTR_LAST_ENTRY(entry); \
 			entry = XATTR_NEXT_ENTRY(entry))
 
+#define VALID_XATTR_BLOCK_SIZE	(F2FS_BLKSIZE - sizeof(struct node_footer))
+
+#define XATTR_SIZE(i)		((le32_to_cpu((i)->i_xattr_nid) ?	\
+					VALID_XATTR_BLOCK_SIZE : 0) +	\
+						(inline_xattr_size(i)))
+
 #define MIN_OFFSET	XATTR_ALIGN(F2FS_BLKSIZE -		\
 		sizeof(struct node_footer) - sizeof(__u32))
 

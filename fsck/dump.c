@@ -354,6 +354,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 {
 	void *xattr;
+	void *last_base_addr;
 	struct f2fs_xattr_entry *ent;
 	char xattr_name[F2FS_NAME_LEN] = {0};
 	int ret;
@@ -362,9 +363,17 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 	if (!xattr)
 		return;
 
+	last_base_addr = (void *)xattr + XATTR_SIZE(&node_blk->i);
+
 	list_for_each_xattr(ent, xattr) {
 		char *name = strndup(ent->e_name, ent->e_name_len);
 		void *value = ent->e_name + ent->e_name_len;
+
+		if ((void *)(ent) + sizeof(__u32) > last_base_addr ||
+			(void *)XATTR_NEXT_ENTRY(ent) > last_base_addr) {
+			MSG(0, "xattr entry crosses the end of xattr space\n");
+			break;
+		}
 
 		if (!name)
 			continue;
