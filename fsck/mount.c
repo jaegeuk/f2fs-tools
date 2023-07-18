@@ -199,6 +199,7 @@ static void print_xattr_entry(const struct f2fs_xattr_entry *ent)
 	char *enc_name = F2FS_XATTR_NAME_ENCRYPTION_CONTEXT;
 	u32 enc_name_len = strlen(enc_name);
 	const union fscrypt_context *ctx;
+	const struct fsverity_descriptor_location *dloc;
 	int i;
 
 	MSG(0, "\nxattr: e_name_index:%d e_name:", ent->e_name_index);
@@ -250,6 +251,18 @@ static void print_xattr_entry(const struct f2fs_xattr_entry *ent)
 			return;
 		}
 		break;
+	case F2FS_XATTR_INDEX_VERITY:
+		dloc = (const struct fsverity_descriptor_location *)value;
+		if (ent->e_name_len != strlen(F2FS_XATTR_NAME_VERITY) ||
+			memcmp(ent->e_name, F2FS_XATTR_NAME_VERITY,
+						ent->e_name_len))
+			break;
+		if (size != sizeof(*dloc))
+			break;
+		MSG(0, "version: %u\n", le32_to_cpu(dloc->version));
+		MSG(0, "size: %u\n", le32_to_cpu(dloc->size));
+		MSG(0, "pos: %"PRIu64"\n", le64_to_cpu(dloc->pos));
+		return;
 	}
 	for (i = 0; i < size; i++)
 		MSG(0, "%02X", value[i]);

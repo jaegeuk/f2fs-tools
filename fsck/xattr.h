@@ -90,6 +90,14 @@ static inline int fscrypt_context_size(const union fscrypt_context *ctx)
 	return 0;
 }
 
+struct fsverity_descriptor_location {
+	__le32 version;
+	__le32 size;
+	__le64 pos;
+};
+
+static_assert(sizeof(struct fsverity_descriptor_location) == 16, "");
+
 #define F2FS_ACL_VERSION	0x0001
 
 struct f2fs_acl_entry {
@@ -150,6 +158,9 @@ static inline int f2fs_acl_count(int size)
 #define F2FS_XATTR_INDEX_LUSTRE			5
 #define F2FS_XATTR_INDEX_SECURITY		6
 #define F2FS_XATTR_INDEX_ENCRYPTION		9
+#define F2FS_XATTR_INDEX_VERITY			11
+
+#define F2FS_XATTR_NAME_VERITY			"v"
 
 #define IS_XATTR_LAST_ENTRY(entry) (*(__u32 *)(entry) == 0)
 
