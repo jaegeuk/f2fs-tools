@@ -596,9 +596,7 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 
 	dev_read_block(node_blk, ni.blk_addr);
 
-	if (ni.blk_addr == 0x0)
-		MSG(force, "Invalid nat entry\n\n");
-	else if (!is_sit_bitmap_set(sbi, ni.blk_addr))
+	if (!is_sit_bitmap_set(sbi, ni.blk_addr))
 		MSG(force, "Invalid sit bitmap, %u\n\n", ni.blk_addr);
 
 	DBG(1, "node_blk.footer.ino [0x%x]\n", le32_to_cpu(node_blk->footer.ino));
