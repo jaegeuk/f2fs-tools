@@ -684,6 +684,7 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	char *data;
 	char *print_buf = NULL;
 	unsigned bs, count, i, print_bytes;
+	u64 total_time = 0;
 	int flags = 0;
 	int do_mmap = 0;
 	int fd;
@@ -719,28 +720,29 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 
 	fd = xopen(argv[6], O_RDONLY | flags, 0);
 
+	total_time = get_current_us();
 	if (do_mmap) {
 		data = mmap(NULL, count * buf_size, PROT_READ,
-						MAP_SHARED, fd, offset);
+						MAP_SHARED | MAP_POPULATE, fd, offset);
 		if (data == MAP_FAILED)
 			die("Mmap failed");
 	}
-
-	for (i = 0; i < count; i++) {
-		if (do_mmap) {
-			memcpy(buf, data + offset + buf_size * i, buf_size);
-			ret = buf_size;
-		} else {
+	if (!do_mmap) {
+		for (i = 0; i < count; i++) {
 			ret = pread(fd, buf, buf_size, offset + buf_size * i);
-		}
-		if (ret != buf_size)
-			break;
+			if (ret != buf_size)
+				break;
 
-		read_cnt += ret;
-		if (i == 0)
-			memcpy(print_buf, buf, print_bytes);
+			read_cnt += ret;
+			if (i == 0)
+				memcpy(print_buf, buf, print_bytes);
+		}
+	} else {
+		read_cnt = count * buf_size;
+		memcpy(print_buf, data, print_bytes);
 	}
-	printf("Read %"PRIu64" bytes and print %u bytes:\n", read_cnt, print_bytes);
+	printf("Read %"PRIu64" bytes total_time = %"PRIu64" us, print %u bytes:\n",
+		read_cnt, get_current_us() - total_time, print_bytes);
 	printf("%08"PRIx64" : ", offset);
 	for (i = 1; i <= print_bytes; i++) {
 		printf("%02x", print_buf[i - 1]);
