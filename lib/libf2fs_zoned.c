@@ -6,7 +6,6 @@
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  */
-#define _LARGEFILE64_SOURCE
 
 #include <f2fs_fs.h>
 #include <stdio.h>

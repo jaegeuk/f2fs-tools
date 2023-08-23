@@ -11,8 +11,6 @@
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  */
-#define _LARGEFILE64_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,22 +65,13 @@ static int __get_device_fd(__u64 *offset)
 	return -1;
 }
 
-#ifndef HAVE_LSEEK64
-typedef off_t	off64_t;
-
-static inline off64_t lseek64(int fd, __u64 offset, int set)
-{
-	return lseek(fd, offset, set);
-}
-#endif
-
 /* ---------- dev_cache, Least Used First (LUF) policy  ------------------- */
 /*
  * Least used block will be the first victim to be replaced when max hash
  * collision exceeds
  */
 static bool *dcache_valid; /* is the cached block valid? */
-static off64_t  *dcache_blk; /* which block it cached */
+static off_t  *dcache_blk; /* which block it cached */
 static uint64_t *dcache_lastused; /* last used ticks for cache entries */
 static char *dcache_buf; /* cached block data */
 static uint64_t dcache_usetick; /* current use tick */
@@ -172,7 +161,7 @@ static int dcache_alloc_all(long n)
 {
 	if (n <= 0)
 		return -1;
-	if ((dcache_blk = (off64_t *) malloc(sizeof(off64_t) * n)) == NULL
+	if ((dcache_blk = (off_t *) malloc(sizeof(off_t) * n)) == NULL
 		|| (dcache_lastused = (uint64_t *)
 				malloc(sizeof(uint64_t) * n)) == NULL
 		|| (dcache_buf = (char *) malloc (F2FS_BLKSIZE * n)) == NULL
@@ -257,7 +246,7 @@ static inline long dcache_relocate(long entry, int n)
 			dcache_config.num_cache_entry;
 }
 
-static long dcache_find(off64_t blk)
+static long dcache_find(off_t blk)
 {
 	register long n = dcache_config.num_cache_entry;
 	register unsigned m = dcache_config.max_hash_collision;
@@ -278,10 +267,10 @@ static long dcache_find(off64_t blk)
 }
 
 /* Physical read into cache */
-static int dcache_io_read(int fd, long entry, off64_t offset, off64_t blk)
+static int dcache_io_read(int fd, long entry, off_t offset, off_t blk)
 {
-	if (lseek64(fd, offset, SEEK_SET) < 0) {
-		MSG(0, "\n lseek64 fail.\n");
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		MSG(0, "\n lseek fail.\n");
 		return -1;
 	}
 	if (read(fd, dcache_buf + entry * F2FS_BLKSIZE, F2FS_BLKSIZE) < 0) {
@@ -308,12 +297,12 @@ static int dcache_io_read(int fd, long entry, off64_t offset, off64_t blk)
  *       1: cache not available (uninitialized)
  *      -1: error
  */
-static int dcache_update_rw(int fd, void *buf, off64_t offset,
+static int dcache_update_rw(int fd, void *buf, off_t offset,
 		size_t byte_count, bool is_write)
 {
-	off64_t blk;
+	off_t blk;
 	int addr_in_blk;
-	off64_t start;
+	off_t start;
 
 	if (!dcache_initialized)
 		dcache_init(); /* auto initialize */
@@ -377,13 +366,13 @@ static int dcache_update_rw(int fd, void *buf, off64_t offset,
  * return value: 1: cache not available
  *               0: success, -1: I/O error
  */
-int dcache_update_cache(int fd, void *buf, off64_t offset, size_t count)
+int dcache_update_cache(int fd, void *buf, off_t offset, size_t count)
 {
 	return dcache_update_rw(fd, buf, offset, count, true);
 }
 
 /* handles read into cache + read into buffer  */
-int dcache_read(int fd, void *buf, off64_t offset, size_t count)
+int dcache_read(int fd, void *buf, off_t offset, size_t count)
 {
 	return dcache_update_rw(fd, buf, offset, count, false);
 }
@@ -395,7 +384,7 @@ int dev_read_version(void *buf, __u64 offset, size_t len)
 {
 	if (c.sparse_mode)
 		return 0;
-	if (lseek64(c.kd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek(c.kd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (read(c.kd, buf, len) < 0)
 		return -1;
@@ -534,10 +523,10 @@ int dev_read(void *buf, __u64 offset, size_t len)
 
 	/* err = 1: cache not available, fall back to non-cache R/W */
 	/* err = 0: success, err=-1: I/O error */
-	err = dcache_read(fd, buf, (off64_t)offset, len);
+	err = dcache_read(fd, buf, (off_t)offset, len);
 	if (err <= 0)
 		return err;
-	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (read(fd, buf, len) < 0)
 		return -1;
@@ -580,9 +569,9 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	 * dcache_update_cache() just update cache, won't do I/O.
 	 * Thus even no error, we need normal non-cache I/O for actual write
 	 */
-	if (dcache_update_cache(fd, buf, (off64_t)offset, len) < 0)
+	if (dcache_update_cache(fd, buf, (off_t)offset, len) < 0)
 		return -1;
-	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (write(fd, buf, len) < 0)
 		return -1;
@@ -596,7 +585,7 @@ int dev_write_block(void *buf, __u64 blk_addr)
 
 int dev_write_dump(void *buf, __u64 offset, size_t len)
 {
-	if (lseek64(c.dump_fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek(c.dump_fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (write(c.dump_fd, buf, len) < 0)
 		return -1;
@@ -618,7 +607,7 @@ int dev_fill(void *buf, __u64 offset, size_t len)
 	/* Only allow fill to zero */
 	if (*((__u8*)buf))
 		return -1;
-	if (lseek64(fd, (off64_t)offset, SEEK_SET) < 0)
+	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (write(fd, buf, len) < 0)
 		return -1;

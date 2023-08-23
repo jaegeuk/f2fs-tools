@@ -1,7 +1,7 @@
 ## Makefile.am
 
 AM_CPPFLAGS = ${libuuid_CFLAGS} -I$(top_srcdir)/include
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -D_FILE_OFFSET_BITS=64
 sbin_PROGRAMS = fsck.f2fs
 noinst_HEADERS = common.h dict.h dqblk_v2.h f2fs.h fsck.h node.h quotaio.h \
 		quotaio_tree.h quotaio_v2.h xattr.h compress.h

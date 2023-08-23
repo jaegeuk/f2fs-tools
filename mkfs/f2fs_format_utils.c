@@ -6,18 +6,8 @@
  *
  * Dual licensed under the GPL or LGPL version 2 licenses.
  */
-#ifndef _LARGEFILE_SOURCE
-#define _LARGEFILE_SOURCE
-#endif
-#ifndef _LARGEFILE64_SOURCE
-#define _LARGEFILE64_SOURCE
-#endif
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
-#endif
-
-#ifndef _FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
 #endif
 
 #include <f2fs_fs.h>

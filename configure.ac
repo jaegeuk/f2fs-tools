@@ -187,8 +187,6 @@ AC_CHECK_FUNCS_ONCE([
 	getmntent
 	getuid
 	keyctl
-	llseek
-	lseek64
 	memset
 	setmntent
 	clock_gettime

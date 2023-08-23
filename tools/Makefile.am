@@ -1,7 +1,7 @@
 ## Makefile.am
 
 AM_CPPFLAGS = ${libuuid_CFLAGS} -I$(top_srcdir)/include
-AM_CFLAGS = -Wall
+AM_CFLAGS = -Wall -D_FILE_OFFSET_BITS=64
 sbin_PROGRAMS =
 if !WINDOWS
 sbin_PROGRAMS += fibmap.f2fs parse.f2fs
