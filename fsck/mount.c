@@ -995,8 +995,8 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 
 	blocksize = 1 << get_sb(log_blocksize);
 	if (F2FS_BLKSIZE != blocksize) {
-		MSG(0, "Invalid blocksize (%u), supports only 4KB\n",
-			blocksize);
+		MSG(0, "Invalid blocksize (%u), supports only (%u)\n",
+			blocksize, F2FS_BLKSIZE);
 		return -1;
 	}
 
@@ -1007,7 +1007,7 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return -1;
 	}
 
-	/* Currently, support 512/1024/2048/4096 bytes sector size */
+	/* Currently, support powers of 2 from 512 to BLOCK SIZE bytes sector size */
 	if (get_sb(log_sectorsize) > F2FS_MAX_LOG_SECTOR_SIZE ||
 			get_sb(log_sectorsize) < F2FS_MIN_LOG_SECTOR_SIZE) {
 		MSG(0, "Invalid log sectorsize (%u)\n", get_sb(log_sectorsize));

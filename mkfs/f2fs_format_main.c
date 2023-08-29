@@ -139,7 +139,7 @@ static void add_default_options(void)
 		/* -d1 -f -w 4096 -R 0:0 */
 		c.dbg_lv = 1;
 		force_overwrite = 1;
-		c.wanted_sector_size = 4096;
+		c.wanted_sector_size = F2FS_BLKSIZE;
 		c.root_uid = c.root_gid = 0;
 
 		/* RO doesn't need any other features */

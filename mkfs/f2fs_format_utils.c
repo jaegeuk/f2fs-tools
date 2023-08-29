@@ -116,7 +116,7 @@ static bool is_wiped_device(int i)
 	int fd = dev->fd;
 	char *buf, *zero_buf;
 	bool wiped = true;
-	int nblocks = 4096;	/* 16MB size */
+	int nblocks = (4096 * 4096) / F2FS_BLKSIZE;	/* 16MB size */
 	int j;
 
 	/* let's trim the other devices except the first device */

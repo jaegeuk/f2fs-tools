@@ -1370,7 +1370,7 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 
 	memcpy(filebuf + 5136, &dqblk, sizeof(struct v2r1_disk_dqblk));
 
-	/* Write two blocks */
+	/* Write quota blocks */
 	for (i = 0; i < QUOTA_DATA; i++) {
 		blkaddr = alloc_next_free_block(CURSEG_HOT_DATA);
 
@@ -1383,13 +1383,13 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 		update_sit_journal(CURSEG_HOT_DATA);
 		update_summary_entry(CURSEG_HOT_DATA,
 					le32_to_cpu(sb->qf_ino[qtype]), i);
+		DBG(1, "\tWriting quota data, at offset %08x (%d/%d)\n",
+						blkaddr, i + 1, QUOTA_DATA);
+
 	}
 
-	DBG(1, "\tWriting quota data, at offset %08x, %08x\n",
-					blkaddr - 1, blkaddr);
-
 	free(filebuf);
-	return blkaddr - 1;
+	return blkaddr + 1 - QUOTA_DATA;
 }
 
 static int f2fs_write_qf_inode(int qtype)
@@ -1424,7 +1424,7 @@ static int f2fs_write_qf_inode(int qtype)
 	else
 		ASSERT(0);
 
-	/* write two blocks */
+	/* write quota blocks */
 	data_blkaddr = f2fs_write_default_quota(qtype, raw_id);
 	if (data_blkaddr == 0) {
 		free(raw_node);

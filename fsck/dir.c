@@ -474,7 +474,7 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 
 	if (de->file_type == F2FS_FT_DIR) {
 		mode |= S_IFDIR;
-		size = 4096;
+		size = F2FS_BLKSIZE;
 		links++;
 		blocks++;
 	} else if (de->file_type == F2FS_FT_REG_FILE) {

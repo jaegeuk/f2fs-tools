@@ -687,8 +687,8 @@ static void dump_data_offset(u32 blk_addr, int ofs_in_node)
 	bidx +=  ofs_in_node;
 
 	setlocale(LC_ALL, "");
-	MSG(0, " - Data offset       : 0x%x (4KB), %'u (bytes)\n",
-				bidx, bidx * 4096);
+	MSG(0, " - Data offset       : 0x%x (BLOCK), %'u (bytes)\n",
+				bidx, bidx * F2FS_BLKSIZE);
 	free(node_blk);
 }
 

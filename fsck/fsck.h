@@ -126,7 +126,7 @@ struct f2fs_fsck {
 	struct quota_ctx *qctx;
 };
 
-#define BLOCK_SZ		4096
+#define BLOCK_SZ		F2FS_BLKSIZE
 struct block {
 	unsigned char buf[BLOCK_SZ];
 };
