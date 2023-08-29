@@ -994,11 +994,15 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return -1;
 
 	blocksize = 1 << get_sb(log_blocksize);
-	if (F2FS_BLKSIZE != blocksize) {
-		MSG(0, "Invalid blocksize (%u), supports only (%u)\n",
-			blocksize, F2FS_BLKSIZE);
+	if (blocksize < F2FS_MIN_BLKSIZE || blocksize > F2FS_MAX_BLKSIZE) {
+		MSG(0, "Invalid blocksize (%u), must be between 4KB and 16KB\n",
+			blocksize);
 		return -1;
 	}
+	c.blksize_bits = get_sb(log_blocksize);
+	c.blksize = blocksize;
+	c.sectors_per_blk = F2FS_BLKSIZE / c.sector_size;
+	check_block_struct_sizes();
 
 	/* check log blocks per segment */
 	if (get_sb(log_blocks_per_seg) != 9) {
@@ -3854,9 +3858,20 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	sbi->active_logs = NR_CURSEG_TYPE;
 	ret = validate_super_block(sbi, SB0_ADDR);
 	if (ret) {
+		/* Assuming 4K Block Size */
+		c.blksize_bits = 12;
+		c.blksize = 1 << c.blksize_bits;
+		MSG(0, "Looking for secondary superblock assuming 4K Block Size\n");
 		ret = validate_super_block(sbi, SB1_ADDR);
-		if (ret)
-			return -1;
+		if (ret) {
+			/* Trying 16K Block Size */
+			c.blksize_bits = 14;
+			c.blksize = 1 << c.blksize_bits;
+			MSG(0, "Looking for secondary superblock assuming 16K Block Size\n");
+			ret = validate_super_block(sbi, SB1_ADDR);
+			if (ret)
+				return -1;
+		}
 	}
 	sb = F2FS_RAW_SUPER(sbi);
 

@@ -127,9 +127,6 @@ struct f2fs_fsck {
 };
 
 #define BLOCK_SZ		F2FS_BLKSIZE
-struct block {
-	unsigned char buf[BLOCK_SZ];
-};
 
 enum NODE_TYPE {
 	TYPE_INODE = 37,

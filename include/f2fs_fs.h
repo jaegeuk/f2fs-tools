@@ -399,7 +399,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define MAX_DEVICES		8
 
 #define F2FS_BYTES_TO_BLK(bytes)    ((bytes) >> F2FS_BLKSIZE_BITS)
-#define F2FS_BLKSIZE_BITS 12	/* 4KB block */
+#define F2FS_BLKSIZE_BITS c.blksize_bits
 
 /* for mkfs */
 #define	F2FS_NUMBER_OF_CHECKPOINT_PACK	2
@@ -407,6 +407,7 @@ static inline uint64_t bswap_64(uint64_t val)
 #define	DEFAULT_SECTORS_PER_BLOCK	(1 << (F2FS_BLKSIZE_BITS - SECTOR_SHIFT))
 #define	DEFAULT_BLOCKS_PER_SEGMENT	512
 #define DEFAULT_SEGMENTS_PER_SECTION	1
+#define DEFAULT_BLKSIZE_BITS		12	/* 4096	*/
 
 #define VERSION_LEN		256
 #define VERSION_TIMESTAMP_LEN	4
@@ -635,9 +636,10 @@ enum {
  */
 #define F2FS_SUPER_OFFSET		1024	/* byte-size offset */
 #define F2FS_MIN_LOG_SECTOR_SIZE	9	/* 9 bits for 512 bytes */
-#define F2FS_MAX_LOG_SECTOR_SIZE	F2FS_BLKSIZE_BITS	/* 12 bits for 4096 bytes */
-#define F2FS_BLKSIZE			(1 << F2FS_BLKSIZE_BITS)/* support only 4KB block */
+#define F2FS_MAX_LOG_SECTOR_SIZE	F2FS_BLKSIZE_BITS	/* max sector size is block size */
+#define F2FS_MIN_BLKSIZE		4096
 #define F2FS_MAX_BLKSIZE		16384
+#define F2FS_BLKSIZE			c.blksize	/* support configurable block size */
 #define F2FS_MAX_EXTENSION		64	/* # of extension entries */
 #define F2FS_EXTENSION_LEN		8	/* max size of extension */
 #define F2FS_BLK_ALIGN(x)	(((x) + F2FS_BLKSIZE - 1) / F2FS_BLKSIZE)
@@ -1517,6 +1519,8 @@ struct f2fs_configuration {
 	uint32_t lpf_ino;
 	uint32_t root_uid;
 	uint32_t root_gid;
+	uint32_t blksize;
+	uint32_t blksize_bits;
 
 	/* defragmentation parameters */
 	int defrag_shrink;
