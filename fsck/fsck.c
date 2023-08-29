@@ -172,7 +172,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 		se = get_seg_entry(sbi, segno);
 		if(IS_NODESEG(se->type)) {
 			ASSERT_MSG("Summary footer indicates a node segment: 0x%x", segno);
-			sum_blk->footer.entry_type = SUM_TYPE_NODE;
+			F2FS_SUMMARY_BLOCK_FOOTER(sum_blk)->entry_type = SUM_TYPE_NODE;
 		} else {
 			ret = -EINVAL;
 			goto out;
@@ -297,7 +297,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		se = get_seg_entry(sbi, segno);
 		if (IS_DATASEG(se->type)) {
 			ASSERT_MSG("Summary footer indicates a data segment: 0x%x", segno);
-			sum_blk->footer.entry_type = SUM_TYPE_DATA;
+			F2FS_SUMMARY_BLOCK_FOOTER(sum_blk)->entry_type = SUM_TYPE_DATA;
 		} else {
 			ret = -EINVAL;
 			goto out;
@@ -3299,16 +3299,16 @@ int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
 				se->type = i;
 			ret = -1;
 		}
-		if (i <= CURSEG_COLD_DATA && IS_SUM_DATA_SEG(sum_blk->footer)) {
+		if (i <= CURSEG_COLD_DATA && IS_SUM_DATA_SEG(sum_blk)) {
 			continue;
-		} else if (i > CURSEG_COLD_DATA && IS_SUM_NODE_SEG(sum_blk->footer)) {
+		} else if (i > CURSEG_COLD_DATA && IS_SUM_NODE_SEG(sum_blk)) {
 			continue;
 		} else {
 			ASSERT_MSG("Incorrect curseg [%d]: segno [0x%x] "
 				   "type(SSA) [%d]", i, curseg->segno,
-				   sum_blk->footer.entry_type);
+				   F2FS_SUMMARY_BLOCK_FOOTER(sum_blk)->entry_type);
 			if (c.fix_on || c.preen_mode)
-				sum_blk->footer.entry_type =
+				F2FS_SUMMARY_BLOCK_FOOTER(sum_blk)->entry_type =
 					i <= CURSEG_COLD_DATA ?
 					SUM_TYPE_DATA : SUM_TYPE_NODE;
 			ret = -1;

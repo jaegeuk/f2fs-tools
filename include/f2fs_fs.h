@@ -627,8 +627,8 @@ enum {
 /*
  * Copied from fs/f2fs/segment.h
  */
-#define GET_SUM_TYPE(footer) ((footer)->entry_type)
-#define SET_SUM_TYPE(footer, type) ((footer)->entry_type = type)
+#define GET_SUM_TYPE(sum) (F2FS_SUMMARY_BLOCK_FOOTER(sum)->entry_type)
+#define SET_SUM_TYPE(sum, type) (F2FS_SUMMARY_BLOCK_FOOTER(sum)->entry_type = type)
 
 /*
  * Copied from include/linux/f2fs_sb.h
@@ -637,6 +637,7 @@ enum {
 #define F2FS_MIN_LOG_SECTOR_SIZE	9	/* 9 bits for 512 bytes */
 #define F2FS_MAX_LOG_SECTOR_SIZE	F2FS_BLKSIZE_BITS	/* 12 bits for 4096 bytes */
 #define F2FS_BLKSIZE			(1 << F2FS_BLKSIZE_BITS)/* support only 4KB block */
+#define F2FS_MAX_BLKSIZE		16384
 #define F2FS_MAX_EXTENSION		64	/* # of extension entries */
 #define F2FS_EXTENSION_LEN		8	/* max size of extension */
 #define F2FS_BLK_ALIGN(x)	(((x) + F2FS_BLKSIZE - 1) / F2FS_BLKSIZE)
@@ -1260,12 +1261,14 @@ struct nat_journal_entry {
 
 static_assert(sizeof(struct nat_journal_entry) == 13, "");
 
+/*
+ * Layout is as follows:
+ * struct nat_journal_entry entries[NAT_JOURNAL_ENTRIES];
+ * __u8 reserved[NAT_JOURNAL_RESERVED];
+ */
 struct nat_journal {
-	struct nat_journal_entry entries[NAT_JOURNAL_ENTRIES];
-	__u8 reserved[NAT_JOURNAL_RESERVED];
+	struct nat_journal_entry entries[0];
 };
-
-static_assert(sizeof(struct nat_journal) == (F2FS_BLKSIZE / 8) - 7, "");
 
 struct sit_journal_entry {
 	__le32 segno;
@@ -1274,20 +1277,28 @@ struct sit_journal_entry {
 
 static_assert(sizeof(struct sit_journal_entry) == 78, "");
 
+/*
+ * Layout is as follows:
+ * struct sit_journal_entry entries[SIT_JOURNAL_ENTRIES];
+ * __u8 reserved[SIT_JOURNAL_RESERVED];
+ */
 struct sit_journal {
-	struct sit_journal_entry entries[SIT_JOURNAL_ENTRIES];
-	__u8 reserved[SIT_JOURNAL_RESERVED];
+	struct sit_journal_entry entries[0];
 };
 
-static_assert(sizeof(struct sit_journal) == (F2FS_BLKSIZE / 8) - 7, "");
-
+/*
+ * Layout is as follows:
+ * __le64 kbytes_written;
+ * __u8 reserved[EXTRA_INFO_RESERVED];
+ */
 struct f2fs_extra_info {
 	__le64 kbytes_written;
-	__u8 reserved[EXTRA_INFO_RESERVED];
+	__u8 reserved[0];
 } __attribute__((packed));
 
-static_assert(sizeof(struct f2fs_extra_info) == (F2FS_BLKSIZE / 8) - 7, "");
-
+/*
+ * This struct's used size depends on F2FS_BLKSIZE. DO NOT use sizeof
+ */
 struct f2fs_journal {
 	union {
 		__le16 n_nats;
@@ -1301,16 +1312,22 @@ struct f2fs_journal {
 	};
 } __attribute__((packed));
 
-static_assert(sizeof(struct f2fs_journal) == (F2FS_BLKSIZE / 8) - 5, "");
-
-/* 4KB-sized summary block structure */
+/*
+ * Block-sized summary block structure
+ * Layout of f2fs_summary block is
+ * struct f2fs_summary entries[ENTRIES_IN_SUM];
+ * struct f2fs_journal journal;
+ * struct summary_footer footer;
+ *
+ * Do NOT use sizeof, use F2FS_BLKSIZE
+ *
+ */
 struct f2fs_summary_block {
-	struct f2fs_summary entries[ENTRIES_IN_SUM];
-	struct f2fs_journal journal;
-	struct summary_footer footer;
+	struct f2fs_summary entries[0];
 };
-
-static_assert(sizeof(struct f2fs_summary_block) == F2FS_BLKSIZE, "");
+#define F2FS_SUMMARY_BLOCK_JOURNAL(blk) ((struct f2fs_journal *)(&(blk)->entries[ENTRIES_IN_SUM]))
+#define F2FS_SUMMARY_BLOCK_FOOTER(blk) ((struct summary_footer *)&((char *)\
+					(&(blk)->entries[0]))[F2FS_BLKSIZE - SUM_FOOTER_SIZE])
 
 /*
  * For directory operations
@@ -1518,9 +1535,15 @@ struct f2fs_configuration {
 	compress_config_t compress;
 
 	block_t curseg_offset[NR_CURSEG_TYPE];
-	struct f2fs_journal sit_jnl;
-	struct f2fs_journal nat_jnl;
 	struct f2fs_summary sum[NR_CURSEG_TYPE][MAX_CACHE_SUMS];
+	union {
+		struct f2fs_journal sit_jnl;
+		char sit_bytes[F2FS_MAX_BLKSIZE];
+	};
+	union {
+		struct f2fs_journal nat_jnl;
+		char nat_bytes[F2FS_MAX_BLKSIZE];
+	};
 };
 
 extern int utf8_to_utf16(char *, const char *, size_t, size_t);
@@ -2010,6 +2033,23 @@ static inline void check_block_struct_sizes(void)
 	/* Check SIT Block Size */
 	assert((SIT_ENTRY_PER_BLOCK + 1) * sizeof(struct f2fs_sit_entry) > F2FS_BLKSIZE);
 	assert(SIT_ENTRY_PER_BLOCK * sizeof(struct f2fs_sit_entry) <= F2FS_BLKSIZE);
+
+	/* Check NAT Journal Block Size */
+	assert(sizeof(struct f2fs_summary) * ENTRIES_IN_SUM
+			+ offsetof(struct f2fs_journal, nat_j)
+			+ NAT_JOURNAL_ENTRIES * sizeof(struct nat_journal_entry)
+			+ NAT_JOURNAL_RESERVED + sizeof(struct summary_footer) == F2FS_BLKSIZE);
+
+	/* Check SIT Journal Block Size */
+	assert(sizeof(struct f2fs_summary) * ENTRIES_IN_SUM
+			+ offsetof(struct f2fs_journal, sit_j)
+			+ SIT_JOURNAL_ENTRIES * sizeof(struct sit_journal_entry)
+			+ SIT_JOURNAL_RESERVED + sizeof(struct summary_footer) == F2FS_BLKSIZE);
+
+	/* Check Info Journal Block Size */
+	assert(sizeof(struct f2fs_summary) * ENTRIES_IN_SUM + sizeof(__le64)
+			+ offsetof(struct f2fs_journal, info)
+			+ EXTRA_INFO_RESERVED + sizeof(struct summary_footer) == F2FS_BLKSIZE);
 }
 
 #endif	/*__F2FS_FS_H */

@@ -222,7 +222,7 @@ static void move_ssa(struct f2fs_sb_info *sbi, unsigned int segno,
 		ASSERT(ret >= 0);
 		DBG(1, "Write summary block: (%d) segno=%x/%x --> (%d) %x\n",
 				type, segno, GET_SUM_BLKADDR(sbi, segno),
-				IS_SUM_NODE_SEG(sum_blk->footer),
+				IS_SUM_NODE_SEG(sum_blk),
 				new_sum_blk_addr);
 	}
 	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||

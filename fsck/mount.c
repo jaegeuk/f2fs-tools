@@ -1588,7 +1588,7 @@ static int f2fs_early_init_nid_bitmap(struct f2fs_sb_info *sbi)
 	int nid_bitmap_size = (nm_i->max_nid + BITS_PER_BYTE - 1) / BITS_PER_BYTE;
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
 	struct f2fs_summary_block *sum = curseg->sum_blk;
-	struct f2fs_journal *journal = &sum->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(sum);
 	nid_t nid;
 	int i;
 
@@ -1773,7 +1773,7 @@ static int check_nat_bits(struct f2fs_sb_info *sbi,
 					8 + F2FS_BLKSIZE - 1);
 	unsigned char *nat_bits, *full_nat_bits, *empty_nat_bits;
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	uint32_t i, j;
 	block_t blkaddr;
 	int err = 0;
@@ -1974,12 +1974,12 @@ void reset_curseg(struct f2fs_sb_info *sbi, int type)
 	struct summary_footer *sum_footer;
 	struct seg_entry *se;
 
-	sum_footer = &(curseg->sum_blk->footer);
+	sum_footer = F2FS_SUMMARY_BLOCK_FOOTER(curseg->sum_blk);
 	memset(sum_footer, 0, sizeof(struct summary_footer));
 	if (IS_DATASEG(type))
-		SET_SUM_TYPE(sum_footer, SUM_TYPE_DATA);
+		SET_SUM_TYPE(curseg->sum_blk, SUM_TYPE_DATA);
 	if (IS_NODESEG(type))
-		SET_SUM_TYPE(sum_footer, SUM_TYPE_NODE);
+		SET_SUM_TYPE(curseg->sum_blk, SUM_TYPE_NODE);
 	se = get_seg_entry(sbi, curseg->segno);
 	se->type = type;
 	se->dirty = 1;
@@ -2002,10 +2002,10 @@ static void read_compacted_summaries(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 
 	curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	memcpy(&curseg->sum_blk->journal.n_nats, kaddr, SUM_JOURNAL_SIZE);
+	memcpy(&F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk)->n_nats, kaddr, SUM_JOURNAL_SIZE);
 
 	curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
-	memcpy(&curseg->sum_blk->journal.n_sits, kaddr + SUM_JOURNAL_SIZE,
+	memcpy(&F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk)->n_sits, kaddr + SUM_JOURNAL_SIZE,
 						SUM_JOURNAL_SIZE);
 
 	offset = 2 * SUM_JOURNAL_SIZE;
@@ -2088,7 +2088,7 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 			blk_addr = GET_SUM_BLKADDR(sbi, segno);
 	}
 
-	sum_blk = malloc(sizeof(*sum_blk));
+	sum_blk = malloc(F2FS_BLKSIZE);
 	ASSERT(sum_blk);
 
 	ret = dev_read_block(sum_blk, blk_addr);
@@ -2098,7 +2098,7 @@ static void read_normal_summaries(struct f2fs_sb_info *sbi, int type)
 		restore_node_summary(sbi, segno, sum_blk);
 
 	curseg = CURSEG_I(sbi, type);
-	memcpy(curseg->sum_blk, sum_blk, sizeof(*sum_blk));
+	memcpy(curseg->sum_blk, sum_blk, F2FS_BLKSIZE);
 	reset_curseg(sbi, type);
 	free(sum_blk);
 }
@@ -2122,7 +2122,7 @@ void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
 
 	sum_blk = get_sum_block(sbi, segno, &type);
 	memcpy(&sum_blk->entries[offset], sum, sizeof(*sum));
-	sum_blk->footer.entry_type = IS_NODESEG(se->type) ? SUM_TYPE_NODE :
+	F2FS_SUMMARY_BLOCK_FOOTER(sum_blk)->entry_type = IS_NODESEG(se->type) ? SUM_TYPE_NODE :
 							SUM_TYPE_DATA;
 
 	/* write SSA all the time */
@@ -2164,7 +2164,7 @@ static int build_curseg(struct f2fs_sb_info *sbi)
 	SM_I(sbi)->curseg_array = array;
 
 	for (i = 0; i < NR_CURSEG_TYPE; i++) {
-		array[i].sum_blk = calloc(sizeof(*(array[i].sum_blk)), 1);
+		array[i].sum_blk = calloc(F2FS_BLKSIZE, 1);
 		if (!array[i].sum_blk) {
 			MSG(1, "\tError: Calloc failed for build_curseg!!\n");
 			goto seg_cleanup;
@@ -2334,7 +2334,7 @@ struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *sbi,
 	for (type = 0; type < NR_CURSEG_NODE_TYPE; type++) {
 		if (segno == get_cp(cur_node_segno[type])) {
 			curseg = CURSEG_I(sbi, CURSEG_HOT_NODE + type);
-			if (!IS_SUM_NODE_SEG(curseg->sum_blk->footer)) {
+			if (!IS_SUM_NODE_SEG(curseg->sum_blk)) {
 				ASSERT_MSG("segno [0x%x] indicates a data "
 						"segment, but should be node",
 						segno);
@@ -2349,7 +2349,7 @@ struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *sbi,
 	for (type = 0; type < NR_CURSEG_DATA_TYPE; type++) {
 		if (segno == get_cp(cur_data_segno[type])) {
 			curseg = CURSEG_I(sbi, type);
-			if (IS_SUM_NODE_SEG(curseg->sum_blk->footer)) {
+			if (IS_SUM_NODE_SEG(curseg->sum_blk)) {
 				ASSERT_MSG("segno [0x%x] indicates a node "
 						"segment, but should be data",
 						segno);
@@ -2367,9 +2367,9 @@ struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *sbi,
 	ret = dev_read_block(sum_blk, ssa_blk);
 	ASSERT(ret >= 0);
 
-	if (IS_SUM_NODE_SEG(sum_blk->footer))
+	if (IS_SUM_NODE_SEG(sum_blk))
 		*ret_type = SEG_TYPE_NODE;
-	else if (IS_SUM_DATA_SEG(sum_blk->footer))
+	else if (IS_SUM_DATA_SEG(sum_blk))
 		*ret_type = SEG_TYPE_DATA;
 
 	return sum_blk;
@@ -2519,7 +2519,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 {
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	struct f2fs_sit_block *sit_blk;
 	struct seg_entry *se;
 	struct f2fs_sit_entry sit;
@@ -2685,7 +2685,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	sit_blk = calloc(BLOCK_SZ, 1);
 	ASSERT(sit_blk);
 	/* remove sit journal */
-	sum->journal.n_sits = 0;
+	F2FS_SUMMARY_BLOCK_JOURNAL(sum)->n_sits = 0;
 
 	ptr = fsck->main_area_bitmap;
 
@@ -2726,7 +2726,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_COLD_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	struct sit_info *sit_i = SIT_I(sbi);
 	struct f2fs_sit_block *sit_blk;
 	unsigned int segno;
@@ -2760,7 +2760,7 @@ static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 static int flush_nat_journal_entries(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	struct f2fs_nat_block *nat_block;
 	pgoff_t block_addr;
 	int entry_off;
@@ -2995,7 +2995,7 @@ static void move_one_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left,
 {
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct curseg_info *curseg = CURSEG_I(sbi, i);
-	struct f2fs_summary_block buf;
+	char buf[F2FS_BLKSIZE];
 	u32 old_segno;
 	u64 ssa_blk, to;
 	int ret;
@@ -3031,10 +3031,10 @@ bypass_ssa:
 
 	/* update new segno */
 	ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
-	ret = dev_read_block(&buf, ssa_blk);
+	ret = dev_read_block(buf, ssa_blk);
 	ASSERT(ret >= 0);
 
-	memcpy(curseg->sum_blk, &buf, SUM_ENTRIES_SIZE);
+	memcpy(curseg->sum_blk, buf, SUM_ENTRIES_SIZE);
 
 	/* update se->types */
 	reset_curseg(sbi, i);
@@ -3064,7 +3064,7 @@ void zero_journal_entries(struct f2fs_sb_info *sbi)
 	int i;
 
 	for (i = 0; i < NO_CHECK_TYPE; i++)
-		CURSEG_I(sbi, i)->sum_blk->journal.n_nats = 0;
+		F2FS_SUMMARY_BLOCK_JOURNAL(CURSEG_I(sbi, i)->sum_blk)->n_nats = 0;
 }
 
 void write_curseg_info(struct f2fs_sb_info *sbi)
@@ -3092,7 +3092,7 @@ int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
 					struct f2fs_nat_entry *raw_nat)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	int i = 0;
 
 	for (i = 0; i < nats_in_cursum(journal); i++) {
@@ -3109,7 +3109,7 @@ int lookup_nat_in_journal(struct f2fs_sb_info *sbi, u32 nid,
 void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	struct f2fs_nat_block *nat_block;
 	pgoff_t block_addr;
 	int entry_off;
@@ -3153,7 +3153,7 @@ void update_nat_journal_blkaddr(struct f2fs_sb_info *sbi, u32 nid,
 					block_t blkaddr)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	int i;
 
 	for (i = 0; i < nats_in_cursum(journal); i++) {
@@ -3314,7 +3314,7 @@ void write_checkpoints(struct f2fs_sb_info *sbi)
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);
-	struct f2fs_journal *journal = &curseg->sum_blk->journal;
+	struct f2fs_journal *journal = F2FS_SUMMARY_BLOCK_JOURNAL(curseg->sum_blk);
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	struct f2fs_nm_info *nm_i = NM_I(sbi);

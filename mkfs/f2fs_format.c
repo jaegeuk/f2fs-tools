@@ -927,8 +927,8 @@ static int f2fs_write_check_point_pack(void)
 	sum_compact_p += SUM_JOURNAL_SIZE;
 
 	/* hot data summary */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	SET_SUM_TYPE((&sum->footer), SUM_TYPE_DATA);
+	memset(sum, 0, F2FS_BLKSIZE);
+	SET_SUM_TYPE(sum, SUM_TYPE_DATA);
 
 	sum_entry = (struct f2fs_summary *)sum_compact_p;
 	memcpy(sum_entry, c.sum[CURSEG_HOT_DATA],
@@ -946,8 +946,8 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* Prepare and write Segment summary for HOT_NODE */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+	memset(sum, 0, F2FS_BLKSIZE);
+	SET_SUM_TYPE(sum, SUM_TYPE_NODE);
 	memcpy(sum->entries, c.sum[CURSEG_HOT_NODE],
 			sizeof(struct f2fs_summary) * MAX_CACHE_SUMS);
 
@@ -960,8 +960,8 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* Fill segment summary for WARM_NODE to zero. */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+	memset(sum, 0, F2FS_BLKSIZE);
+	SET_SUM_TYPE(sum, SUM_TYPE_NODE);
 
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for WARM_NODE, at offset 0x%08"PRIx64"\n",
@@ -972,8 +972,8 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	/* Fill segment summary for COLD_NODE to zero. */
-	memset(sum, 0, sizeof(struct f2fs_summary_block));
-	SET_SUM_TYPE((&sum->footer), SUM_TYPE_NODE);
+	memset(sum, 0, F2FS_BLKSIZE);
+	SET_SUM_TYPE(sum, SUM_TYPE_NODE);
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for COLD_NODE, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
