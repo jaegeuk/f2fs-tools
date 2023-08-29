@@ -1002,6 +1002,14 @@ struct f2fs_compr_blk_cnt {
  * inode flags
  */
 #define F2FS_COMPR_FL		0x00000004 /* Compress file */
+/*
+ * On disk layout is
+ * struct f2fs_inode
+ * struct f2fs_inode_nids
+ *
+ * where the size of f2fs_inode depends on block size.
+ * Do NOT use sizeof
+ */
 struct f2fs_inode {
 	__le16 i_mode;			/* file mode */
 	__u8 i_advise;			/* file hints */
@@ -1051,27 +1059,27 @@ struct f2fs_inode {
 						 */
 			__le32 i_extra_end[0];	/* for attribute size calculation */
 		} __attribute__((packed));
-		__le32 i_addr[DEF_ADDRS_PER_INODE];	/* Pointers to data blocks */
+		__le32 i_addr[0];	/* Pointers to DEF_ADDRS_PER_INODE data blocks */
 	};
+};
+struct f2fs_inode_nids {
 	__le32 i_nid[5];		/* direct(2), indirect(2),
 						double_indirect(1) node id */
 };
 
+#define F2FS_INODE_NIDS(inode) ((struct f2fs_inode_nids *)(&(inode)->i_addr[DEF_ADDRS_PER_INODE]))
+#define F2FS_INODE_I_NID(inode, i) (F2FS_INODE_NIDS((inode))->i_nid[(i)])
+
 static_assert(offsetof(struct f2fs_inode, i_extra_end) -
 	      offsetof(struct f2fs_inode, i_extra_isize) == 36, "");
-static_assert(sizeof(struct f2fs_inode) == F2FS_BLKSIZE - 24, "");
 
 struct direct_node {
-	__le32 addr[DEF_ADDRS_PER_BLOCK];	/* array of data block address */
+	__le32 addr[0];	/* array of DEF_ADDRS_PER_BLOCK data block address */
 };
-
-static_assert(sizeof(struct direct_node) == F2FS_BLKSIZE - 24, "");
 
 struct indirect_node {
-	__le32 nid[NIDS_PER_BLOCK];	/* array of data block address */
+	__le32 nid[0];	/* array of NIDS_PER_BLOCK data block address */
 };
-
-static_assert(sizeof(struct indirect_node) == F2FS_BLKSIZE - 24, "");
 
 enum {
 	COLD_BIT_SHIFT = 0,
@@ -1082,7 +1090,14 @@ enum {
 
 #define XATTR_NODE_OFFSET	((((unsigned int)-1) << OFFSET_BIT_SHIFT) \
 				>> OFFSET_BIT_SHIFT)
-
+/*
+ * On disk format is:
+ * struct f2fs_node
+ * struct node_footer
+ *
+ * where the size of f2fs_node depends on Block Size.
+ * Do NOT use sizeof. Use F2FS_BLKSIZE instead.
+ */
 struct f2fs_node {
 	/* can be one of three types: inode, direct, and indirect types */
 	union {
@@ -1090,10 +1105,9 @@ struct f2fs_node {
 		struct direct_node dn;
 		struct indirect_node in;
 	};
-	struct node_footer footer;
 };
-
-static_assert(sizeof(struct f2fs_node) == F2FS_BLKSIZE, "");
+#define F2FS_NODE_FOOTER(blk) ((struct node_footer *)\
+				&(((char *)(&(blk)->i))[F2FS_BLKSIZE - sizeof(struct node_footer)]))
 
 /*
  * For NAT entries
@@ -1790,9 +1804,9 @@ static inline void show_version(const char *prog)
 static inline void f2fs_init_inode(struct f2fs_super_block *sb,
 		struct f2fs_node *raw_node, nid_t ino, time_t mtime, mode_t mode)
 {
-	raw_node->footer.nid = cpu_to_le32(ino);
-	raw_node->footer.ino = cpu_to_le32(ino);
-	raw_node->footer.cp_ver = cpu_to_le64(1);
+	F2FS_NODE_FOOTER(raw_node)->nid = cpu_to_le32(ino);
+	F2FS_NODE_FOOTER(raw_node)->ino = cpu_to_le32(ino);
+	F2FS_NODE_FOOTER(raw_node)->cp_ver = cpu_to_le64(1);
 
 	raw_node->i.i_uid = cpu_to_le32(c.root_uid);
 	raw_node->i.i_gid = cpu_to_le32(c.root_gid);
@@ -1978,6 +1992,16 @@ static inline void check_block_struct_sizes(void)
 	/* Check Orphan Block Size */
 	assert(F2FS_ORPHANS_PER_BLOCK * sizeof(__le32)
 			+ sizeof(struct orphan_block_footer) == F2FS_BLKSIZE);
+
+	/* Check Inode Block Size */
+	assert(offsetof(struct f2fs_inode, i_extra_isize) + DEF_ADDRS_PER_INODE * sizeof(__le32)
+		+ sizeof(struct f2fs_inode_nids) + sizeof(struct node_footer) == F2FS_BLKSIZE);
+
+	/* Check Direct Block Size */
+	assert(DEF_ADDRS_PER_BLOCK * sizeof(__le32) + sizeof(struct node_footer) == F2FS_BLKSIZE);
+
+	/* Check Indirect Block Size */
+	assert(NIDS_PER_BLOCK * sizeof(__le32) + sizeof(struct node_footer) == F2FS_BLKSIZE);
 }
 
 #endif	/*__F2FS_FS_H */

@@ -571,7 +571,7 @@ int f2fs_crc_valid(uint32_t blk_crc, void *buf, int len)
 __u32 f2fs_inode_chksum(struct f2fs_node *node)
 {
 	struct f2fs_inode *ri = &node->i;
-	__le32 ino = node->footer.ino;
+	__le32 ino = F2FS_NODE_FOOTER(node)->ino;
 	__le32 gen = ri->i_generation;
 	__u32 chksum, chksum_seed;
 	__u32 dummy_cs = 0;

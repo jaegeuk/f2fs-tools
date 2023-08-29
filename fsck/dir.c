@@ -116,7 +116,7 @@ static int find_in_level(struct f2fs_sb_info *sbi, struct f2fs_node *dir,
 	struct dnode_of_data dn;
 	void *dentry_blk;
 	int max_slots = 214;
-	nid_t ino = le32_to_cpu(dir->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(dir)->ino);
 	f2fs_hash_t namehash;
 	unsigned int dir_level = dir->i.i_dir_level;
 	int ret = 0;
@@ -239,7 +239,7 @@ int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 	dentry_hash = f2fs_dentry_hash(get_encoding(sbi),
 						IS_CASEFOLDED(&parent->i),
 						name, name_len);
-	pino = le32_to_cpu(parent->footer.ino);
+	pino = le32_to_cpu(F2FS_NODE_FOOTER(parent)->ino);
 	dir_level = parent->i.i_dir_level;
 
 	if (!pino) {
@@ -340,7 +340,7 @@ add_dentry:
 static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 {
 	struct f2fs_dentry_block *dent_blk;
-	nid_t ino = le32_to_cpu(inode->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(inode)->ino);
 	nid_t pino = le32_to_cpu(inode->i.i_pino);
 	struct f2fs_summary sum;
 	struct node_info ni;
@@ -381,7 +381,7 @@ static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 					const char *symname, int symlen)
 {
-	nid_t ino = le32_to_cpu(inode->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(inode)->ino);
 	struct f2fs_summary sum;
 	struct node_info ni;
 	char *data_blk;
@@ -531,10 +531,10 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 
 	set_file_temperature(sbi, node_blk, de->name);
 
-	node_blk->footer.ino = cpu_to_le32(de->ino);
-	node_blk->footer.nid = cpu_to_le32(de->ino);
-	node_blk->footer.flag = 0;
-	node_blk->footer.cp_ver = ckpt->checkpoint_ver;
+	F2FS_NODE_FOOTER(node_blk)->ino = cpu_to_le32(de->ino);
+	F2FS_NODE_FOOTER(node_blk)->nid = cpu_to_le32(de->ino);
+	F2FS_NODE_FOOTER(node_blk)->flag = 0;
+	F2FS_NODE_FOOTER(node_blk)->cp_ver = ckpt->checkpoint_ver;
 	set_cold_node(node_blk, S_ISDIR(mode));
 
 	if (S_ISDIR(mode)) {
@@ -556,7 +556,7 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 {
 	struct f2fs_inode *inode = &(node->i);
 	unsigned int dir_level = node->i.i_dir_level;
-	nid_t ino = le32_to_cpu(node->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(node)->ino);
 	char inline_data[MAX_INLINE_DATA(node)];
 	struct dnode_of_data dn;
 	struct f2fs_dentry_ptr d;
@@ -751,7 +751,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 
 	ret = f2fs_add_link(sbi, parent, child->i.i_name,
 				le32_to_cpu(child->i.i_namelen),
-				le32_to_cpu(child->footer.ino),
+				le32_to_cpu(F2FS_NODE_FOOTER(child)->ino),
 				map_de_type(le16_to_cpu(child->i.i_mode)),
 				ni.blk_addr, 1);
 	if (ret) {

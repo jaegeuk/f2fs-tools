@@ -332,7 +332,7 @@ static inline void *inline_data_addr(struct f2fs_node *node_blk)
 
 static inline unsigned int ofs_of_node(struct f2fs_node *node_blk)
 {
-	unsigned flag = le32_to_cpu(node_blk->footer.flag);
+	unsigned flag = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->flag);
 	return flag >> OFFSET_BIT_SHIFT;
 }
 

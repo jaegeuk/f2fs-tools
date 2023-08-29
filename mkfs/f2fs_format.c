@@ -1104,7 +1104,7 @@ static int f2fs_discard_obsolete_dnode(void)
 	if (c.zoned_mode || c.feature & F2FS_FEATURE_RO)
 		return 0;
 
-	raw_node = calloc(sizeof(struct f2fs_node), 1);
+	raw_node = calloc(F2FS_BLKSIZE, 1);
 	if (raw_node == NULL) {
 		MSG(1, "\tError: Calloc Failed for discard_raw_node!!!\n");
 		return -1;
@@ -1128,7 +1128,7 @@ static int f2fs_discard_obsolete_dnode(void)
 			return -1;
 		}
 
-		next_blkaddr = le32_to_cpu(raw_node->footer.next_blkaddr);
+		next_blkaddr = le32_to_cpu(F2FS_NODE_FOOTER(raw_node)->next_blkaddr);
 		memset(raw_node, 0, F2FS_BLKSIZE);
 
 		DBG(1, "\tDiscard dnode, at offset 0x%08"PRIx64"\n", offset);
@@ -1295,7 +1295,7 @@ static int f2fs_write_root_inode(void)
 				cpu_to_le32(data_blkaddr);
 
 	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE);
-	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
+	F2FS_NODE_FOOTER(raw_node)->next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
 	DBG(1, "\tWriting root inode (hot node), offset 0x%x\n", node_blkaddr);
 	if (write_inode(raw_node, node_blkaddr) < 0) {
@@ -1413,7 +1413,7 @@ static int f2fs_write_qf_inode(int qtype)
 	raw_node->i.i_flags = F2FS_NOATIME_FL | F2FS_IMMUTABLE_FL;
 
 	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE);
-	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
+	F2FS_NODE_FOOTER(raw_node)->next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
 	if (qtype == 0)
 		raw_id = raw_node->i.i_uid;
@@ -1548,7 +1548,7 @@ static int f2fs_write_lpf_inode(void)
 	memcpy(raw_node->i.i_name, LPF, strlen(LPF));
 
 	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE);
-	raw_node->footer.next_blkaddr = cpu_to_le32(node_blkaddr + 1);
+	F2FS_NODE_FOOTER(raw_node)->next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
 	data_blkaddr = f2fs_add_default_dentry_lpf();
 	if (data_blkaddr == 0) {

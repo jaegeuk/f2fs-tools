@@ -20,13 +20,13 @@
 
 static inline bool IS_INODE(struct f2fs_node *node)
 {
-	return node->footer.ino == node->footer.nid;
+	return F2FS_NODE_FOOTER(node)->nid == F2FS_NODE_FOOTER(node)->ino;
 }
 
 static inline unsigned int ADDRS_PER_PAGE(struct f2fs_sb_info *sbi,
 		struct f2fs_node *node_blk, struct f2fs_node *inode_blk)
 {
-	nid_t ino = le32_to_cpu(node_blk->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino);
 	unsigned int nblocks;
 
 	if (IS_INODE(node_blk))
@@ -71,7 +71,7 @@ static inline block_t datablock_addr(struct f2fs_node *node_page,
 static inline void set_nid(struct f2fs_node * rn, int off, nid_t nid, int i)
 {
 	if (i)
-		rn->i.i_nid[off - NODE_DIR1_BLOCK] = cpu_to_le32(nid);
+		F2FS_INODE_I_NID(&rn->i, off - NODE_DIR1_BLOCK) = cpu_to_le32(nid);
 	else
 		rn->in.nid[off] = cpu_to_le32(nid);
 }
@@ -79,7 +79,7 @@ static inline void set_nid(struct f2fs_node * rn, int off, nid_t nid, int i)
 static inline nid_t get_nid(struct f2fs_node * rn, int off, int i)
 {
 	if (i)
-		return le32_to_cpu(rn->i.i_nid[off - NODE_DIR1_BLOCK]);
+		return le32_to_cpu(F2FS_INODE_I_NID(&rn->i, off - NODE_DIR1_BLOCK));
 	else
 		return le32_to_cpu(rn->in.nid[off]);
 }
@@ -127,12 +127,12 @@ static inline int IS_DNODE(struct f2fs_node *node_page)
 
 static inline nid_t ino_of_node(struct f2fs_node *node_blk)
 {
-	return le32_to_cpu(node_blk->footer.ino);
+	return le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino);
 }
 
 static inline __u64 cpver_of_node(struct f2fs_node *node_blk)
 {
-	return le64_to_cpu(node_blk->footer.cp_ver);
+	return le64_to_cpu(F2FS_NODE_FOOTER(node_blk)->cp_ver);
 }
 
 static inline bool is_recoverable_dnode(struct f2fs_sb_info *sbi,
@@ -153,23 +153,23 @@ static inline bool is_recoverable_dnode(struct f2fs_sb_info *sbi,
 
 static inline block_t next_blkaddr_of_node(struct f2fs_node *node_blk)
 {
-	return le32_to_cpu(node_blk->footer.next_blkaddr);
+	return le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->next_blkaddr);
 }
 
 static inline int is_node(struct f2fs_node *node_blk, int type)
 {
-	return le32_to_cpu(node_blk->footer.flag) & (1 << type);
+	return le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->flag) & (1 << type);
 }
 
 static inline void set_cold_node(struct f2fs_node *rn, bool is_dir)
 {
-	unsigned int flag = le32_to_cpu(rn->footer.flag);
+	unsigned int flag = le32_to_cpu(F2FS_NODE_FOOTER(rn)->flag);
 
 	if (is_dir)
 		flag &= ~(0x1 << COLD_BIT_SHIFT);
 	else
 		flag |= (0x1 << COLD_BIT_SHIFT);
-	rn->footer.flag = cpu_to_le32(flag);
+	F2FS_NODE_FOOTER(rn)->flag = cpu_to_le32(flag);
 }
 
 #define is_fsync_dnode(node_blk)	is_node(node_blk, FSYNC_BIT_SHIFT)

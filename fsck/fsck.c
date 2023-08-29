@@ -243,7 +243,7 @@ static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 	ret = dev_read_block(node_blk, ni.blk_addr);
 	ASSERT(ret >= 0);
 
-	if (le32_to_cpu(node_blk->footer.nid) != nid)
+	if (le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid) != nid)
 		goto out;
 
 	/* check its block address */
@@ -436,33 +436,33 @@ static int sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	ASSERT(ret >= 0);
 
 	if (ntype == TYPE_INODE &&
-			node_blk->footer.nid != node_blk->footer.ino) {
+			F2FS_NODE_FOOTER(node_blk)->nid != F2FS_NODE_FOOTER(node_blk)->ino) {
 		ASSERT_MSG("nid[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
-				nid, le32_to_cpu(node_blk->footer.nid),
-				le32_to_cpu(node_blk->footer.ino));
+				nid, le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid),
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino));
 		return -EINVAL;
 	}
-	if (ni->ino != le32_to_cpu(node_blk->footer.ino)) {
+	if (ni->ino != le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino)) {
 		ASSERT_MSG("nid[0x%x] nat_entry->ino[0x%x] footer.ino[0x%x]",
-				nid, ni->ino, le32_to_cpu(node_blk->footer.ino));
+				nid, ni->ino, le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino));
 		return -EINVAL;
 	}
 	if (ntype != TYPE_INODE && IS_INODE(node_blk)) {
 		ASSERT_MSG("nid[0x%x] footer.nid[0x%x] footer.ino[0x%x]",
-				nid, le32_to_cpu(node_blk->footer.nid),
-				le32_to_cpu(node_blk->footer.ino));
+				nid, le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid),
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino));
 		return -EINVAL;
 	}
 
-	if (le32_to_cpu(node_blk->footer.nid) != nid) {
+	if (le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid) != nid) {
 		ASSERT_MSG("nid[0x%x] blk_addr[0x%x] footer.nid[0x%x]",
 				nid, ni->blk_addr,
-				le32_to_cpu(node_blk->footer.nid));
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid));
 		return -EINVAL;
 	}
 
 	if (ntype == TYPE_XATTR) {
-		u32 flag = le32_to_cpu(node_blk->footer.flag);
+		u32 flag = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->flag);
 
 		if ((flag >> OFFSET_BIT_SHIFT) != XATTR_NODE_OFFSET) {
 			ASSERT_MSG("xnid[0x%x] has wrong ofs:[0x%x]",
@@ -674,9 +674,9 @@ retry:
 			ret = dev_read_block(node_blk, blkaddr);
 			ASSERT(ret >= 0);
 
-			if (le32_to_cpu(node_blk->footer.ino) !=
+			if (le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino) !=
 					root_ino ||
-				le32_to_cpu(node_blk->footer.nid) !=
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid) !=
 					root_ino)
 				continue;
 
@@ -1131,13 +1131,13 @@ check_next:
 
 	/* readahead node blocks */
 	for (idx = 0; idx < 5; idx++) {
-		u32 nid = le32_to_cpu(node_blk->i.i_nid[idx]);
+		u32 nid = le32_to_cpu(F2FS_INODE_I_NID(&node_blk->i, idx));
 		fsck_reada_node_block(sbi, nid);
 	}
 
 	/* check node blocks in inode */
 	for (idx = 0; idx < 5; idx++) {
-		nid_t i_nid = le32_to_cpu(node_blk->i.i_nid[idx]);
+		nid_t i_nid = le32_to_cpu(F2FS_INODE_I_NID(&node_blk->i, idx));
 
 		if (idx == 0 || idx == 1)
 			ntype = TYPE_DIRECT_NODE;
@@ -1157,7 +1157,7 @@ check_next:
 			*blk_cnt = *blk_cnt + 1;
 		} else if (ret == -EINVAL) {
 			if (c.fix_on) {
-				node_blk->i.i_nid[idx] = 0;
+				F2FS_INODE_I_NID(&node_blk->i, idx) = 0;
 				need_fix = 1;
 				FIX_MSG("[0x%x] i_nid[%d] = 0", nid, idx);
 			}
@@ -1230,17 +1230,17 @@ skip_blkcnt_fix:
 			      file_enc_name(&node_blk->i));
 	if (ftype == F2FS_FT_ORPHAN)
 		DBG(1, "Orphan Inode: 0x%x [%s] i_blocks: %u\n\n",
-				le32_to_cpu(node_blk->footer.ino),
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino),
 				en, (u32)i_blocks);
 
 	if (is_qf_ino(F2FS_RAW_SUPER(sbi), nid))
 		DBG(1, "Quota Inode: 0x%x [%s] i_blocks: %u\n\n",
-				le32_to_cpu(node_blk->footer.ino),
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino),
 				en, (u32)i_blocks);
 
 	if (ftype == F2FS_FT_DIR) {
 		DBG(1, "Directory Inode: 0x%x [%s] depth: %d has %d files\n\n",
-				le32_to_cpu(node_blk->footer.ino), en,
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino), en,
 				le32_to_cpu(node_blk->i.i_current_depth),
 				child.files);
 
@@ -1276,7 +1276,7 @@ skip_blkcnt_fix:
 		(c.preen_mode != PREEN_MODE_2 || i_gc_failures != 0x01)) {
 
 		DBG(1, "Regular Inode: 0x%x [%s] depth: %d\n\n",
-				le32_to_cpu(node_blk->footer.ino), en,
+				le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino), en,
 				i_gc_failures);
 
 		if (c.fix_on) {
@@ -1436,7 +1436,7 @@ skip:
 
 	if (need_fix && f2fs_dev_is_writable()) {
 		struct node_info ni;
-		nid_t nid = le32_to_cpu(node_blk->footer.nid);
+		nid_t nid = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid);
 
 		get_node_info(sbi, nid, &ni);
 		ret = dev_write_block(node_blk, ni.blk_addr);
@@ -1478,7 +1478,7 @@ skip:
 
 	if (need_fix && f2fs_dev_is_writable()) {
 		struct node_info ni;
-		nid_t nid = le32_to_cpu(node_blk->footer.nid);
+		nid_t nid = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid);
 
 		get_node_info(sbi, nid, &ni);
 		ret = dev_write_block(node_blk, ni.blk_addr);
@@ -2826,7 +2826,7 @@ static struct f2fs_node *fsck_get_lpf(struct f2fs_sb_info *sbi)
 		    de.ino, ni.blk_addr);
 	}
 
-	c.lpf_ino = le32_to_cpu(node->footer.ino);
+	c.lpf_ino = le32_to_cpu(F2FS_NODE_FOOTER(node)->ino);
 	return node;
 out:
 	free(node);
@@ -2839,7 +2839,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 {
 	char name[80];
 	size_t namelen;
-	nid_t ino = le32_to_cpu(fnode->footer.ino);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(fnode)->ino);
 	struct node_info ni;
 	int ftype, ret;
 
@@ -2853,7 +2853,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 		return -EEXIST;
 	}
 
-	get_node_info(sbi, le32_to_cpu(lpf->footer.ino), &ni);
+	get_node_info(sbi, le32_to_cpu(F2FS_NODE_FOOTER(lpf)->ino), &ni);
 	ftype = map_de_type(le16_to_cpu(fnode->i.i_mode));
 	ret = f2fs_add_link(sbi, lpf, (unsigned char *)name, namelen,
 			    ino, ftype, ni.blk_addr, 0);
@@ -2866,7 +2866,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 	memcpy(fnode->i.i_name, name, namelen);
 	fnode->i.i_namelen = cpu_to_le32(namelen);
 	fnode->i.i_pino = c.lpf_ino;
-	get_node_info(sbi, le32_to_cpu(fnode->footer.ino), &ni);
+	get_node_info(sbi, le32_to_cpu(F2FS_NODE_FOOTER(fnode)->ino), &ni);
 	ret = dev_write_block(fnode, ni.blk_addr);
 	ASSERT(ret >= 0);
 
@@ -3017,7 +3017,7 @@ static void fsck_failed_reconnect_file(struct f2fs_sb_info *sbi, nid_t ino)
 	}
 
 	for (i = 0; i < 5; i++) {
-		nid = le32_to_cpu(node->i.i_nid[i]);
+		nid = le32_to_cpu(F2FS_INODE_I_NID(&node->i, i));
 		if (!nid)
 			continue;
 

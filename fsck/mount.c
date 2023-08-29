@@ -364,11 +364,11 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 				blkaddr, blkaddr);
 	}
 
-	DISP_u32(inode, i_nid[0]);	/* direct */
-	DISP_u32(inode, i_nid[1]);	/* direct */
-	DISP_u32(inode, i_nid[2]);	/* indirect */
-	DISP_u32(inode, i_nid[3]);	/* indirect */
-	DISP_u32(inode, i_nid[4]);	/* double indirect */
+	DISP_u32(F2FS_INODE_NIDS(inode), i_nid[0]);	/* direct */
+	DISP_u32(F2FS_INODE_NIDS(inode), i_nid[1]);	/* direct */
+	DISP_u32(F2FS_INODE_NIDS(inode), i_nid[2]);	/* indirect */
+	DISP_u32(F2FS_INODE_NIDS(inode), i_nid[3]);	/* indirect */
+	DISP_u32(F2FS_INODE_NIDS(inode), i_nid[4]);	/* double indirect */
 
 	xattr_addr = read_all_xattrs(sbi, node);
 	if (!xattr_addr)
@@ -393,8 +393,8 @@ out:
 void print_node_info(struct f2fs_sb_info *sbi,
 			struct f2fs_node *node_block, int verbose)
 {
-	nid_t ino = le32_to_cpu(node_block->footer.ino);
-	nid_t nid = le32_to_cpu(node_block->footer.nid);
+	nid_t ino = le32_to_cpu(F2FS_NODE_FOOTER(node_block)->ino);
+	nid_t nid = le32_to_cpu(F2FS_NODE_FOOTER(node_block)->nid);
 	/* Is this inode? */
 	if (ino == nid) {
 		DBG(verbose, "Node ID [0x%x:%u] is inode\n", nid, nid);
@@ -2058,7 +2058,7 @@ static void restore_node_summary(struct f2fs_sb_info *sbi,
 	for (i = 0; i < sbi->blocks_per_seg; i++, sum_entry++) {
 		ret = dev_read_block(node_blk, addr);
 		ASSERT(ret >= 0);
-		sum_entry->nid = node_blk->footer.nid;
+		sum_entry->nid = F2FS_NODE_FOOTER(node_blk)->nid;
 		addr++;
 	}
 	free(node_blk);
@@ -2453,7 +2453,7 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 
 	/* check extent cache entry */
 	if (!IS_INODE(node_blk)) {
-		get_node_info(sbi, le32_to_cpu(node_blk->footer.ino), &ni);
+		get_node_info(sbi, le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->ino), &ni);
 
 		/* read inode block */
 		ret = dev_read_block(node_blk, ni.blk_addr);
@@ -3568,7 +3568,7 @@ static int loop_node_chain_fix(block_t blkaddr_fast,
 	} while (blkaddr != blkaddr_entry);
 
 	/* fix the blkaddr of last node with NULL_ADDR. */
-	node_blk->footer.next_blkaddr = NULL_ADDR;
+	F2FS_NODE_FOOTER(node_blk)->next_blkaddr = NULL_ADDR;
 	if (IS_INODE(node_blk))
 		err = write_inode(node_blk, blkaddr_tmp);
 	else
