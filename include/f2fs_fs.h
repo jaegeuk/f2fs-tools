@@ -21,6 +21,7 @@
 #define __SANE_USERSPACE_TYPES__       /* For PPC64, to get LL64 types */
 #endif
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -862,16 +863,25 @@ static_assert(sizeof(struct f2fs_checkpoint) == 192, "");
  */
 #define F2FS_ORPHANS_PER_BLOCK	((F2FS_BLKSIZE - 4 * sizeof(__le32)) / sizeof(__le32))
 
+/*
+ * On disk layout is:
+ * __le32 ino[F2FS_ORPHANS_PER_BLOCK];
+ * struct f2fs_ophan_block_footer
+ *
+ * Do NOT use sizeof, use F2FS_BLKSIZE instead
+ */
 struct f2fs_orphan_block {
-	__le32 ino[F2FS_ORPHANS_PER_BLOCK];	/* inode numbers */
+	__le32 ino[0];	/* F2FS_ORPHANS_PER_BLOCK inode numbers */
+};
+#define F2FS_ORPHAN_BLOCK_FOOTER(blk) ((struct orphan_block_footer *)&(blk)->ino[F2FS_ORPHANS_PER_BLOCK])
+
+struct orphan_block_footer {
 	__le32 reserved;	/* reserved */
 	__le16 blk_addr;	/* block index in current CP */
 	__le16 blk_count;	/* Number of orphan inode blocks in CP */
 	__le32 entry_count;	/* Total number of orphan nodes in current CP */
 	__le32 check_sum;	/* CRC32 for orphan inode block */
 };
-
-static_assert(sizeof(struct f2fs_orphan_block) == F2FS_BLKSIZE, "");
 
 /*
  * For NODE structure
@@ -1962,5 +1972,12 @@ extern int f2fs_str2encoding(const char *string);
 extern char *f2fs_encoding2str(const int encoding);
 extern int f2fs_get_encoding_flags(int encoding);
 extern int f2fs_str2encoding_flags(char **param, __u16 *flags);
+
+static inline void check_block_struct_sizes(void)
+{
+	/* Check Orphan Block Size */
+	assert(F2FS_ORPHANS_PER_BLOCK * sizeof(__le32)
+			+ sizeof(struct orphan_block_footer) == F2FS_BLKSIZE);
+}
 
 #endif	/*__F2FS_FS_H */

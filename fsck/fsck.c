@@ -2058,7 +2058,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		u32 new_entry_count = 0;
 
 		ASSERT(ret >= 0);
-		entry_count = le32_to_cpu(orphan_blk->entry_count);
+		entry_count = le32_to_cpu(F2FS_ORPHAN_BLOCK_FOOTER(orphan_blk)->entry_count);
 
 		for (j = 0; j < entry_count; j++) {
 			nid_t ino = le32_to_cpu(orphan_blk->ino[j]);
@@ -2094,7 +2094,7 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		}
 		if (f2fs_dev_is_writable() && c.fix_on &&
 				entry_count != new_entry_count) {
-			new_blk->entry_count = cpu_to_le32(new_entry_count);
+			F2FS_ORPHAN_BLOCK_FOOTER(new_blk)->entry_count = cpu_to_le32(new_entry_count);
 			ret = dev_write_block(new_blk, start_blk + i);
 			ASSERT(ret >= 0);
 		}

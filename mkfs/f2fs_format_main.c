@@ -355,6 +355,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 
 	if (c.zoned_mode)
 		c.feature |= F2FS_FEATURE_BLKZONED;
+	check_block_struct_sizes();
 }
 
 #ifdef HAVE_LIBBLKID

@@ -803,6 +803,7 @@ void f2fs_parse_options(int argc, char *argv[])
 			return;
 	}
 
+	check_block_struct_sizes();
 	/* print out error */
 	switch (err) {
 	case EWRONG_OPT:
