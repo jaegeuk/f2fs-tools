@@ -1963,7 +1963,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 
 	dentries = __chk_dentries(sbi, casefolded, child,
 			de_blk->dentry_bitmap,
-			de_blk->dentry, de_blk->filename,
+			F2FS_DENTRY_BLOCK_DENTRIES(de_blk), F2FS_DENTRY_BLOCK_FILENAMES(de_blk),
 			NR_DENTRY_IN_BLOCK, last_blk, enc_name);
 
 	if (dentries < 0 && f2fs_dev_is_writable()) {
