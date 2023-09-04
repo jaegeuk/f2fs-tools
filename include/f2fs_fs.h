@@ -235,6 +235,13 @@ static inline uint64_t bswap_64(uint64_t val)
 /*
  * Debugging interfaces
  */
+
+#define INFO_MSG(fmt, ...)						\
+	do {								\
+		printf("[INFO] (%s:%4d) ", __func__, __LINE__);		\
+		printf(" --> "fmt"\n", ##__VA_ARGS__);			\
+	} while (0)
+
 #define FIX_MSG(fmt, ...)						\
 	do {								\
 		printf("[FIX] (%s:%4d) ", __func__, __LINE__);		\

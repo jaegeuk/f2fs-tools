@@ -1282,7 +1282,7 @@ skip_blkcnt_fix:
 		if (c.fix_on) {
 			node_blk->i.i_gc_failures = cpu_to_le16(0);
 			need_fix = 1;
-			FIX_MSG("Regular: 0x%x reset i_gc_failures from 0x%x to 0x00",
+			INFO_MSG("Regular: 0x%x reset i_gc_failures from 0x%x to 0x00",
 					nid, i_gc_failures);
 		}
 	}
