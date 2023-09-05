@@ -263,7 +263,7 @@ void f2fs_parse_options(int argc, char *argv[])
 				break;
 			case 'a':
 				c.auto_fix = 1;
-				MSG(0, "Info: Fix the reported corruption.\n");
+				MSG(0, "Info: Automatic fix mode enabled.\n");
 				break;
 			case 'c':
 				c.cache_config.num_cache_entry = atoi(optarg);
