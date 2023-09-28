@@ -10,9 +10,6 @@
  *   Liu Shuoran <liushuoran@huawei.com>
  *   Jaegeuk Kim <jaegeuk@kernel.org>
  *  : add sload.f2fs
- * Copyright (c) 2019 Google Inc.
- *   Robin Hsu <robinhsu@google.com>
- *  : add cache layer
  * Copyright (c) 2020 Google Inc.
  *   Robin Hsu <robinhsu@google.com>
  *  : add sload compression support
@@ -26,7 +23,6 @@
 #include <ctype.h>
 #include <time.h>
 #include <getopt.h>
-#include <stdbool.h>
 #include "quotaio.h"
 #include "compress.h"
 
@@ -59,10 +55,6 @@ void fsck_usage()
 	MSG(0, "\nUsage: fsck.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -a check/fix potential corruption, reported by f2fs\n");
-	MSG(0, "  -c <num-cache-entry>  set number of cache entries"
-			" (default 0)\n");
-	MSG(0, "  -m <max-hash-collision>  set max cache hash collision"
-			" (default 16)\n");
 	MSG(0, "  -C encoding[:flag1,flag2] Set options for enabling"
 			" casefolding\n");
 	MSG(0, "  -d debug level [default:0]\n");
@@ -80,7 +72,6 @@ void fsck_usage()
 	MSG(0, "  --dry-run do not really fix corruptions\n");
 	MSG(0, "  --no-kernel-check skips detecting kernel change\n");
 	MSG(0, "  --kernel-check checks kernel change\n");
-	MSG(0, "  --debug-cache to debug cache when -c is used\n");
 	exit(1);
 }
 
@@ -241,8 +232,6 @@ void f2fs_parse_options(int argc, char *argv[])
 		};
 
 		c.func = FSCK;
-		c.cache_config.max_hash_collision = 16;
-		c.cache_config.dbg_en = false;
 		while ((option = getopt_long(argc, argv, option_string,
 						long_opt, &opt)) != EOF) {
 			switch (option) {
@@ -259,18 +248,15 @@ void f2fs_parse_options(int argc, char *argv[])
 				MSG(0, "Info: Do Kernel Check\n");
 				break;
 			case 4:
-				c.cache_config.dbg_en = true;
+				MSG(0, "Info: Deprecated option \"debug-cache\"\n");
 				break;
 			case 'a':
 				c.auto_fix = 1;
 				MSG(0, "Info: Automatic fix mode enabled.\n");
 				break;
 			case 'c':
-				c.cache_config.num_cache_entry = atoi(optarg);
-				break;
 			case 'm':
-				c.cache_config.max_hash_collision =
-						atoi(optarg);
+				MSG(0, "Info: Deprecated option \'%c\'\n", option);
 				break;
 			case 'g':
 				if (!strcmp(optarg, "android")) {
