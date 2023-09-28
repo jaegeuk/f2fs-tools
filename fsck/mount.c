@@ -125,7 +125,7 @@ void update_free_segments(struct f2fs_sb_info *sbi)
 	if (c.dbg_lv)
 		return;
 
-	MSG(0, "\r [ %c ] Free segments: 0x%x", progress[i % 5], get_free_segments(sbi));
+	MSG(0, "\r [ %c ] Free segments: 0x%x", progress[i % 5], SM_I(sbi)->free_segments);
 	fflush(stdout);
 	i++;
 }
@@ -2552,6 +2552,10 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 
 			check_block_count(sbi, segno, &sit);
 			seg_info_from_raw_sit(sbi, se, &sit);
+			if (se->valid_blocks == 0x0 &&
+				is_usable_seg(sbi, segno) &&
+				!IS_CUR_SEGNO(sbi, segno))
+				SM_I(sbi)->free_segments++;
 		}
 		start_blk += readed;
 	} while (start_blk < sit_blk_cnt);
@@ -2607,6 +2611,7 @@ static int early_build_segment_manager(struct f2fs_sb_info *sbi)
 	sm_info->ovp_segments = get_cp(overprov_segment_count);
 	sm_info->main_segments = get_sb(segment_count_main);
 	sm_info->ssa_blkaddr = get_sb(ssa_blkaddr);
+	sm_info->free_segments = 0;
 
 	if (build_sit_info(sbi) || build_curseg(sbi)) {
 		free(sm_info);
@@ -2931,7 +2936,7 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left,
 
 	if (*to > 0)
 		*to -= left;
-	if (get_free_segments(sbi) <= SM_I(sbi)->reserved_segments + 1)
+	if (SM_I(sbi)->free_segments <= SM_I(sbi)->reserved_segments + 1)
 		not_enough = 1;
 
 	while (*to >= SM_I(sbi)->main_blkaddr && *to < end_blkaddr) {

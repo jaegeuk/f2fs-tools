@@ -198,6 +198,7 @@ struct f2fs_sm_info {
 	unsigned int main_segments;
 	unsigned int reserved_segments;
 	unsigned int ovp_segments;
+	unsigned int free_segments;
 };
 
 struct f2fs_dentry_ptr {

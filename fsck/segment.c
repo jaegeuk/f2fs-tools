@@ -77,6 +77,8 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, blkaddr));
 	offset = OFFSET_IN_SEG(sbi, blkaddr);
 	se->type = type;
+	if (se->valid_blocks == 0)
+		SM_I(sbi)->free_segments--;
 	se->valid_blocks++;
 	f2fs_set_bit(offset, (char *)se->cur_valid_map);
 	if (need_fsync_data_record(sbi)) {
