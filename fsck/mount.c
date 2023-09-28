@@ -2977,8 +2977,10 @@ next_segment:
 			}
 		}
 
-		if (type == want_type && !new_sec &&
-			!f2fs_test_bit(offset, (const char *)bitmap))
+		if (type != want_type)
+			goto next_segment;
+		else if (!new_sec &&
+				!f2fs_test_bit(offset, (const char *)bitmap))
 			return 0;
 
 		*to = left ? *to - 1: *to + 1;
