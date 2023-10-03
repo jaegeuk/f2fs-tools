@@ -398,6 +398,47 @@ static void do_shutdown(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define fadvise_desc "fadvise"
+#define fadvise_help						\
+"f2fs_io fadvise [advice] [offset] [length] [file]\n\n"		\
+"fadvice given the file\n"					\
+"advice can be\n"						\
+" willneed\n"							\
+" sequential\n"							\
+
+static void do_fadvise(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd, advice;
+	off_t offset, length;
+
+	if (argc != 5) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[4], O_RDWR, 0);
+
+	if (!strcmp(argv[1], "willneed")) {
+		advice = POSIX_FADV_WILLNEED;
+	} else if (!strcmp(argv[1], "sequential")) {
+		advice = POSIX_FADV_SEQUENTIAL;
+	} else {
+		fputs("Wrong advice\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	offset = atoi(argv[2]);
+	length = atoll(argv[3]);
+
+	if (posix_fadvise(fd, offset, length, advice) != 0)
+		die_errno("fadvise failed");
+
+	printf("fadvice %s to a file: %s\n", argv[1], argv[4]);
+	exit(0);
+}
+
 #define pinfile_desc "pin file control"
 #define pinfile_help						\
 "f2fs_io pinfile [get|set] [file]\n\n"			\
@@ -1499,6 +1540,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(clearflags),
 	CMD(shutdown),
 	CMD(pinfile),
+	CMD(fadvise),
 	CMD(fallocate),
 	CMD(erase),
 	CMD(write),

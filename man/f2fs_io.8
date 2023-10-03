@@ -47,6 +47,9 @@ going down with fsck mark
 \fBpinfile\fR \fI[get|set] [file]\fR
 Get or set the pinning status on a file.
 .TP
+\fBfadvise\fR \fI[advice] [offset] [length] [file]\fR
+Pass an advice to the specified file. The advice can be willneed and sequential.
+.TP
 \fBfallocate\fR \fI[-c] [-i] [-p] [-z] [keep_size] [offset] [length] [file]\fR
 Request that space be allocated on a file.  The
 .I keep_size
