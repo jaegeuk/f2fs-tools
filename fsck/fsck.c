@@ -2875,7 +2875,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 }
 
 static void fsck_failed_reconnect_file_dnode(struct f2fs_sb_info *sbi,
-					     nid_t nid)
+					struct f2fs_inode *inode, nid_t nid)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_node *node;
@@ -2894,12 +2894,12 @@ static void fsck_failed_reconnect_file_dnode(struct f2fs_sb_info *sbi,
 	fsck->chk.valid_blk_cnt--;
 	f2fs_clear_main_bitmap(sbi, ni.blk_addr);
 
-	for (i = 0; i < ADDRS_PER_BLOCK(&node->i); i++) {
+	for (i = 0; i < ADDRS_PER_BLOCK(inode); i++) {
 		addr = le32_to_cpu(node->dn.addr[i]);
 		if (!addr)
 			continue;
 		fsck->chk.valid_blk_cnt--;
-		if (addr == NEW_ADDR)
+		if (addr == NEW_ADDR || addr == COMPRESS_ADDR)
 			continue;
 		f2fs_clear_main_bitmap(sbi, addr);
 	}
@@ -2908,7 +2908,7 @@ static void fsck_failed_reconnect_file_dnode(struct f2fs_sb_info *sbi,
 }
 
 static void fsck_failed_reconnect_file_idnode(struct f2fs_sb_info *sbi,
-					      nid_t nid)
+					struct f2fs_inode *inode, nid_t nid)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_node *node;
@@ -2931,14 +2931,14 @@ static void fsck_failed_reconnect_file_idnode(struct f2fs_sb_info *sbi,
 		tmp = le32_to_cpu(node->in.nid[i]);
 		if (!tmp)
 			continue;
-		fsck_failed_reconnect_file_dnode(sbi, tmp);
+		fsck_failed_reconnect_file_dnode(sbi, inode, tmp);
 	}
 
 	free(node);
 }
 
 static void fsck_failed_reconnect_file_didnode(struct f2fs_sb_info *sbi,
-					       nid_t nid)
+					struct f2fs_inode *inode, nid_t nid)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_node *node;
@@ -2961,7 +2961,7 @@ static void fsck_failed_reconnect_file_didnode(struct f2fs_sb_info *sbi,
 		tmp = le32_to_cpu(node->in.nid[i]);
 		if (!tmp)
 			continue;
-		fsck_failed_reconnect_file_idnode(sbi, tmp);
+		fsck_failed_reconnect_file_idnode(sbi, inode, tmp);
 	}
 
 	free(node);
@@ -3010,7 +3010,7 @@ static void fsck_failed_reconnect_file(struct f2fs_sb_info *sbi, nid_t ino)
 			if (!addr)
 				continue;
 			fsck->chk.valid_blk_cnt--;
-			if (addr == NEW_ADDR)
+			if (addr == NEW_ADDR || addr == COMPRESS_ADDR)
 				continue;
 			f2fs_clear_main_bitmap(sbi, addr);
 		}
@@ -3024,14 +3024,14 @@ static void fsck_failed_reconnect_file(struct f2fs_sb_info *sbi, nid_t ino)
 		switch (i) {
 		case 0: /* direct node */
 		case 1:
-			fsck_failed_reconnect_file_dnode(sbi, nid);
+			fsck_failed_reconnect_file_dnode(sbi, &node->i, nid);
 			break;
 		case 2: /* indirect node */
 		case 3:
-			fsck_failed_reconnect_file_idnode(sbi, nid);
+			fsck_failed_reconnect_file_idnode(sbi, &node->i, nid);
 			break;
 		case 4: /* double indirect node */
-			fsck_failed_reconnect_file_didnode(sbi, nid);
+			fsck_failed_reconnect_file_didnode(sbi, &node->i, nid);
 			break;
 		}
 	}
