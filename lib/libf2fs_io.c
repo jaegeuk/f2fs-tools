@@ -246,7 +246,7 @@ static inline long dcache_relocate(long entry, int n)
 			dcache_config.num_cache_entry;
 }
 
-static long dcache_find(off_t blk)
+static long dcache_find(__u64 blk)
 {
 	register long n = dcache_config.num_cache_entry;
 	register unsigned m = dcache_config.max_hash_collision;
@@ -267,8 +267,13 @@ static long dcache_find(off_t blk)
 }
 
 /* Physical read into cache */
-static int dcache_io_read(int fd, long entry, off_t offset, off_t blk)
+static int dcache_io_read(long entry, __u64 offset, off_t blk)
 {
+	int fd = __get_device_fd(&offset);
+
+	if (fd < 0)
+		return fd;
+
 	if (lseek(fd, offset, SEEK_SET) < 0) {
 		MSG(0, "\n lseek fail.\n");
 		return -1;
@@ -297,12 +302,11 @@ static int dcache_io_read(int fd, long entry, off_t offset, off_t blk)
  *       1: cache not available (uninitialized)
  *      -1: error
  */
-static int dcache_update_rw(int fd, void *buf, off_t offset,
+static int dcache_update_rw(void *buf, __u64 offset,
 		size_t byte_count, bool is_write)
 {
-	off_t blk;
+	__u64 blk, start;
 	int addr_in_blk;
-	off_t start;
 
 	if (!dcache_initialized)
 		dcache_init(); /* auto initialize */
@@ -337,7 +341,7 @@ static int dcache_update_rw(int fd, void *buf, off_t offset,
 				if (dcache_valid[entry])
 					++dcache_rreplace;
 				/* read: physical I/O read into cache */
-				err = dcache_io_read(fd, entry, start, blk);
+				err = dcache_io_read(entry, start, blk);
 				if (err)
 					return err;
 			}
@@ -366,15 +370,15 @@ static int dcache_update_rw(int fd, void *buf, off_t offset,
  * return value: 1: cache not available
  *               0: success, -1: I/O error
  */
-int dcache_update_cache(int fd, void *buf, off_t offset, size_t count)
+int dcache_update_cache(void *buf, __u64 offset, size_t count)
 {
-	return dcache_update_rw(fd, buf, offset, count, true);
+	return dcache_update_rw(buf, offset, count, true);
 }
 
 /* handles read into cache + read into buffer  */
-int dcache_read(int fd, void *buf, off_t offset, size_t count)
+int dcache_read(void *buf, __u64 offset, size_t count)
 {
-	return dcache_update_rw(fd, buf, offset, count, false);
+	return dcache_update_rw(buf, offset, count, false);
 }
 
 /*
@@ -517,15 +521,15 @@ int dev_read(void *buf, __u64 offset, size_t len)
 		return sparse_read_blk(offset / F2FS_BLKSIZE,
 					len / F2FS_BLKSIZE, buf);
 
+	/* err = 1: cache not available, fall back to non-cache R/W */
+	/* err = 0: success, err=-1: I/O error */
+	err = dcache_read(buf, offset, len);
+	if (err <= 0)
+		return err;
+
 	fd = __get_device_fd(&offset);
 	if (fd < 0)
 		return fd;
-
-	/* err = 1: cache not available, fall back to non-cache R/W */
-	/* err = 0: success, err=-1: I/O error */
-	err = dcache_read(fd, buf, (off_t)offset, len);
-	if (err <= 0)
-		return err;
 	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (read(fd, buf, len) < 0)
@@ -561,16 +565,17 @@ int dev_write(void *buf, __u64 offset, size_t len)
 		return sparse_write_blk(offset / F2FS_BLKSIZE,
 					len / F2FS_BLKSIZE, buf);
 
-	fd = __get_device_fd(&offset);
-	if (fd < 0)
-		return fd;
-
 	/*
 	 * dcache_update_cache() just update cache, won't do I/O.
 	 * Thus even no error, we need normal non-cache I/O for actual write
 	 */
-	if (dcache_update_cache(fd, buf, (off_t)offset, len) < 0)
+	if (dcache_update_cache(buf, offset, len) < 0)
 		return -1;
+
+	fd = __get_device_fd(&offset);
+	if (fd < 0)
+		return fd;
+
 	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (write(fd, buf, len) < 0)
