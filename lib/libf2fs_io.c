@@ -3,6 +3,8 @@
  *
  * Copyright (c) 2013 Samsung Electronics Co., Ltd.
  *             http://www.samsung.com/
+ * Copyright (c) 2019 Google Inc.
+ *             http://www.google.com/
  * Copyright (c) 2020 Google Inc.
  *   Robin Hsu <robinhsu@google.com>
  *  : add quick-buffer for sload compression support
@@ -32,6 +34,9 @@
 #include <linux/hdreg.h>
 #endif
 
+#include <stdbool.h>
+#include <assert.h>
+#include <inttypes.h>
 #include "f2fs_fs.h"
 
 struct f2fs_configuration c;
@@ -58,6 +63,318 @@ static int __get_device_fd(__u64 *offset)
 		}
 	}
 	return -1;
+}
+
+/* ---------- dev_cache, Least Used First (LUF) policy  ------------------- */
+/*
+ * Least used block will be the first victim to be replaced when max hash
+ * collision exceeds
+ */
+static bool *dcache_valid; /* is the cached block valid? */
+static off_t  *dcache_blk; /* which block it cached */
+static uint64_t *dcache_lastused; /* last used ticks for cache entries */
+static char *dcache_buf; /* cached block data */
+static uint64_t dcache_usetick; /* current use tick */
+
+static uint64_t dcache_raccess;
+static uint64_t dcache_rhit;
+static uint64_t dcache_rmiss;
+static uint64_t dcache_rreplace;
+
+static bool dcache_exit_registered = false;
+
+/*
+ *  Shadow config:
+ *
+ *  Active set of the configurations.
+ *  Global configuration 'dcache_config' will be transferred here when
+ *  when dcache_init() is called
+ */
+static dev_cache_config_t dcache_config = {0, 16, 1};
+static bool dcache_initialized = false;
+
+#define MIN_NUM_CACHE_ENTRY  1024L
+#define MAX_MAX_HASH_COLLISION  16
+
+static long dcache_relocate_offset0[] = {
+	20, -20, 40, -40, 80, -80, 160, -160,
+	320, -320, 640, -640, 1280, -1280, 2560, -2560,
+};
+static int dcache_relocate_offset[16];
+
+static void dcache_print_statistics(void)
+{
+	long i;
+	long useCnt;
+
+	/* Number of used cache entries */
+	useCnt = 0;
+	for (i = 0; i < dcache_config.num_cache_entry; i++)
+		if (dcache_valid[i])
+			++useCnt;
+
+	/*
+	 *  c: number of cache entries
+	 *  u: used entries
+	 *  RA: number of read access blocks
+	 *  CH: cache hit
+	 *  CM: cache miss
+	 *  Repl: read cache replaced
+	 */
+	printf ("\nc, u, RA, CH, CM, Repl=\n");
+	printf ("%ld %ld %" PRIu64 " %" PRIu64 " %" PRIu64 " %" PRIu64 "\n",
+			dcache_config.num_cache_entry,
+			useCnt,
+			dcache_raccess,
+			dcache_rhit,
+			dcache_rmiss,
+			dcache_rreplace);
+}
+
+void dcache_release(void)
+{
+	if (!dcache_initialized)
+		return;
+
+	dcache_initialized = false;
+
+	if (c.cache_config.dbg_en)
+		dcache_print_statistics();
+
+	if (dcache_blk != NULL)
+		free(dcache_blk);
+	if (dcache_lastused != NULL)
+		free(dcache_lastused);
+	if (dcache_buf != NULL)
+		free(dcache_buf);
+	if (dcache_valid != NULL)
+		free(dcache_valid);
+	dcache_config.num_cache_entry = 0;
+	dcache_blk = NULL;
+	dcache_lastused = NULL;
+	dcache_buf = NULL;
+	dcache_valid = NULL;
+}
+
+// return 0 for success, error code for failure.
+static int dcache_alloc_all(long n)
+{
+	if (n <= 0)
+		return -1;
+	if ((dcache_blk = (off_t *) malloc(sizeof(off_t) * n)) == NULL
+		|| (dcache_lastused = (uint64_t *)
+				malloc(sizeof(uint64_t) * n)) == NULL
+		|| (dcache_buf = (char *) malloc (F2FS_BLKSIZE * n)) == NULL
+		|| (dcache_valid = (bool *) malloc(sizeof(bool) * n)) == NULL)
+	{
+		dcache_release();
+		return -1;
+	}
+	dcache_config.num_cache_entry = n;
+	return 0;
+}
+
+static void dcache_relocate_init(void)
+{
+	int i;
+	int n0 = (sizeof(dcache_relocate_offset0)
+			/ sizeof(dcache_relocate_offset0[0]));
+	int n = (sizeof(dcache_relocate_offset)
+			/ sizeof(dcache_relocate_offset[0]));
+
+	ASSERT(n == n0);
+	for (i = 0; i < n && i < dcache_config.max_hash_collision; i++) {
+		if (labs(dcache_relocate_offset0[i])
+				> dcache_config.num_cache_entry / 2) {
+			dcache_config.max_hash_collision = i;
+			break;
+		}
+		dcache_relocate_offset[i] =
+				dcache_config.num_cache_entry
+				+ dcache_relocate_offset0[i];
+	}
+}
+
+void dcache_init(void)
+{
+	long n;
+
+	if (c.cache_config.num_cache_entry <= 0)
+		return;
+
+	/* release previous cache init, if any */
+	dcache_release();
+
+	dcache_blk = NULL;
+	dcache_lastused = NULL;
+	dcache_buf = NULL;
+	dcache_valid = NULL;
+
+	dcache_config = c.cache_config;
+
+	n = max(MIN_NUM_CACHE_ENTRY, dcache_config.num_cache_entry);
+
+	/* halve alloc size until alloc succeed, or min cache reached */
+	while (dcache_alloc_all(n) != 0 && n !=  MIN_NUM_CACHE_ENTRY)
+		n = max(MIN_NUM_CACHE_ENTRY, n/2);
+
+	/* must be the last: data dependent on num_cache_entry */
+	dcache_relocate_init();
+	dcache_initialized = true;
+
+	if (!dcache_exit_registered) {
+		dcache_exit_registered = true;
+		atexit(dcache_release); /* auto release */
+	}
+
+	dcache_raccess = 0;
+	dcache_rhit = 0;
+	dcache_rmiss = 0;
+	dcache_rreplace = 0;
+}
+
+static inline char *dcache_addr(long entry)
+{
+	return dcache_buf + F2FS_BLKSIZE * entry;
+}
+
+/* relocate on (n+1)-th collision */
+static inline long dcache_relocate(long entry, int n)
+{
+	assert(dcache_config.num_cache_entry != 0);
+	return (entry + dcache_relocate_offset[n]) %
+			dcache_config.num_cache_entry;
+}
+
+static long dcache_find(off_t blk)
+{
+	register long n = dcache_config.num_cache_entry;
+	register unsigned m = dcache_config.max_hash_collision;
+	long entry, least_used, target;
+	unsigned try;
+
+	assert(n > 0);
+	target = least_used = entry = blk % n; /* simple modulo hash */
+
+	for (try = 0; try < m; try++) {
+		if (!dcache_valid[target] || dcache_blk[target] == blk)
+			return target;  /* found target or empty cache slot */
+		if (dcache_lastused[target] < dcache_lastused[least_used])
+			least_used = target;
+		target = dcache_relocate(entry, try); /* next target */
+	}
+	return least_used;  /* max search reached, return least used slot */
+}
+
+/* Physical read into cache */
+static int dcache_io_read(int fd, long entry, off_t offset, off_t blk)
+{
+	if (lseek(fd, offset, SEEK_SET) < 0) {
+		MSG(0, "\n lseek fail.\n");
+		return -1;
+	}
+	if (read(fd, dcache_buf + entry * F2FS_BLKSIZE, F2FS_BLKSIZE) < 0) {
+		MSG(0, "\n read() fail.\n");
+		return -1;
+	}
+	dcache_lastused[entry] = ++dcache_usetick;
+	dcache_valid[entry] = true;
+	dcache_blk[entry] = blk;
+	return 0;
+}
+
+/*
+ *  - Note: Read/Write are not symmetric:
+ *       For read, we need to do it block by block, due to the cache nature:
+ *           some blocks may be cached, and others don't.
+ *       For write, since we always do a write-thru, we can join all writes into one,
+ *       and write it once at the caller.  This function updates the cache for write, but
+ *       not the do a physical write.  The caller is responsible for the physical write.
+ *  - Note: We concentrate read/write together, due to the fact of similar structure to find
+ *          the relavant cache entries
+ *  - Return values:
+ *       0: success
+ *       1: cache not available (uninitialized)
+ *      -1: error
+ */
+static int dcache_update_rw(int fd, void *buf, off_t offset,
+		size_t byte_count, bool is_write)
+{
+	off_t blk;
+	int addr_in_blk;
+	off_t start;
+
+	if (!dcache_initialized)
+		dcache_init(); /* auto initialize */
+
+	if (!dcache_initialized)
+		return 1; /* not available */
+
+	blk = offset / F2FS_BLKSIZE;
+	addr_in_blk = offset % F2FS_BLKSIZE;
+	start = blk * F2FS_BLKSIZE;
+
+	while (byte_count != 0) {
+		size_t cur_size = min(byte_count,
+				(size_t)(F2FS_BLKSIZE - addr_in_blk));
+		long entry = dcache_find(blk);
+
+		if (!is_write)
+			++dcache_raccess;
+
+		if (dcache_valid[entry] && dcache_blk[entry] == blk) {
+			/* cache hit */
+			if (is_write)  /* write: update cache */
+				memcpy(dcache_addr(entry) + addr_in_blk,
+					buf, cur_size);
+			else
+				++dcache_rhit;
+		} else {
+			/* cache miss */
+			if (!is_write) {
+				int err;
+				++dcache_rmiss;
+				if (dcache_valid[entry])
+					++dcache_rreplace;
+				/* read: physical I/O read into cache */
+				err = dcache_io_read(fd, entry, start, blk);
+				if (err)
+					return err;
+			}
+		}
+
+		/* read: copy data from cache */
+		/* write: nothing to do, since we don't do physical write. */
+		if (!is_write)
+			memcpy(buf, dcache_addr(entry) + addr_in_blk,
+				cur_size);
+
+		/* next block */
+		++blk;
+		buf += cur_size;
+		start += F2FS_BLKSIZE;
+		byte_count -= cur_size;
+		addr_in_blk = 0;
+	}
+	return 0;
+}
+
+/*
+ * dcache_update_cache() just update cache, won't do physical I/O.
+ * Thus even no error, we need normal non-cache I/O for actual write
+ *
+ * return value: 1: cache not available
+ *               0: success, -1: I/O error
+ */
+int dcache_update_cache(int fd, void *buf, off_t offset, size_t count)
+{
+	return dcache_update_rw(fd, buf, offset, count, true);
+}
+
+/* handles read into cache + read into buffer  */
+int dcache_read(int fd, void *buf, off_t offset, size_t count)
+{
+	return dcache_update_rw(fd, buf, offset, count, false);
 }
 
 /*
@@ -194,6 +511,7 @@ static int sparse_write_zeroed_blk(__u64 UNUSED(block), int UNUSED(count))
 int dev_read(void *buf, __u64 offset, size_t len)
 {
 	int fd;
+	int err;
 
 	if (c.sparse_mode)
 		return sparse_read_blk(offset / F2FS_BLKSIZE,
@@ -203,6 +521,11 @@ int dev_read(void *buf, __u64 offset, size_t len)
 	if (fd < 0)
 		return fd;
 
+	/* err = 1: cache not available, fall back to non-cache R/W */
+	/* err = 0: success, err=-1: I/O error */
+	err = dcache_read(fd, buf, (off_t)offset, len);
+	if (err <= 0)
+		return err;
 	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (read(fd, buf, len) < 0)
@@ -242,6 +565,12 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	if (fd < 0)
 		return fd;
 
+	/*
+	 * dcache_update_cache() just update cache, won't do I/O.
+	 * Thus even no error, we need normal non-cache I/O for actual write
+	 */
+	if (dcache_update_cache(fd, buf, (off_t)offset, len) < 0)
+		return -1;
 	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
 		return -1;
 	if (write(fd, buf, len) < 0)
