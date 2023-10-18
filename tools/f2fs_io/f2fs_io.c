@@ -35,6 +35,7 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
+#include <sys/xattr.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -1526,6 +1527,109 @@ static void do_gc_range(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define listxattr_desc "listxattr"
+#define listxattr_help "f2fs_io listxattr [file_path]\n\n"
+
+static void do_listxattr(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	char *buf, *key, *val;
+	ssize_t buflen, vallen, keylen;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	buflen = listxattr(argv[1], NULL, 0);
+	if (buflen == -1) {
+		perror("listxattr");
+		exit(1);
+	}
+	if (buflen == 0) {
+		printf("%s has no attributes.\n", argv[1]);
+		exit(0);
+	}
+	buf = xmalloc(buflen);
+	buflen = listxattr(argv[1], buf, buflen);
+	if (buflen == -1) {
+		perror("listxattr");
+		exit(1);
+	}
+
+	key = buf;
+	while (buflen > 0) {
+		printf("%s: ", key);
+		vallen = getxattr(argv[1], key, NULL, 0);
+		if (vallen == -1) {
+			perror("getxattr");
+			exit(1);
+		}
+		if (vallen == 0) {
+			printf("<no value>");
+		} else {
+			val = xmalloc(vallen + 1);
+			vallen = getxattr(argv[1], key, val, vallen);
+			if (vallen == -1) {
+				perror("getxattr");
+				exit(1);
+			}
+			val[vallen] = 0;
+			printf("%s", val);
+			free(val);
+		}
+		printf("\n");
+		keylen = strlen(key) + 1;
+		buflen -= keylen;
+		key += keylen;
+	}
+	exit(0);
+}
+
+#define setxattr_desc "setxattr"
+#define setxattr_help "f2fs_io setxattr [name] [value] [file_path]\n\n"
+
+static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret;
+
+	if (argc != 4) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = setxattr(argv[3], argv[1], argv[2], strlen(argv[2]), XATTR_CREATE);
+	printf("setxattr %s CREATE: name: %s, value: %s: ret=%d\n",
+			argv[3], argv[1], argv[2], ret);
+	if (ret < 0 && errno == EEXIST) {
+		ret = setxattr(argv[3], argv[1], argv[2], strlen(argv[2]), XATTR_REPLACE);
+		printf("setxattr %s REPLACE: name: %s, value: %s: ret=%d\n",
+				argv[3], argv[1], argv[2], ret);
+	}
+	if (ret < 0)
+		perror("setxattr");
+	exit(0);
+}
+
+#define removexattr_desc "removexattr"
+#define removexattr_help "f2fs_io removexattr [name] [file_path]\n\n"
+
+static void do_removexattr(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret;
+
+	if (argc != 3) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = removexattr(argv[2], argv[1]);
+	printf("removexattr %s REMOVE: name: %s: ret=%d\n", argv[1], argv[2], ret);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1564,6 +1668,9 @@ const struct cmd_desc cmd_list[] = {
 	CMD(precache_extents),
 	CMD(move_range),
 	CMD(gc_range),
+	CMD(listxattr),
+	CMD(setxattr),
+	CMD(removexattr),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
