@@ -36,7 +36,7 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 				ERR_MSG("Not enough space\n");
 				return -ENOSPC;
 			}
-			if (is_node && fsck->chk.valid_node_cnt >=
+			if (is_node && fsck->chk.valid_node_cnt >
 					sbi->total_valid_node_count) {
 				ERR_MSG("Not enough space for node block\n");
 				return -ENOSPC;
@@ -76,7 +76,7 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, blkaddr));
 	offset = OFFSET_IN_SEG(sbi, blkaddr);
-	se->type = type;
+	se->type = se->orig_type = type;
 	if (se->valid_blocks == 0)
 		SM_I(sbi)->free_segments--;
 	se->valid_blocks++;
@@ -101,6 +101,7 @@ int reserve_new_block(struct f2fs_sb_info *sbi, block_t *to,
 		if (c.func == FSCK) {
 			fsck->chk.valid_blk_cnt++;
 			if (is_node) {
+				fsck->chk.valid_nat_entry_cnt++;
 				fsck->chk.valid_node_cnt++;
 				if (is_inode)
 					fsck->chk.valid_inode_cnt++;
