@@ -330,6 +330,8 @@ struct hardlink_cache_entry *f2fs_search_hardlink(struct f2fs_sb_info *sbi,
 						struct dentry *de);
 
 /* xattr.c */
-void *read_all_xattrs(struct f2fs_sb_info *, struct f2fs_node *);
+void *read_all_xattrs(struct f2fs_sb_info *, struct f2fs_node *, bool);
+void write_all_xattrs(struct f2fs_sb_info *sbi,
+		struct f2fs_node *inode, __u32 hsize, void *txattr_addr);
 
 #endif /* _FSCK_H_ */

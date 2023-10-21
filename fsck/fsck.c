@@ -834,6 +834,43 @@ void fsck_reada_all_direct_node_blocks(struct f2fs_sb_info *sbi,
 	}
 }
 
+int chk_extended_attributes(struct f2fs_sb_info *sbi, u32 nid,
+		struct f2fs_node *inode)
+{
+	void *xattr;
+	void *last_base_addr;
+	struct f2fs_xattr_entry *ent;
+	__u32 xattr_size = XATTR_SIZE(&inode->i);
+
+	if (xattr_size == 0)
+		return 0;
+
+	xattr = read_all_xattrs(sbi, inode, false);
+	ASSERT(xattr);
+
+	last_base_addr = (void *)xattr + xattr_size;
+
+	list_for_each_xattr(ent, xattr) {
+		if ((void *)(ent) + sizeof(__u32) > last_base_addr ||
+			(void *)XATTR_NEXT_ENTRY(ent) > last_base_addr) {
+			ASSERT_MSG("[0x%x] last xattr entry (offset: %lx) "
+					"crosses the boundary",
+					nid, (long int)((void *)ent - xattr));
+			if (c.fix_on) {
+				memset(ent, 0,
+					(char *)last_base_addr - (char *)ent);
+				write_all_xattrs(sbi, inode, xattr_size, xattr);
+				FIX_MSG("[0x%x] nullify wrong xattr entries",
+						nid);
+				return 1;
+			}
+			break;
+		}
+	}
+
+	return 0;
+}
+
 /* start with valid nid and blkaddr */
 void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		enum FILE_TYPE ftype, struct f2fs_node *node_blk,
@@ -1007,6 +1044,9 @@ check_next:
 			need_fix = 1;
 		}
 	}
+
+	if (chk_extended_attributes(sbi, nid, node_blk))
+		need_fix = 1;
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		unsigned int inline_size = MAX_INLINE_DATA(node_blk);

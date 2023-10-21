@@ -17,14 +17,15 @@
 #include "node.h"
 #include "xattr.h"
 
-void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
+void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
+			bool sanity_check)
 {
 	struct f2fs_xattr_header *header;
 	void *txattr_addr;
 	u64 inline_size = inline_xattr_size(&inode->i);
 	nid_t xnid = le32_to_cpu(inode->i.i_xattr_nid);
 
-	if (c.func == FSCK && xnid) {
+	if (c.func == FSCK && xnid && sanity_check) {
 		if (fsck_sanity_check_nid(sbi, xnid, F2FS_FT_XATTR, TYPE_XATTR))
 			return NULL;
 	}
@@ -78,7 +79,7 @@ static struct f2fs_xattr_entry *__find_xattr(void *base_addr,
 	return entry;
 }
 
-static void write_all_xattrs(struct f2fs_sb_info *sbi,
+void write_all_xattrs(struct f2fs_sb_info *sbi,
 		struct f2fs_node *inode, __u32 hsize, void *txattr_addr)
 {
 	void *xattr_addr;
@@ -165,7 +166,7 @@ int f2fs_setxattr(struct f2fs_sb_info *sbi, nid_t ino, int index, const char *na
 	ret = dev_read_block(inode, ni.blk_addr);
 	ASSERT(ret >= 0);
 
-	base_addr = read_all_xattrs(sbi, inode);
+	base_addr = read_all_xattrs(sbi, inode, true);
 	ASSERT(base_addr);
 
 	last_base_addr = (void *)base_addr + XATTR_SIZE(&inode->i);

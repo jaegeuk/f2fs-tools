@@ -359,7 +359,7 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 	char xattr_name[F2FS_NAME_LEN] = {0};
 	int ret;
 
-	xattr = read_all_xattrs(sbi, node_blk);
+	xattr = read_all_xattrs(sbi, node_blk, true);
 	if (!xattr)
 		return;
 
