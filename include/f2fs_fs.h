@@ -1513,6 +1513,7 @@ struct f2fs_configuration {
 	unsigned int feature;			/* defined features */
 	unsigned int quota_bits;	/* quota bits */
 	time_t fixed_time;
+	int roll_forward;
 
 	/* mkfs parameters */
 	int fake_seed;

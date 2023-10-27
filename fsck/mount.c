@@ -3218,7 +3218,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t orphan_blks = 0;
 	unsigned long long cp_blk_no;
-	u32 flags = CP_UMOUNT_FLAG;
+	u32 flags = c.roll_forward ? 0 : CP_UMOUNT_FLAG;
 	int i, ret;
 	uint32_t crc = 0;
 
@@ -3836,6 +3836,9 @@ static int record_fsync_data(struct f2fs_sb_info *sbi)
 	ret = find_fsync_inode(sbi, &inode_list);
 	if (ret)
 		goto out;
+
+	if (c.func == FSCK && inode_list.next != &inode_list)
+		c.roll_forward = 1;
 
 	ret = late_build_segment_manager(sbi);
 	if (ret < 0) {
