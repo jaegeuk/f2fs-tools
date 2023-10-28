@@ -167,7 +167,7 @@ safe_resize:
 
 static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 {
-	void *raw = calloc(BLOCK_SZ, 1);
+	void *raw = calloc(F2FS_BLKSIZE, 1);
 	struct seg_entry *se;
 	block_t from, to;
 	int i, j, ret;
@@ -243,7 +243,7 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 					MAIN_SEGS(sbi) - offset;
 	block_t blkaddr;
 	int ret;
-	void *zero_block = calloc(BLOCK_SZ, 1);
+	void *zero_block = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(zero_block);
 
 	if (offset && new_sum_blkaddr < old_sum_blkaddr + offset) {
@@ -287,9 +287,9 @@ static int shrink_nats(struct f2fs_sb_info *sbi,
 	pgoff_t block_addr;
 	int seg_off;
 
-	nat_block = malloc(BLOCK_SZ);
+	nat_block = malloc(F2FS_BLKSIZE);
 	ASSERT(nat_block);
-	zero_block = calloc(BLOCK_SZ, 1);
+	zero_block = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(zero_block);
 
 	nat_blocks = get_newsb(segment_count_nat) >> 1;
@@ -309,7 +309,7 @@ static int shrink_nats(struct f2fs_sb_info *sbi,
 		ret = dev_read_block(nat_block, block_addr);
 		ASSERT(ret >= 0);
 
-		if (memcmp(zero_block, nat_block, BLOCK_SZ)) {
+		if (memcmp(zero_block, nat_block, F2FS_BLKSIZE)) {
 			ret = -1;
 			goto not_avail;
 		}
@@ -336,7 +336,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 	pgoff_t block_addr;
 	int seg_off;
 
-	nat_block = malloc(BLOCK_SZ);
+	nat_block = malloc(F2FS_BLKSIZE);
 	ASSERT(nat_block);
 
 	for (nid = nm_i->max_nid - 1; nid >= 0; nid -= NAT_ENTRY_PER_BLOCK) {
@@ -364,7 +364,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 		ASSERT(ret >= 0);
 	}
 	/* zero out newly assigned nids */
-	memset(nat_block, 0, BLOCK_SZ);
+	memset(nat_block, 0, F2FS_BLKSIZE);
 	nat_blocks = get_newsb(segment_count_nat) >> 1;
 	nat_blocks = nat_blocks << get_sb(log_blocks_per_seg);
 	new_max_nid = NAT_ENTRY_PER_BLOCK * nat_blocks;
@@ -396,7 +396,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 	struct sit_info *sit_i = SIT_I(sbi);
 	unsigned int ofs = 0, pre_ofs = 0;
 	unsigned int segno, index;
-	struct f2fs_sit_block *sit_blk = calloc(BLOCK_SZ, 1);
+	struct f2fs_sit_block *sit_blk = calloc(F2FS_BLKSIZE, 1);
 	block_t sit_blks = get_newsb(segment_count_sit) <<
 						(sbi->log_blocks_per_seg - 1);
 	struct seg_entry *se;
@@ -430,7 +430,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 			DBG(1, "Write valid sit: %x\n", blk_addr);
 
 			pre_ofs = ofs;
-			memset(sit_blk, 0, BLOCK_SZ);
+			memset(sit_blk, 0, F2FS_BLKSIZE);
 		}
 
 		sit = &sit_blk->entries[SIT_ENTRY_OFFSET(sit_i, segno - offset)];
@@ -464,10 +464,10 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	void *buf;
 	int i, ret;
 
-	new_cp = calloc(new_cp_blks * BLOCK_SZ, 1);
+	new_cp = calloc(new_cp_blks * F2FS_BLKSIZE, 1);
 	ASSERT(new_cp);
 
-	buf = malloc(BLOCK_SZ);
+	buf = malloc(F2FS_BLKSIZE);
 	ASSERT(buf);
 
 	/* ovp / free segments */
@@ -561,7 +561,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	ret = dev_write_block(new_cp, new_cp_blk_no++);
 	ASSERT(ret >= 0);
 
-	memset(buf, 0, BLOCK_SZ);
+	memset(buf, 0, F2FS_BLKSIZE);
 	for (i = 0; i < get_newsb(cp_payload); i++) {
 		ret = dev_write_block(buf, new_cp_blk_no++);
 		ASSERT(ret >= 0);
@@ -594,7 +594,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 		write_nat_bits(sbi, new_sb, new_cp, sbi->cur_cp == 1 ? 2 : 1);
 
 	/* disable old checkpoint */
-	memset(buf, 0, BLOCK_SZ);
+	memset(buf, 0, F2FS_BLKSIZE);
 	ret = dev_write_block(buf, old_cp_blk_no);
 	ASSERT(ret >= 0);
 

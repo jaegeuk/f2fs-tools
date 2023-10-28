@@ -859,7 +859,7 @@ void update_superblock(struct f2fs_super_block *sb, int sb_mask)
 	uint8_t *buf;
 	u32 old_crc, new_crc;
 
-	buf = calloc(BLOCK_SZ, 1);
+	buf = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(buf);
 
 	if (get_sb(feature) & F2FS_FEATURE_SB_CHKSUM) {
@@ -2366,7 +2366,7 @@ struct f2fs_summary_block *get_sum_block(struct f2fs_sb_info *sbi,
 		}
 	}
 
-	sum_blk = calloc(BLOCK_SZ, 1);
+	sum_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(sum_blk);
 
 	ret = dev_read_block(sum_blk, ssa_blk);
@@ -2410,7 +2410,7 @@ static void get_nat_entry(struct f2fs_sb_info *sbi, nid_t nid,
 	if (lookup_nat_in_journal(sbi, nid, raw_nat) >= 0)
 		return;
 
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
@@ -2432,7 +2432,7 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 	block_t oldaddr, startaddr, endaddr;
 	int ret;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	get_node_info(sbi, nid, &ni);
@@ -2484,7 +2484,7 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 	int entry_off;
 	int ret;
 
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
@@ -2532,7 +2532,7 @@ static int build_sit_entries(struct f2fs_sb_info *sbi)
 	unsigned int i, segno, end;
 	unsigned int readed, start_blk = 0;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
 	if (!sit_blk) {
 		MSG(1, "\tError: Calloc failed for build_sit_entries!\n");
 		return -ENOMEM;
@@ -2684,7 +2684,7 @@ void rewrite_sit_area_bitmap(struct f2fs_sb_info *sbi)
 	struct f2fs_summary_block *sum = curseg->sum_blk;
 	char *ptr = NULL;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(sit_blk);
 	/* remove sit journal */
 	F2FS_SUMMARY_BLOCK_JOURNAL(sum)->n_sits = 0;
@@ -2734,7 +2734,7 @@ static int flush_sit_journal_entries(struct f2fs_sb_info *sbi)
 	unsigned int segno;
 	int i;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(sit_blk);
 	for (i = 0; i < sits_in_cursum(journal); i++) {
 		struct f2fs_sit_entry *sit;
@@ -2770,7 +2770,7 @@ static int flush_nat_journal_entries(struct f2fs_sb_info *sbi)
 	int ret;
 	int i = 0;
 
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
 next:
 	if (i >= nats_in_cursum(journal)) {
@@ -2814,7 +2814,7 @@ void flush_sit_entries(struct f2fs_sb_info *sbi)
 	struct f2fs_sit_block *sit_blk;
 	unsigned int segno = 0;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(sit_blk);
 	/* update free segments */
 	for (segno = 0; segno < MAIN_SEGS(sbi); segno++) {
@@ -3129,7 +3129,7 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 			return;
 		}
 	}
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
 
 	entry_off = nid % NAT_ENTRY_PER_BLOCK;
@@ -3331,7 +3331,7 @@ void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 	int ret;
 	unsigned int i;
 
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
 
 	/* Alloc & build nat entry bitmap */

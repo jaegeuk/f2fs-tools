@@ -125,7 +125,7 @@ block_t new_node_block(struct f2fs_sb_info *sbi,
 
 	f2fs_inode = dn->inode_blk;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	F2FS_NODE_FOOTER(node_blk)->nid = cpu_to_le32(dn->nid);
@@ -290,7 +290,7 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			struct node_info ni;
 
 			get_node_info(sbi, nids[i], &ni);
-			dn->node_blk = calloc(BLOCK_SZ, 1);
+			dn->node_blk = calloc(F2FS_BLKSIZE, 1);
 			ASSERT(dn->node_blk);
 
 			ret = dev_read_block(dn->node_blk, ni.blk_addr);

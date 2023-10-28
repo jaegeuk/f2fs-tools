@@ -43,9 +43,9 @@ void nat_dump(struct f2fs_sb_info *sbi, nid_t start_nat, nid_t end_nat)
 	char buf[BUF_SZ];
 	int fd, ret, pack;
 
-	nat_block = (struct f2fs_nat_block *)calloc(BLOCK_SZ, 1);
+	nat_block = (struct f2fs_nat_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(nat_block);
-	node_block = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_block = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_block);
 
 	fd = open("dump_nat", O_CREAT|O_WRONLY|O_TRUNC, 0666);
@@ -321,7 +321,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 
 	get_node_info(sbi, nid, &ni);
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	dev_read_block(node_blk, ni.blk_addr);
@@ -558,7 +558,7 @@ void dump_node_scan_disk(struct f2fs_sb_info *sbi, nid_t nid)
 	pgoff_t end_blkaddr = start_blkaddr +
 		(SM_I(sbi)->main_segments << sbi->log_blocks_per_seg);
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 	MSG(0, "Info: scan all nid: %u from block_addr [%lu: %lu]\n",
 			nid, start_blkaddr, end_blkaddr);
@@ -590,7 +590,7 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 
 	get_node_info(sbi, nid, &ni);
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	DBG(1, "Node ID               [0x%x]\n", nid);
@@ -632,7 +632,7 @@ static void dump_node_from_blkaddr(struct f2fs_sb_info *sbi, u32 blk_addr)
 	struct f2fs_node *node_blk;
 	int ret;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	ret = dev_read_block(node_blk, blk_addr);
@@ -675,7 +675,7 @@ static void dump_data_offset(u32 blk_addr, int ofs_in_node)
 	unsigned int node_ofs;
 	int ret;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	ret = dev_read_block(node_blk, blk_addr);
@@ -697,7 +697,7 @@ static void dump_node_offset(u32 blk_addr)
 	struct f2fs_node *node_blk;
 	int ret;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	ret = dev_read_block(node_blk, blk_addr);
@@ -712,7 +712,7 @@ static int has_dirent(u32 blk_addr, int is_inline, int *enc_name)
 	struct f2fs_node *node_blk;
 	int ret, is_dentry = 0;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	ret = dev_read_block(node_blk, blk_addr);
@@ -737,7 +737,7 @@ static void dump_dirent(u32 blk_addr, int is_inline, int enc_name)
 	void *inline_dentry, *blk;
 	int ret, i = 0;
 
-	blk = calloc(BLOCK_SZ, 1);
+	blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(blk);
 
 	ret = dev_read_block(blk, blk_addr);

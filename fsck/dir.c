@@ -130,7 +130,7 @@ static int find_in_level(struct f2fs_sb_info *sbi, struct f2fs_node *dir,
 	bidx = dir_block_index(level, dir_level, le32_to_cpu(namehash) % nbucket);
 	end_block = bidx + nblock;
 
-	dentry_blk = calloc(BLOCK_SZ, 1);
+	dentry_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(dentry_blk);
 
 	memset(&dn, 0, sizeof(dn));
@@ -247,7 +247,7 @@ int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 		return -EINVAL;
 	}
 
-	dentry_blk = calloc(BLOCK_SZ, 1);
+	dentry_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(dentry_blk);
 
 	current_depth = le32_to_cpu(parent->i.i_current_depth);
@@ -349,7 +349,7 @@ static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 
 	get_node_info(sbi, ino, &ni);
 
-	dent_blk = calloc(BLOCK_SZ, 1);
+	dent_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(dent_blk);
 
 	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).hash_code = 0;
@@ -398,7 +398,7 @@ static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 		return;
 	}
 
-	data_blk = calloc(BLOCK_SZ, 1);
+	data_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(data_blk);
 
 	memcpy(data_blk, symname, symlen);
@@ -578,7 +578,7 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 		struct f2fs_dentry_block *dentry_blk;
 		struct f2fs_dentry_ptr src, dst;
 
-		dentry_blk = calloc(BLOCK_SZ, 1);
+		dentry_blk = calloc(F2FS_BLKSIZE, 1);
 		ASSERT(dentry_blk);
 
 		set_new_dnode(&dn, node, NULL, ino);
@@ -698,7 +698,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	if (de->from_devino)
 		found_hardlink = f2fs_search_hardlink(sbi, de);
 
-	parent = calloc(BLOCK_SZ, 1);
+	parent = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(parent);
 
 	ret = dev_read_block(parent, ni.blk_addr);
@@ -722,7 +722,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 		goto free_parent_dir;
 	}
 
-	child = calloc(BLOCK_SZ, 1);
+	child = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(child);
 
 	if (found_hardlink && found_hardlink->to_ino) {
@@ -770,7 +770,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 			/* Replace child with original block */
 			free(child);
 
-			child = calloc(BLOCK_SZ, 1);
+			child = calloc(F2FS_BLKSIZE, 1);
 			ASSERT(child);
 
 			ret = dev_read_block(child, blkaddr);
@@ -838,7 +838,7 @@ int f2fs_find_path(struct f2fs_sb_info *sbi, char *path, nid_t *ino)
 		return -ENOENT;
 
 	*ino = F2FS_ROOT_INO(sbi);
-	parent = calloc(BLOCK_SZ, 1);
+	parent = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(parent);
 
 	p = strtok(path, "/");

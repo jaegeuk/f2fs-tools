@@ -236,7 +236,7 @@ static int is_valid_summary(struct f2fs_sb_info *sbi, struct f2fs_summary *sum,
 	struct node_info ni;
 	int ret = 0;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk != NULL);
 
 	if (!IS_VALID_NID(sbi, nid))
@@ -545,7 +545,7 @@ int fsck_sanity_check_nid(struct f2fs_sb_info *sbi, u32 nid,
 	struct node_info ni;
 	int ret;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk != NULL);
 
 	ret = sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni);
@@ -564,7 +564,7 @@ static int fsck_chk_xattr_blk(struct f2fs_sb_info *sbi, u32 ino,
 	if (x_nid == 0x0)
 		return 0;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk != NULL);
 
 	/* Sanity check */
@@ -590,7 +590,7 @@ int fsck_chk_node_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	struct node_info ni;
 	struct f2fs_node *node_blk = NULL;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk != NULL);
 
 	if (sanity_check_nid(sbi, nid, node_blk, ftype, ntype, &ni))
@@ -657,7 +657,7 @@ int fsck_chk_root_inode(struct f2fs_sb_info *sbi)
 	u32 last_ctime_nsec = 0;
 	int ret = -EINVAL;
 
-	node_blk = calloc(BLOCK_SZ, 1);
+	node_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk);
 
 	MSG(0, "Info: root inode is corrupted, search and relink it\n");
@@ -2013,7 +2013,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 	struct f2fs_dentry *new_dentry;
 	int dentries, ret;
 
-	de_blk = (struct f2fs_dentry_block *)calloc(BLOCK_SZ, 1);
+	de_blk = (struct f2fs_dentry_block *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(de_blk != NULL);
 
 	ret = dev_read_block(de_blk, blk_addr);
@@ -2113,10 +2113,10 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 
 	f2fs_ra_meta_pages(sbi, start_blk, orphan_blkaddr, META_CP);
 
-	orphan_blk = calloc(BLOCK_SZ, 1);
+	orphan_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(orphan_blk);
 
-	new_blk = calloc(BLOCK_SZ, 1);
+	new_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(new_blk);
 
 	for (i = 0; i < orphan_blkaddr; i++) {
@@ -2164,8 +2164,8 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 			ret = dev_write_block(new_blk, start_blk + i);
 			ASSERT(ret >= 0);
 		}
-		memset(orphan_blk, 0, BLOCK_SZ);
-		memset(new_blk, 0, BLOCK_SZ);
+		memset(orphan_blk, 0, F2FS_BLKSIZE);
+		memset(new_blk, 0, F2FS_BLKSIZE);
 	}
 	free(orphan_blk);
 	free(new_blk);
@@ -2442,7 +2442,7 @@ static void fix_hard_links(struct f2fs_sb_info *sbi)
 	if (fsck->hard_link_list_head == NULL)
 		return;
 
-	node_blk = (struct f2fs_node *)calloc(BLOCK_SZ, 1);
+	node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 	ASSERT(node_blk != NULL);
 
 	node = fsck->hard_link_list_head;
@@ -2482,7 +2482,7 @@ static void flush_curseg_sit_entries(struct f2fs_sb_info *sbi)
 	struct f2fs_sit_block *sit_blk;
 	int i;
 
-	sit_blk = calloc(BLOCK_SZ, 1);
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(sit_blk);
 	/* update curseg sit entries, since we may change
 	 * a segment type in move_curseg_info

@@ -35,7 +35,7 @@ static inline unsigned int ADDRS_PER_PAGE(struct f2fs_sb_info *sbi,
 	if (!inode_blk) {
 		struct node_info ni;
 
-		inode_blk = calloc(BLOCK_SZ, 2);
+		inode_blk = calloc(F2FS_BLKSIZE, 2);
 		ASSERT(inode_blk);
 
 		get_node_info(sbi, ino, &ni);

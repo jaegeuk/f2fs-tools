@@ -302,7 +302,7 @@ void quota_add_inode_usage(quota_ctx_t qctx, f2fs_ino_t ino,
 					UINT_TO_VOIDPTR(ino), NULL);
 		}
 
-		qsize_t space = (inode->i_blocks - 1) * BLOCK_SZ;
+		qsize_t space = (inode->i_blocks - 1) * F2FS_BLKSIZE;
 		quota_data_add(qctx, inode, space);
 		quota_data_inodes(qctx, inode, +1);
 	}

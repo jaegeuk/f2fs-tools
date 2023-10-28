@@ -11,7 +11,7 @@
 
 static int migrate_block(struct f2fs_sb_info *sbi, u64 from, u64 to)
 {
-	void *raw = calloc(BLOCK_SZ, 1);
+	void *raw = calloc(F2FS_BLKSIZE, 1);
 	struct seg_entry *se;
 	struct f2fs_summary sum;
 	u64 offset;

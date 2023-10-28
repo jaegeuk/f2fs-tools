@@ -131,7 +131,7 @@ int new_data_block(struct f2fs_sb_info *sbi, void *block,
 		type = CURSEG_HOT_DATA;
 
 	ASSERT(dn->node_blk);
-	memset(block, 0, BLOCK_SZ);
+	memset(block, 0, F2FS_BLKSIZE);
 
 	get_node_info(sbi, dn->nid, &ni);
 	set_summary(&sum, dn->nid, dn->ofs_in_node, ni.version);
@@ -157,7 +157,7 @@ u64 f2fs_quota_size(struct quota_file *qf)
 	struct f2fs_node *inode;
 	u64 filesize;
 
-	inode = (struct f2fs_node *) calloc(BLOCK_SZ, 1);
+	inode = (struct f2fs_node *) calloc(F2FS_BLKSIZE, 1);
 	ASSERT(inode);
 
 	/* Read inode */
@@ -188,9 +188,9 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 	memset(&dn, 0, sizeof(dn));
 
 	/* Memory allocation for block buffer and inode. */
-	blk_buffer = calloc(BLOCK_SZ, 2);
+	blk_buffer = calloc(F2FS_BLKSIZE, 2);
 	ASSERT(blk_buffer);
-	inode = (struct f2fs_node*)(blk_buffer + BLOCK_SZ);
+	inode = (struct f2fs_node*)(blk_buffer + F2FS_BLKSIZE);
 
 	/* Read inode */
 	get_node_info(sbi, ino, &ni);
@@ -225,13 +225,13 @@ u64 f2fs_read(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 		if (blkaddr == NULL_ADDR || blkaddr == NEW_ADDR)
 			break;
 
-		off_in_blk = offset % BLOCK_SZ;
-		len_in_blk = BLOCK_SZ - off_in_blk;
+		off_in_blk = offset % F2FS_BLKSIZE;
+		len_in_blk = F2FS_BLKSIZE - off_in_blk;
 		if (len_in_blk > count)
 			len_in_blk = count;
 
 		/* Read data from single block. */
-		if (len_in_blk < BLOCK_SZ) {
+		if (len_in_blk < F2FS_BLKSIZE) {
 			ASSERT(dev_read_block(blk_buffer, blkaddr) >= 0);
 			memcpy(buffer, blk_buffer + off_in_blk, len_in_blk);
 		} else {
@@ -290,9 +290,9 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 		ASSERT(offset % F2FS_BLKSIZE == 0); /* block boundary only */
 
 	/* Memory allocation for block buffer and inode. */
-	blk_buffer = calloc(BLOCK_SZ, 2);
+	blk_buffer = calloc(F2FS_BLKSIZE, 2);
 	ASSERT(blk_buffer);
-	inode = (struct f2fs_node*)(blk_buffer + BLOCK_SZ);
+	inode = (struct f2fs_node*)(blk_buffer + F2FS_BLKSIZE);
 
 	/* Read inode */
 	get_node_info(sbi, ino, &ni);
@@ -340,13 +340,13 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 			idirty |= dn.idirty;
 		}
 
-		off_in_blk = offset % BLOCK_SZ;
-		len_in_blk = BLOCK_SZ - off_in_blk;
+		off_in_blk = offset % F2FS_BLKSIZE;
+		len_in_blk = F2FS_BLKSIZE - off_in_blk;
 		if (len_in_blk > count)
 			len_in_blk = count;
 
 		/* Write data to single block. */
-		if (len_in_blk < BLOCK_SZ) {
+		if (len_in_blk < F2FS_BLKSIZE) {
 			ASSERT(dev_read_block(blk_buffer, blkaddr) >= 0);
 			memcpy(blk_buffer + off_in_blk, buffer, len_in_blk);
 			ASSERT(dev_write_block(blk_buffer, blkaddr) >= 0);
@@ -406,7 +406,7 @@ void f2fs_filesize_update(struct f2fs_sb_info *sbi, nid_t ino, u64 filesize)
 	struct node_info ni;
 	struct f2fs_node *inode;
 
-	inode = calloc(BLOCK_SZ, 1);
+	inode = calloc(F2FS_BLKSIZE, 1);
 	ASSERT(inode);
 	get_node_info(sbi, ino, &ni);
 
@@ -504,7 +504,7 @@ static void update_largest_extent(struct f2fs_sb_info *sbi, nid_t ino)
 	memset(&dn, 0, sizeof(dn));
 	largest_ext.len = cur_ext.len = 0;
 
-	inode = (struct f2fs_node *) calloc(BLOCK_SZ, 1);
+	inode = (struct f2fs_node *) calloc(F2FS_BLKSIZE, 1);
 	ASSERT(inode);
 
 	/* Read inode info */
@@ -572,7 +572,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 {
 	int fd, n = -1;
 	pgoff_t off = 0;
-	u8 buffer[BLOCK_SZ];
+	u8 buffer[F2FS_BLKSIZE];
 	struct node_info ni;
 	struct f2fs_node *node_blk;
 
@@ -602,7 +602,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 
 		get_node_info(sbi, de->ino, &ni);
 
-		node_blk = calloc(BLOCK_SZ, 1);
+		node_blk = calloc(F2FS_BLKSIZE, 1);
 		ASSERT(node_blk);
 
 		ret = dev_read_block(node_blk, ni.blk_addr);
@@ -616,7 +616,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 			node_blk->i.i_extra_isize =
 					cpu_to_le16(calc_extra_isize());
 		}
-		n = read(fd, buffer, BLOCK_SZ);
+		n = read(fd, buffer, F2FS_BLKSIZE);
 		ASSERT((unsigned long)n == de->size);
 		memcpy(inline_data_addr(node_blk), buffer, de->size);
 		node_blk->i.i_size = cpu_to_le64(de->size);
@@ -629,7 +629,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		u8 *rbuf = c.compress.cc.rbuf;
 		unsigned int cblocks = 0;
 
-		node_blk = calloc(BLOCK_SZ, 1);
+		node_blk = calloc(F2FS_BLKSIZE, 1);
 		ASSERT(node_blk);
 
 		/* read inode */
@@ -649,11 +649,11 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 			int ret = c.compress.ops->compress(&c.compress.cc);
 			u64 wlen;
 			u32 csize = ALIGN_UP(c.compress.cc.clen +
-					COMPRESS_HEADER_SIZE, BLOCK_SZ);
+					COMPRESS_HEADER_SIZE, F2FS_BLKSIZE);
 			unsigned int cur_cblk;
 
 			if (ret || n < c.compress.cc.rlen ||
-				n < (int)(csize + BLOCK_SZ *
+				n < (int)(csize + F2FS_BLKSIZE *
 						c.compress.min_blocks)) {
 				wlen = f2fs_write(sbi, de->ino, rbuf, n, off);
 				ASSERT((int)wlen == n);
@@ -663,14 +663,14 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 				ASSERT(!wlen);
 				wlen = f2fs_write_compress_data(sbi, de->ino,
 						(u8 *)c.compress.cc.cbuf,
-						csize, off + BLOCK_SZ);
+						csize, off + F2FS_BLKSIZE);
 				ASSERT(wlen == csize);
 				c.compress.ops->reset(&c.compress.cc);
 				cur_cblk = (c.compress.cc.rlen - csize) /
-								BLOCK_SZ;
+								F2FS_BLKSIZE;
 				cblocks += cur_cblk;
 				wlen = f2fs_fix_mutable(sbi, de->ino,
-						off + BLOCK_SZ + csize,
+						off + F2FS_BLKSIZE + csize,
 						cur_cblk);
 				ASSERT(!wlen);
 			}
@@ -703,7 +703,7 @@ int f2fs_build_file(struct f2fs_sb_info *sbi, struct dentry *de)
 		}
 #endif
 	} else {
-		while ((n = read(fd, buffer, BLOCK_SZ)) > 0) {
+		while ((n = read(fd, buffer, F2FS_BLKSIZE)) > 0) {
 			f2fs_write(sbi, de->ino, buffer, n, off);
 			off += n;
 		}
