@@ -44,6 +44,9 @@ void *read_all_xattrs(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 		get_node_info(sbi, xnid, &ni);
 		ret = dev_read_block(txattr_addr + inline_size, ni.blk_addr);
 		ASSERT(ret >= 0);
+		memset(txattr_addr + inline_size + F2FS_BLKSIZE -
+				sizeof(struct node_footer), 0,
+				sizeof(struct node_footer));
 	}
 
 	header = XATTR_HDR(txattr_addr);
