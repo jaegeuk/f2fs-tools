@@ -735,7 +735,6 @@ fix:
 		struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
 		FIX_MSG("Relink root inode, blkaddr: 0x%x", last_blkaddr);
-		update_nat_journal_blkaddr(sbi, root_ino, last_blkaddr);
 		update_nat_blkaddr(sbi, root_ino, root_ino, last_blkaddr);
 
 		if (f2fs_test_bit(root_ino, fsck->nat_area_bitmap))
