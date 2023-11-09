@@ -931,7 +931,7 @@ int get_device_info(int i)
 		}
 	}
 
-	stat_buf = malloc(sizeof(struct stat));
+	stat_buf = calloc(1, sizeof(struct stat));
 	ASSERT(stat_buf);
 
 	if (!c.sparse_mode) {
