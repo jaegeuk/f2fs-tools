@@ -165,7 +165,7 @@ static int dcache_alloc_all(long n)
 		|| (dcache_lastused = (uint64_t *)
 				malloc(sizeof(uint64_t) * n)) == NULL
 		|| (dcache_buf = (char *) malloc (F2FS_BLKSIZE * n)) == NULL
-		|| (dcache_valid = (bool *) malloc(sizeof(bool) * n)) == NULL)
+		|| (dcache_valid = (bool *) calloc(sizeof(bool) * n, 1)) == NULL)
 	{
 		dcache_release();
 		return -1;
