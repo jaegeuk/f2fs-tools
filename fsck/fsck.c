@@ -3094,10 +3094,13 @@ static void fsck_disconnect_file(struct f2fs_sb_info *sbi, nid_t ino,
 		release_block_cnt(sbi, dealloc);
 		get_node_info(sbi, nid, &ni);
 		release_block(sbi, ni.blk_addr, dealloc);
+
+		if (dealloc)
+			release_nat_entry(sbi, nid);
 	}
 
 	/* clear data counters */
-	if(!(node->i.i_inline & F2FS_INLINE_DATA)) {
+	if (!(node->i.i_inline & (F2FS_INLINE_DATA | F2FS_INLINE_DENTRY))) {
 		ofs = get_extra_isize(node);
 		for (i = 0; i < ADDRS_PER_INODE(&node->i); i++) {
 			block_t addr = le32_to_cpu(node->i.i_addr[ofs + i]);
