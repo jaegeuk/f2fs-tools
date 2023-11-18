@@ -3494,7 +3494,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 	max_blks = SM_I(sbi)->main_blkaddr + (data_secs + node_secs) *
 							BLKS_PER_SEC(sbi);
 	printf("[FSCK] Max image size: %"PRIu64" MB, Free space: %"PRIu64" MB\n",
-						max_blks >> 8, free_blks >> 8);
+						max_blks >> (20 - F2FS_BLKSIZE_BITS),
+						free_blks >> (20 - F2FS_BLKSIZE_BITS));
 	printf("[FSCK] Unreachable nat entries                       ");
 	if (nr_unref_nid == 0x0) {
 		printf(" [Ok..] [0x%x]\n", nr_unref_nid);
