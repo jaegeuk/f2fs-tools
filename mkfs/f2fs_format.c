@@ -1362,9 +1362,9 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 	dqblk.dqb_bhardlimit = cpu_to_le64(0);
 	dqblk.dqb_bsoftlimit = cpu_to_le64(0);
 	if (c.lpf_ino)
-		dqblk.dqb_curspace = cpu_to_le64(8192);
+		dqblk.dqb_curspace = cpu_to_le64(F2FS_BLKSIZE * 2);
 	else
-		dqblk.dqb_curspace = cpu_to_le64(4096);
+		dqblk.dqb_curspace = cpu_to_le64(F2FS_BLKSIZE);
 	dqblk.dqb_btime = cpu_to_le64(0);
 	dqblk.dqb_itime = cpu_to_le64(0);
 
