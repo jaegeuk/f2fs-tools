@@ -3860,7 +3860,11 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_checkpoint *cp = NULL;
 	struct f2fs_super_block *sb = NULL;
+	int num_cache_entry = c.cache_config.num_cache_entry;
 	int ret;
+
+	/* Must not initiate cache until block size is known */
+	c.cache_config.num_cache_entry = 0;
 
 	sbi->active_logs = NR_CURSEG_TYPE;
 	ret = validate_super_block(sbi, SB0_ADDR);
@@ -3881,6 +3885,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 		}
 	}
 	sb = F2FS_RAW_SUPER(sbi);
+	c.cache_config.num_cache_entry = num_cache_entry;
 
 	ret = check_sector_size(sb);
 	if (ret)
