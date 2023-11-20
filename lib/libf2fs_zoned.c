@@ -306,6 +306,7 @@ int f2fs_check_zones(int j)
 
 	dev->zone_cap_blocks = malloc(dev->nr_zones * sizeof(size_t));
 	if (!dev->zone_cap_blocks) {
+		free(rep);
 		ERR_MSG("No memory for zone capacity list.\n");
 		return -ENOMEM;
 	}
