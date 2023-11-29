@@ -2849,6 +2849,14 @@ static struct f2fs_node *fsck_get_lpf(struct f2fs_sb_info *sbi)
 			/* FIXME: give up? */
 			goto out;
 		}
+
+		/* Must convert inline dentry before adding inodes */
+		err = convert_inline_dentry(sbi, node, ni.blk_addr);
+		if (err) {
+			MSG(0, "Convert inline dentry for ino=%x failed.\n",
+					lpf_ino);
+			goto out;
+		}
 	} else { /* not found, create it */
 		struct dentry de;
 

@@ -330,4 +330,8 @@ void *read_all_xattrs(struct f2fs_sb_info *, struct f2fs_node *, bool);
 void write_all_xattrs(struct f2fs_sb_info *sbi,
 		struct f2fs_node *inode, __u32 hsize, void *txattr_addr);
 
+/* dir.c */
+int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
+		block_t p_blkaddr);
+
 #endif /* _FSCK_H_ */
