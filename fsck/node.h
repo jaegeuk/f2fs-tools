@@ -99,6 +99,7 @@ static inline void set_new_dnode(struct dnode_of_data *dn,
 	dn->nid = nid;
 	dn->idirty = 0;
 	dn->ndirty = 0;
+	dn->alloced = 0;
 }
 
 static inline void inc_inode_blocks(struct dnode_of_data *dn)

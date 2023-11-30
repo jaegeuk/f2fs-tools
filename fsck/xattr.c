@@ -94,6 +94,7 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 	nid_t xnid = le32_to_cpu(inode->i.i_xattr_nid);
 	u64 inline_size = inline_xattr_size(&inode->i);
 	int ret;
+	bool xattrblk_alloced = false;
 
 	memcpy(inline_xattr_addr(&inode->i), txattr_addr, inline_size);
 
@@ -109,6 +110,7 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 		ASSERT(dn.node_blk);
 		xattr_node = dn.node_blk;
 		inode->i.i_xattr_nid = cpu_to_le32(new_nid);
+		xattrblk_alloced = true;
 	} else {
 		set_new_dnode(&dn, inode, NULL, xnid);
 		get_node_info(sbi, xnid, &ni);
@@ -125,7 +127,8 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 	memcpy(xattr_addr, txattr_addr + inline_size,
 			F2FS_BLKSIZE - sizeof(struct node_footer));
 
-	ret = dev_write_block(xattr_node, blkaddr);
+	ret = xattrblk_alloced ? dev_write_block(xattr_node, blkaddr) :
+		update_block(sbi, xattr_node, &blkaddr, NULL);
 
 free_xattr_node:
 	free(xattr_node);
@@ -250,7 +253,7 @@ int f2fs_setxattr(struct f2fs_sb_info *sbi, nid_t ino, int index, const char *na
 	write_all_xattrs(sbi, inode, new_hsize, base_addr);
 
 	/* inode need update */
-	ASSERT(write_inode(inode, ni.blk_addr) >= 0);
+	ASSERT(update_inode(sbi, inode, &ni.blk_addr) >= 0);
 exit:
 	free(inode);
 	free(base_addr);

@@ -45,7 +45,7 @@ static inline int f2fs_test_main_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 						fsck->main_area_bitmap);
 }
 
-static inline int f2fs_clear_main_bitmap(struct f2fs_sb_info *sbi, u32 blk)
+int f2fs_clear_main_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
@@ -67,7 +67,7 @@ int f2fs_set_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 	return f2fs_set_bit(BLKOFF_FROM_MAIN(sbi, blk), fsck->sit_area_bitmap);
 }
 
-static inline int f2fs_clear_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
+int f2fs_clear_sit_bitmap(struct f2fs_sb_info *sbi, u32 blk)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
@@ -1182,7 +1182,9 @@ check_next:
 				blkaddr,
 				&child, (i_blocks == *blk_cnt),
 				ftype, nid, idx, ni->version,
-				file_is_encrypt(&node_blk->i));
+				file_is_encrypt(&node_blk->i), node_blk);
+		if (blkaddr != le32_to_cpu(node_blk->i.i_addr[ofs + idx]))
+			need_fix = 1;
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
 			if (cur_qtype != -1 && blkaddr != NEW_ADDR)
@@ -1398,7 +1400,9 @@ skip_blkcnt_fix:
 	}
 
 	if (need_fix && f2fs_dev_is_writable()) {
-		ret = dev_write_block(node_blk, ni->blk_addr);
+		if (c.zoned_model == F2FS_ZONED_HM)
+			node_blk->i.i_ext.len = 0;
+		ret = update_block(sbi, node_blk, &ni->blk_addr, NULL);
 		ASSERT(ret >= 0);
 	}
 }
@@ -1450,7 +1454,9 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 			blkaddr, child,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
 			nid, idx, ni->version,
-			file_is_encrypt(inode));
+			file_is_encrypt(inode), node_blk);
+		if (blkaddr != le32_to_cpu(node_blk->dn.addr[idx]))
+			need_fix = 1;
 		if (!ret) {
 			*blk_cnt = *blk_cnt + 1;
 			if (cur_qtype != -1 && blkaddr != NEW_ADDR)
@@ -1462,7 +1468,7 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		}
 	}
 	if (need_fix && f2fs_dev_is_writable()) {
-		ret = dev_write_block(node_blk, ni->blk_addr);
+		ret = update_block(sbi, node_blk, &ni->blk_addr, NULL);
 		ASSERT(ret >= 0);
 	}
 	return 0;
@@ -1504,7 +1510,7 @@ skip:
 		nid_t nid = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid);
 
 		get_node_info(sbi, nid, &ni);
-		ret = dev_write_block(node_blk, ni.blk_addr);
+		ret = update_block(sbi, node_blk, &ni.blk_addr, NULL);
 		ASSERT(ret >= 0);
 	}
 
@@ -1546,7 +1552,7 @@ skip:
 		nid_t nid = le32_to_cpu(F2FS_NODE_FOOTER(node_blk)->nid);
 
 		get_node_info(sbi, nid, &ni);
-		ret = dev_write_block(node_blk, ni.blk_addr);
+		ret = update_block(sbi, node_blk, &ni.blk_addr, NULL);
 		ASSERT(ret >= 0);
 	}
 
@@ -2004,7 +2010,8 @@ int fsck_chk_inline_dentries(struct f2fs_sb_info *sbi,
 }
 
 int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
-		struct child_info *child, int last_blk, int enc_name)
+		struct child_info *child, int last_blk, int enc_name,
+		struct f2fs_node *node_blk)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	struct f2fs_dentry_block *de_blk;
@@ -2032,7 +2039,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 			NR_DENTRY_IN_BLOCK, last_blk, enc_name);
 
 	if (dentries < 0 && f2fs_dev_is_writable()) {
-		ret = dev_write_block(de_blk, blk_addr);
+		ret = update_block(sbi, de_blk, &blk_addr, node_blk);
 		ASSERT(ret >= 0);
 		DBG(1, "[%3d] Dentry Block [0x%x] Fixed hash_codes\n\n",
 			fsck->dentry_depth, blk_addr);
@@ -2054,7 +2061,7 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 int fsck_chk_data_blk(struct f2fs_sb_info *sbi, int casefolded,
 		u32 blk_addr, struct child_info *child, int last_blk,
 		enum FILE_TYPE ftype, u32 parent_nid, u16 idx_in_node, u8 ver,
-		int enc_name)
+		int enc_name, struct f2fs_node *node_blk)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 
@@ -2088,7 +2095,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, int casefolded,
 	if (ftype == F2FS_FT_DIR) {
 		f2fs_set_main_bitmap(sbi, blk_addr, CURSEG_HOT_DATA);
 		return fsck_chk_dentry_blk(sbi, casefolded, blk_addr, child,
-						last_blk, enc_name);
+				last_blk, enc_name, node_blk);
 	} else {
 		f2fs_set_main_bitmap(sbi, blk_addr, CURSEG_WARM_DATA);
 	}
@@ -2456,7 +2463,7 @@ static void fix_hard_links(struct f2fs_sb_info *sbi)
 		FIX_MSG("File: 0x%x i_links= 0x%x -> 0x%x",
 				node->nid, node->links, node->actual_links);
 
-		ret = dev_write_block(node_blk, ni.blk_addr);
+		ret = update_block(sbi, node_blk, &ni.blk_addr, NULL);
 		ASSERT(ret >= 0);
 		tmp = node;
 		node = node->next;
@@ -2640,13 +2647,8 @@ static int last_vblk_off_in_zone(struct f2fs_sb_info *sbi,
 	for (s = segs_per_zone - 1; s >= 0; s--) {
 		se = get_seg_entry(sbi, zone_segno + s);
 
-		/*
-		 * Refer not cur_valid_map but ckpt_valid_map which reflects
-		 * fsync data.
-		 */
-		ASSERT(se->ckpt_valid_map);
 		for (b = sbi->blocks_per_seg - 1; b >= 0; b--)
-			if (f2fs_test_bit(b, (const char*)se->ckpt_valid_map))
+			if (f2fs_test_bit(b, (const char *)se->cur_valid_map))
 				return b + (s << sbi->log_blocks_per_seg);
 	}
 
@@ -2662,6 +2664,9 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
 	uint64_t cs_sector, wp_sector;
 	int i, ret;
 	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
+
+	if (!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG))
+		return -EINVAL;
 
 	/* get the device the curseg points to */
 	cs_block = START_BLOCK(sbi, curseg->segno) + curseg->next_blkoff;
@@ -2695,12 +2700,7 @@ static int check_curseg_write_pointer(struct f2fs_sb_info *sbi, int type)
 	wp_sector = blk_zone_wp_sector(&blkz);
 
 	if (cs_sector == wp_sector) {
-		if (is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG))
-			return 0;
-		MSG(0, "Correct write pointer. But, we can't trust it, "
-		    "since the previous mount wasn't safely unmounted: "
-		    "curseg %d[0x%x,0x%x]\n",
-		    type, curseg->segno, curseg->next_blkoff);
+		return 0;
 	} else if (cs_sector > wp_sector) {
 		MSG(0, "Inconsistent write pointer with curseg %d: "
 		    "curseg %d[0x%x,0x%x] > wp[0x%x,0x%x]\n",
@@ -2851,7 +2851,7 @@ static struct f2fs_node *fsck_get_lpf(struct f2fs_sb_info *sbi)
 		}
 
 		/* Must convert inline dentry before adding inodes */
-		err = convert_inline_dentry(sbi, node, ni.blk_addr);
+		err = convert_inline_dentry(sbi, node, &ni.blk_addr);
 		if (err) {
 			MSG(0, "Convert inline dentry for ino=%x failed.\n",
 					lpf_ino);
@@ -2913,7 +2913,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 	get_node_info(sbi, le32_to_cpu(F2FS_NODE_FOOTER(lpf)->ino), &ni);
 	ftype = map_de_type(le16_to_cpu(fnode->i.i_mode));
 	ret = f2fs_add_link(sbi, lpf, (unsigned char *)name, namelen,
-			    ino, ftype, ni.blk_addr, 0);
+			    ino, ftype, &ni.blk_addr, 0);
 	if (ret) {
 		ASSERT_MSG("Failed to add inode [0x%x] to lost+found", ino);
 		return -EINVAL;
@@ -2924,7 +2924,7 @@ static int fsck_do_reconnect_file(struct f2fs_sb_info *sbi,
 	fnode->i.i_namelen = cpu_to_le32(namelen);
 	fnode->i.i_pino = c.lpf_ino;
 	get_node_info(sbi, le32_to_cpu(F2FS_NODE_FOOTER(fnode)->ino), &ni);
-	ret = dev_write_block(fnode, ni.blk_addr);
+	ret = update_block(sbi, fnode, &ni.blk_addr, NULL);
 	ASSERT(ret >= 0);
 
 	DBG(1, "Reconnect inode [0x%x] to lost+found\n", ino);
@@ -2964,6 +2964,8 @@ static inline void release_block(struct f2fs_sb_info *sbi, u64 blkaddr,
 		offset = OFFSET_IN_SEG(sbi, blkaddr);
 		se->valid_blocks--;
 		f2fs_clear_bit(offset, (char *)se->cur_valid_map);
+		if (need_fsync_data_record(sbi))
+			f2fs_clear_bit(offset, (char *)se->ckpt_valid_map);
 		se->dirty = 1;
 		f2fs_clear_sit_bitmap(sbi, blkaddr);
 	}
@@ -3384,12 +3386,16 @@ void fsck_chk_and_fix_write_pointers(struct f2fs_sb_info *sbi)
 	if (c.zoned_model != F2FS_ZONED_HM)
 		return;
 
-	if (check_curseg_offsets(sbi, true) && c.fix_on) {
-		fix_curseg_info(sbi, true);
+	if (c.fix_on) {
+		flush_nat_journal_entries(sbi);
+		flush_sit_journal_entries(sbi);
+
+		if (check_curseg_offsets(sbi, true))
+			fix_curseg_info(sbi, true);
+
+		fix_wp_sit_alignment(sbi);
 		fsck->chk.wp_fixed = 1;
 	}
-
-	fix_wp_sit_alignment(sbi);
 }
 
 int fsck_chk_curseg_info(struct f2fs_sb_info *sbi)
@@ -3627,13 +3633,31 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 		struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 
 		if (force || c.bug_on || c.bug_nat_bits || c.quota_fixed) {
-			/* flush nats to write_nit_bits below */
-			flush_journal_entries(sbi);
+			if (c.zoned_model != F2FS_ZONED_HM) {
+				/* flush nats to write_nit_bits below */
+				flush_journal_entries(sbi);
+			}
 			fix_hard_links(sbi);
 			fix_nat_entries(sbi);
 			rewrite_sit_area_bitmap(sbi);
-			fix_wp_sit_alignment(sbi);
-			fix_curseg_info(sbi, false);
+			if (c.zoned_model == F2FS_ZONED_HM) {
+				struct curseg_info *curseg;
+				u64 ssa_blk;
+
+				for (i = 0; i < NO_CHECK_TYPE; i++) {
+					curseg = CURSEG_I(sbi, i);
+					ssa_blk = GET_SUM_BLKADDR(sbi,
+							curseg->segno);
+					ret = dev_write_block(curseg->sum_blk,
+							ssa_blk);
+					ASSERT(ret >= 0);
+				}
+				if (c.roll_forward)
+					restore_curseg_warm_node_info(sbi);
+				write_curseg_info(sbi);
+			} else {
+				fix_curseg_info(sbi, false);
+			}
 			fix_checksum(sbi);
 			fix_checkpoints(sbi);
 		} else if (is_set_ckpt_flags(cp, CP_FSCK_FLAG) ||

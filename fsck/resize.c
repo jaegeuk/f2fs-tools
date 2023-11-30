@@ -196,7 +196,7 @@ static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 
 			if (IS_DATASEG(se->type))
 				update_data_blkaddr(sbi, le32_to_cpu(sum.nid),
-					le16_to_cpu(sum.ofs_in_node), to);
+					le16_to_cpu(sum.ofs_in_node), to, NULL);
 			else
 				update_nat_blkaddr(sbi, 0,
 						le32_to_cpu(sum.nid), to);

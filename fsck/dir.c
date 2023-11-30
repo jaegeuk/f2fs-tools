@@ -220,7 +220,7 @@ static void f2fs_update_dentry(nid_t ino, int file_type,
  */
 int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 			const unsigned char *name, int name_len, nid_t ino,
-			int file_type, block_t p_blkaddr, int inc_link)
+			int file_type, block_t *p_blkaddr, int inc_link)
 {
 	int level = 0, current_depth, bit_pos;
 	int nbucket, nblock, bidx, block;
@@ -232,6 +232,7 @@ int f2fs_add_link(struct f2fs_sb_info *sbi, struct f2fs_node *parent,
 	nid_t pino;
 	unsigned int dir_level;
 	int ret;
+	bool datablk_alloced = false;
 
 	if (parent == NULL)
 		return -EINVAL;
@@ -278,6 +279,7 @@ start:
 
 		if (dn.data_blkaddr == NULL_ADDR) {
 			new_data_block(sbi, dentry_blk, &dn, CURSEG_HOT_DATA);
+			datablk_alloced = true;
 		} else {
 			ret = dev_read_block(dentry_blk, dn.data_blkaddr);
 			ASSERT(ret >= 0);
@@ -295,7 +297,20 @@ add_dentry:
 	make_dentry_ptr(&d, NULL, (void *)dentry_blk, 1);
 	f2fs_update_dentry(ino, file_type, &d, name, name_len, dentry_hash, bit_pos);
 
-	ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+	if (c.zoned_model == F2FS_ZONED_HM) {
+		if (datablk_alloced) {
+			ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+		} else {
+			ret = update_block(sbi, dentry_blk, &dn.data_blkaddr,
+					dn.node_blk);
+			if (dn.inode_blk == dn.node_blk)
+				dn.idirty = 1;
+			else
+				dn.ndirty = 1;
+		}
+	} else {
+		ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+	}
 	ASSERT(ret >= 0);
 
 	/*
@@ -321,13 +336,15 @@ add_dentry:
 	}
 
 	if (dn.ndirty) {
-		ret = dev_write_block(dn.node_blk, dn.node_blkaddr);
+		ret = dn.alloced ?
+			dev_write_block(dn.node_blk, dn.node_blkaddr) :
+			update_block(sbi, dn.node_blk, &dn.node_blkaddr, NULL);
 		ASSERT(ret >= 0);
 	}
 
 	if (dn.idirty) {
 		ASSERT(parent == dn.inode_blk);
-		ret = write_inode(dn.inode_blk, p_blkaddr);
+		ret = update_inode(sbi, dn.inode_blk, p_blkaddr);
 		ASSERT(ret >= 0);
 	}
 
@@ -552,7 +569,7 @@ static void init_inode_block(struct f2fs_sb_info *sbi,
 }
 
 int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
-							block_t p_blkaddr)
+							block_t *p_blkaddr)
 {
 	struct f2fs_inode *inode = &(node->i);
 	unsigned int dir_level = node->i.i_dir_level;
@@ -562,6 +579,7 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 	struct f2fs_dentry_ptr d;
 	unsigned long bit_pos = 0;
 	int ret = 0;
+	bool datablk_alloced = false;
 
 	if (!(inode->i_inline & F2FS_INLINE_DENTRY))
 		return 0;
@@ -570,7 +588,7 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 	memset(inline_data_addr(node), 0, MAX_INLINE_DATA(node));
 	inode->i_inline &= ~F2FS_INLINE_DENTRY;
 
-	ret = dev_write_block(node, p_blkaddr);
+	ret = update_block(sbi, node, p_blkaddr, NULL);
 	ASSERT(ret >= 0);
 
 	memset(&dn, 0, sizeof(dn));
@@ -583,8 +601,10 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 
 		set_new_dnode(&dn, node, NULL, ino);
 		get_dnode_of_data(sbi, &dn, 0, ALLOC_NODE);
-		if (dn.data_blkaddr == NULL_ADDR)
+		if (dn.data_blkaddr == NULL_ADDR) {
 			new_data_block(sbi, dentry_blk, &dn, CURSEG_HOT_DATA);
+			datablk_alloced = true;
+		}
 
 		make_dentry_ptr(&src, node, (void *)inline_data, 2);
 		make_dentry_ptr(&dst, NULL, (void *)dentry_blk, 1);
@@ -597,7 +617,9 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 		memcpy(dst.dentry, src.dentry, SIZE_OF_DIR_ENTRY * src.max);
 		memcpy(dst.filename, src.filename, src.max * F2FS_SLOT_LEN);
 
-		ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+		ret = datablk_alloced ?
+			dev_write_block(dentry_blk, dn.data_blkaddr) :
+			update_block(sbi, dentry_blk, &dn.data_blkaddr, NULL);
 		ASSERT(ret >= 0);
 
 		MSG(1, "%s: copy inline entry to block\n", __func__);
@@ -687,6 +709,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	struct f2fs_summary sum;
 	block_t blkaddr = NULL_ADDR;
 	int ret;
+	bool nodeblk_alloced = false;
 
 	/* Find if there is a */
 	get_node_info(sbi, de->pino, &ni);
@@ -705,7 +728,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	ASSERT(ret >= 0);
 
 	/* Must convert inline dentry before the following opertions */
-	ret = convert_inline_dentry(sbi, parent, ni.blk_addr);
+	ret = convert_inline_dentry(sbi, parent, &ni.blk_addr);
 	if (ret) {
 		MSG(0, "Convert inline dentry for pino=%x failed.\n", de->pino);
 		ret = -1;
@@ -753,7 +776,7 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 				le32_to_cpu(child->i.i_namelen),
 				le32_to_cpu(F2FS_NODE_FOOTER(child)->ino),
 				map_de_type(le16_to_cpu(child->i.i_mode)),
-				ni.blk_addr, 1);
+				&ni.blk_addr, 1);
 	if (ret) {
 		MSG(0, "Skip the existing \"%s\" pino=%x ERR=%d\n",
 					de->name, de->pino, ret);
@@ -788,13 +811,15 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	/* write child */
 	set_summary(&sum, de->ino, 0, ni.version);
 	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE, 1);
+	nodeblk_alloced = true;
 	ASSERT(!ret);
 
 	/* update nat info */
 	update_nat_blkaddr(sbi, de->ino, de->ino, blkaddr);
 
 write_child_dir:
-	ret = dev_write_block(child, blkaddr);
+	ret = nodeblk_alloced ? dev_write_block(child, blkaddr) :
+		update_block(sbi, child, &blkaddr, NULL);
 	ASSERT(ret >= 0);
 
 	update_free_segments(sbi);

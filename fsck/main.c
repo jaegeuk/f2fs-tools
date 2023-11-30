@@ -834,6 +834,9 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 
 	print_cp_state(flag);
 
+	if (c.roll_forward && c.zoned_model == F2FS_ZONED_HM)
+		save_curseg_warm_node_info(sbi);
+
 	fsck_chk_and_fix_write_pointers(sbi);
 
 	fsck_chk_curseg_info(sbi);

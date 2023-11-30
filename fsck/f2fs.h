@@ -189,6 +189,7 @@ struct curseg_info {
 struct f2fs_sm_info {
 	struct sit_info *sit_info;
 	struct curseg_info *curseg_array;
+	struct curseg_info saved_curseg_warm_node;
 
 	block_t seg0_blkaddr;
 	block_t main_blkaddr;
@@ -238,7 +239,7 @@ struct dnode_of_data {
 	unsigned int ofs_in_node;
 	block_t data_blkaddr;
 	block_t node_blkaddr;
-	int idirty, ndirty;
+	int idirty, ndirty, alloced;
 };
 
 struct hardlink_cache_entry {

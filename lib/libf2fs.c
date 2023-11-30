@@ -919,6 +919,7 @@ int get_device_info(int i)
 	unsigned char model_inq[6] = {MODELINQUIRY};
 #endif
 	struct device_info *dev = c.devices + i;
+	int flags = O_RDWR;
 
 	if (c.sparse_mode) {
 		fd = open(dev->path, O_RDWR | O_CREAT | O_BINARY, 0644);
@@ -934,20 +935,33 @@ int get_device_info(int i)
 	stat_buf = calloc(1, sizeof(struct stat));
 	ASSERT(stat_buf);
 
-	if (!c.sparse_mode) {
-		if (stat(dev->path, stat_buf) < 0 ) {
-			MSG(0, "\tError: Failed to get the device stat!\n");
+	if (stat(dev->path, stat_buf) < 0) {
+		MSG(0, "\tError: Failed to get the device stat!\n");
+		free(stat_buf);
+		return -1;
+	}
+
+#ifdef __linux__
+	if (S_ISBLK(stat_buf->st_mode)) {
+		if (f2fs_get_zoned_model(i) < 0) {
 			free(stat_buf);
 			return -1;
 		}
+	}
+#endif
+
+	if (!c.sparse_mode) {
+		if (dev->zoned_model == F2FS_ZONED_HM && c.func == FSCK)
+			flags |= O_DSYNC;
 
 		if (S_ISBLK(stat_buf->st_mode) &&
 				!c.force && c.func != DUMP && !c.dry_run) {
-			fd = open(dev->path, O_RDWR | O_EXCL);
+			flags |= O_EXCL;
+			fd = open(dev->path, flags);
 			if (fd < 0)
 				fd = open_check_fs(dev->path, O_EXCL);
 		} else {
-			fd = open(dev->path, O_RDWR);
+			fd = open(dev->path, flags);
 			if (fd < 0)
 				fd = open_check_fs(dev->path, 0);
 		}
@@ -1047,13 +1061,6 @@ int get_device_info(int i)
 	}
 
 #ifdef __linux__
-	if (S_ISBLK(stat_buf->st_mode)) {
-		if (f2fs_get_zoned_model(i) < 0) {
-			free(stat_buf);
-			return -1;
-		}
-	}
-
 	if (dev->zoned_model != F2FS_ZONED_NONE) {
 
 		/* Get the number of blocks per zones */
@@ -1104,6 +1111,7 @@ int get_device_info(int i)
 		}
 	}
 #endif
+
 	/* adjust wanted_total_sectors */
 	if (c.wanted_total_sectors != -1) {
 		MSG(0, "Info: wanted sectors = %"PRIu64" (in %"PRIu64" bytes)\n",

@@ -153,8 +153,7 @@ struct selabel_handle;
 
 static inline bool need_fsync_data_record(struct f2fs_sb_info *sbi)
 {
-	return !is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG) ||
-		c.zoned_model == F2FS_ZONED_HM;
+	return !is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG);
 }
 
 extern int fsck_chk_orphan_node(struct f2fs_sb_info *);
@@ -181,9 +180,10 @@ extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		enum FILE_TYPE, struct f2fs_node *, u32 *,
 		struct f2fs_compr_blk_cnt *, struct child_info *);
 extern int fsck_chk_data_blk(struct f2fs_sb_info *, int,
-		u32, struct child_info *, int, enum FILE_TYPE, u32, u16, u8, int);
+		u32, struct child_info *, int, enum FILE_TYPE, u32, u16, u8,
+		int, struct f2fs_node *);
 extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, int,
-		u32, struct child_info *, int, int);
+		u32, struct child_info *, int, int, struct f2fs_node *);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
 		struct child_info *);
 void fsck_chk_checkpoint(struct f2fs_sb_info *sbi);
@@ -209,7 +209,9 @@ extern void rewrite_sit_area_bitmap(struct f2fs_sb_info *);
 extern void build_nat_area_bitmap(struct f2fs_sb_info *);
 extern void build_sit_area_bitmap(struct f2fs_sb_info *);
 extern int f2fs_set_main_bitmap(struct f2fs_sb_info *, u32, int);
+extern int f2fs_clear_main_bitmap(struct f2fs_sb_info *, u32);
 extern int f2fs_set_sit_bitmap(struct f2fs_sb_info *, u32);
+extern int f2fs_clear_sit_bitmap(struct f2fs_sb_info *, u32);
 extern void fsck_init(struct f2fs_sb_info *);
 extern int fsck_verify(struct f2fs_sb_info *);
 extern void fsck_free(struct f2fs_sb_info *);
@@ -225,13 +227,18 @@ extern void update_curseg_info(struct f2fs_sb_info *, int);
 extern void zero_journal_entries(struct f2fs_sb_info *);
 extern void flush_sit_entries(struct f2fs_sb_info *);
 extern void move_curseg_info(struct f2fs_sb_info *, u64, int);
+extern void move_one_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left,
+				 int i);
 extern void write_curseg_info(struct f2fs_sb_info *);
+extern void save_curseg_warm_node_info(struct f2fs_sb_info *);
+extern void restore_curseg_warm_node_info(struct f2fs_sb_info *);
 extern int find_next_free_block(struct f2fs_sb_info *, u64 *, int, int, bool);
 extern void duplicate_checkpoint(struct f2fs_sb_info *);
 extern void write_checkpoint(struct f2fs_sb_info *);
 extern void write_checkpoints(struct f2fs_sb_info *);
 extern void update_superblock(struct f2fs_super_block *, int);
-extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t);
+extern void update_data_blkaddr(struct f2fs_sb_info *, nid_t, u16, block_t,
+			struct f2fs_node *);
 extern void update_nat_blkaddr(struct f2fs_sb_info *, nid_t, nid_t, block_t);
 
 extern void print_raw_sb_info(struct f2fs_super_block *);
@@ -294,6 +301,8 @@ void set_data_blkaddr(struct dnode_of_data *);
 block_t new_node_block(struct f2fs_sb_info *,
 					struct dnode_of_data *, unsigned int);
 int f2fs_rebuild_qf_inode(struct f2fs_sb_info *sbi, int qtype);
+int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
+					struct f2fs_node *node_blk);
 
 /* segment.c */
 struct quota_file;
@@ -321,7 +330,7 @@ int inode_set_selinux(struct f2fs_sb_info *, u32, const char *);
 int f2fs_find_path(struct f2fs_sb_info *, char *, nid_t *);
 nid_t f2fs_lookup(struct f2fs_sb_info *, struct f2fs_node *, u8 *, int);
 int f2fs_add_link(struct f2fs_sb_info *, struct f2fs_node *,
-		const unsigned char *, int, nid_t, int, block_t, int);
+		const unsigned char *, int, nid_t, int, block_t *, int);
 struct hardlink_cache_entry *f2fs_search_hardlink(struct f2fs_sb_info *sbi,
 						struct dentry *de);
 
@@ -332,6 +341,14 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 
 /* dir.c */
 int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
-		block_t p_blkaddr);
+		block_t *p_blkaddr);
+
+/* node.c */
+int update_inode(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
+		u32 *blkaddr);
+
+/* mount.c */
+int flush_nat_journal_entries(struct f2fs_sb_info *sbi);
+int flush_sit_journal_entries(struct f2fs_sb_info *sbi);
 
 #endif /* _FSCK_H_ */

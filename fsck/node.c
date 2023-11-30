@@ -69,6 +69,8 @@ int f2fs_rebuild_qf_inode(struct f2fs_sb_info *sbi, int qtype)
 	F2FS_NODE_FOOTER(raw_node)->cp_ver = cpu_to_le64(cp_ver);
 
 	get_node_info(sbi, ino, &ni);
+	if (ni.ino != ino)
+		ni.version = 0;
 	set_summary(&sum, ino, 0, ni.version);
 	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_NODE, 1);
 	if (ret) {
@@ -255,6 +257,7 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 	block_t nblk[4];
 	struct node_info ni;
 	int level, i;
+	bool parent_alloced = false;
 	int ret;
 
 	level = get_node_path(dn->inode_blk, index, offset, noffset);
@@ -274,6 +277,14 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			f2fs_alloc_nid(sbi, &nids[i]);
 
 			dn->nid = nids[i];
+			set_nid(parent, offset[i - 1], nids[i], i == 1);
+
+			/* Parent node has changed */
+			if (!parent_alloced)
+				ret = update_block(sbi, parent, &nblk[i - 1], NULL);
+			else
+				ret = dev_write_block(parent, nblk[i - 1]);
+			ASSERT(ret >= 0);
 
 			/* Function new_node_blk get a new f2fs_node blk and update*/
 			/* We should make sure that dn->node_blk == NULL*/
@@ -284,7 +295,9 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 				return -EINVAL;
 			}
 
-			set_nid(parent, offset[i - 1], nids[i], i == 1);
+			parent_alloced = true;
+			if (i == level)
+				dn->alloced = 1;
 		} else {
 			/* If Sparse file no read API, */
 			struct node_info ni;
@@ -299,11 +312,6 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			nblk[i] = ni.blk_addr;
 		}
 
-		if (mode == ALLOC_NODE){
-			/* Parent node may have changed */
-			ret = dev_write_block(parent, nblk[i - 1]);
-			ASSERT(ret >= 0);
-		}
 		if (i != 1)
 			free(parent);
 
@@ -318,4 +326,13 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 	dn->data_blkaddr = datablock_addr(dn->node_blk, dn->ofs_in_node);
 	dn->node_blkaddr = nblk[level];
 	return 0;
+}
+
+int update_inode(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
+				u32 *blkaddr)
+{
+	if (c.feature & cpu_to_le32(F2FS_FEATURE_INODE_CHKSUM))
+		inode->i.i_inode_checksum =
+			cpu_to_le32(f2fs_inode_chksum(inode));
+	return update_block(sbi, inode, blkaddr, NULL);
 }
