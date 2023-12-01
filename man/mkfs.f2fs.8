@@ -116,6 +116,12 @@ If the value is equal to 1, each of active log areas are initially
 assigned separately according to the whole volume size.
 The default value is 1.
 .TP
+.BI \-b " block size"
+Specify the block size in bytes. Valid blocksizes are powers of 2.
+Currently, the kernel is only able to mount f2fs filesystems where the
+block size matches the page size.
+The default value is 4096.
+.TP
 .BI \-c " device-list"
 Build f2fs with these additional comma separated devices, so that the user can
 see all the devices as one big volume.
