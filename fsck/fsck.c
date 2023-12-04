@@ -3268,8 +3268,9 @@ static int chk_and_fix_wp_with_sit(int UNUSED(i), void *blkzone, void *opaque)
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
 	block_t zone_block, wp_block, wp_blkoff;
 	unsigned int zone_segno, wp_segno;
-	int ret, last_valid_blkoff;
+	int i, ret, last_valid_blkoff;
 	int log_sectors_per_block = sbi->log_blocksize - SECTOR_SHIFT;
+	unsigned int segs_per_zone = sbi->segs_per_sec * sbi->secs_per_zone;
 
 	if (blk_zone_conv(blkz))
 		return 0;
@@ -3310,6 +3311,15 @@ static int chk_and_fix_wp_with_sit(int UNUSED(i), void *blkzone, void *opaque)
 		}
 		fsck->chk.wp_fixed = 1;
 		return 0;
+	}
+
+	/* if a curseg points to the zone, do not finishing zone */
+	for (i = 0; i < NO_CHECK_TYPE; i++) {
+		struct curseg_info *cs = CURSEG_I(sbi, i);
+
+		if (zone_segno <= cs->segno &&
+				cs->segno < zone_segno + segs_per_zone)
+			return 0;
 	}
 
 	/*
