@@ -1052,7 +1052,7 @@ check_next:
 	ofs = get_extra_isize(node_blk);
 
 	if ((node_blk->i.i_flags & cpu_to_le32(F2FS_CASEFOLD_FL)) &&
-	    (ftype != F2FS_FT_DIR ||
+	    (!S_ISDIR(le16_to_cpu(node_blk->i.i_mode)) ||
 	     !(c.feature & F2FS_FEATURE_CASEFOLD))) {
 		ASSERT_MSG("[0x%x] unexpected casefold flag", nid);
 		if (c.fix_on) {
