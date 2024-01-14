@@ -3811,14 +3811,11 @@ static int do_record_fsync_data(struct f2fs_sb_info *sbi,
 	se = get_seg_entry(sbi, segno);
 	offset = OFFSET_IN_SEG(sbi, blkaddr);
 
-	if (f2fs_test_bit(offset, (char *)se->cur_valid_map)) {
-		ASSERT(0);
-		return -1;
-	}
-	if (f2fs_test_bit(offset, (char *)se->ckpt_valid_map)) {
-		ASSERT(0);
-		return -1;
-	}
+	if (f2fs_test_bit(offset, (char *)se->cur_valid_map))
+		return 1;
+
+	if (f2fs_test_bit(offset, (char *)se->ckpt_valid_map))
+		return 1;
 
 	if (!se->ckpt_valid_blocks)
 		se->ckpt_type = CURSEG_WARM_NODE;
@@ -3912,8 +3909,11 @@ static int traverse_dnodes(struct f2fs_sb_info *sbi,
 			goto next;
 
 		err = do_record_fsync_data(sbi, node_blk, blkaddr);
-		if (err)
+		if (err) {
+			if (err > 0)
+				err = 0;
 			break;
+		}
 
 		if (entry->blkaddr == blkaddr)
 			del_fsync_inode(entry);
