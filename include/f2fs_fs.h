@@ -1514,6 +1514,7 @@ struct f2fs_configuration {
 	unsigned int quota_bits;	/* quota bits */
 	time_t fixed_time;
 	int roll_forward;
+	bool need_fsync;
 
 	/* mkfs parameters */
 	int fake_seed;

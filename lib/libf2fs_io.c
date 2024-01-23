@@ -580,6 +580,7 @@ int dev_write(void *buf, __u64 offset, size_t len)
 		return -1;
 	if (write(fd, buf, len) < 0)
 		return -1;
+	c.need_fsync = true;
 	return 0;
 }
 
@@ -616,6 +617,7 @@ int dev_fill(void *buf, __u64 offset, size_t len)
 		return -1;
 	if (write(fd, buf, len) < 0)
 		return -1;
+	c.need_fsync = true;
 	return 0;
 }
 
@@ -638,6 +640,9 @@ int f2fs_fsync_device(void)
 {
 #ifdef HAVE_FSYNC
 	int i;
+
+	if (!c.need_fsync)
+		return 0;
 
 	for (i = 0; i < c.ndevs; i++) {
 		if (fsync(c.devices[i].fd) < 0) {
@@ -786,10 +791,12 @@ int f2fs_finalize_device(void)
 	 */
 	for (i = 0; i < c.ndevs; i++) {
 #ifdef HAVE_FSYNC
-		ret = fsync(c.devices[i].fd);
-		if (ret < 0) {
-			MSG(0, "\tError: Could not conduct fsync!!!\n");
-			break;
+		if (c.need_fsync) {
+			ret = fsync(c.devices[i].fd);
+			if (ret < 0) {
+				MSG(0, "\tError: Could not conduct fsync!!!\n");
+				break;
+			}
 		}
 #endif
 		ret = close(c.devices[i].fd);
