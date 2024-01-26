@@ -995,6 +995,10 @@ int sanity_check_raw_super(struct f2fs_super_block *sb, enum SB_ADDR sb_addr)
 		return -1;
 
 	blocksize = 1 << get_sb(log_blocksize);
+	if (c.sparse_mode && F2FS_BLKSIZE != blocksize) {
+		MSG(0, "Invalid blocksize (%u), does not equal sparse file blocksize (%u)",
+			F2FS_BLKSIZE, blocksize);
+	}
 	if (blocksize < F2FS_MIN_BLKSIZE || blocksize > F2FS_MAX_BLKSIZE) {
 		MSG(0, "Invalid blocksize (%u), must be between 4KB and 16KB\n",
 			blocksize);
@@ -3965,20 +3969,22 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	sbi->active_logs = NR_CURSEG_TYPE;
 	ret = validate_super_block(sbi, SB0_ADDR);
 	if (ret) {
-		/* Assuming 4K Block Size */
-		c.blksize_bits = 12;
-		c.blksize = 1 << c.blksize_bits;
-		MSG(0, "Looking for secondary superblock assuming 4K Block Size\n");
+		if (!c.sparse_mode) {
+			/* Assuming 4K Block Size */
+			c.blksize_bits = 12;
+			c.blksize = 1 << c.blksize_bits;
+			MSG(0, "Looking for secondary superblock assuming 4K Block Size\n");
+		}
 		ret = validate_super_block(sbi, SB1_ADDR);
-		if (ret) {
+		if (ret && !c.sparse_mode) {
 			/* Trying 16K Block Size */
 			c.blksize_bits = 14;
 			c.blksize = 1 << c.blksize_bits;
 			MSG(0, "Looking for secondary superblock assuming 16K Block Size\n");
 			ret = validate_super_block(sbi, SB1_ADDR);
-			if (ret)
-				return -1;
 		}
+		if (ret)
+			return -1;
 	}
 	sb = F2FS_RAW_SUPER(sbi);
 	c.cache_config.num_cache_entry = num_cache_entry;

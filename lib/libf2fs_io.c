@@ -667,14 +667,17 @@ int f2fs_init_sparse_file(void)
 		if (!f2fs_sparse_file)
 			return -1;
 
+		c.blksize = sparse_file_block_size(f2fs_sparse_file);
+		c.blksize_bits = log_base_2(c.blksize);
+		if (c.blksize_bits == -1) {
+			MSG(0, "\tError: Sparse file blocksize not a power of 2.\n");
+			return -1;
+		}
+
 		c.device_size = sparse_file_len(f2fs_sparse_file, 0, 0);
 		c.device_size &= (~((uint64_t)(F2FS_BLKSIZE - 1)));
 	}
 
-	if (sparse_file_block_size(f2fs_sparse_file) != F2FS_BLKSIZE) {
-		MSG(0, "\tError: Corrupted sparse file\n");
-		return -1;
-	}
 	blocks_count = c.device_size / F2FS_BLKSIZE;
 	blocks = calloc(blocks_count, sizeof(char *));
 	if (!blocks) {
