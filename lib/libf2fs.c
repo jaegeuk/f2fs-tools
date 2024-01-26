@@ -974,7 +974,7 @@ int get_device_info(int i)
 
 	dev->fd = fd;
 
-	if (c.sparse_mode) {
+	if (c.sparse_mode && i == 0) {
 		if (f2fs_init_sparse_file()) {
 			free(stat_buf);
 			return -1;
@@ -1221,7 +1221,7 @@ int get_device_info(int i)
 	c.sectors_per_blk = F2FS_BLKSIZE / c.sector_size;
 	c.total_sectors += dev->total_sectors;
 
-	if (c.sparse_mode && f2fs_init_sparse_file())
+	if (c.sparse_mode && i==0 && f2fs_init_sparse_file())
 		return -1;
 	return 0;
 }
