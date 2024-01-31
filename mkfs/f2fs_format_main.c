@@ -443,6 +443,8 @@ static int f2fs_check_overwrite(void)
 
 int main(int argc, char *argv[])
 {
+	int ret;
+
 	f2fs_init_configuration();
 
 	f2fs_parse_options(argc, argv);
@@ -451,8 +453,9 @@ int main(int argc, char *argv[])
 
 	c.func = MKFS;
 
-	if (f2fs_devs_are_umounted() < 0) {
-		if (errno != EBUSY)
+	ret = f2fs_devs_are_umounted();
+	if (ret) {
+		if (ret != -EBUSY)
 			MSG(0, "\tError: Not available on mounted device!\n");
 		goto err_format;
 	}

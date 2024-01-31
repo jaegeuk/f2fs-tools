@@ -144,6 +144,8 @@ AC_CHECK_HEADERS(m4_flatten([
 	linux/fs.h
 	linux/hdreg.h
 	linux/limits.h
+	linux/loop.h
+	linux/major.h
 	linux/posix_acl.h
 	linux/types.h
 	linux/xattr.h

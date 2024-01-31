@@ -1111,8 +1111,8 @@ int main(int argc, char **argv)
 
 	f2fs_parse_options(argc, argv);
 
-	if (c.func != DUMP && f2fs_devs_are_umounted() < 0) {
-		if (errno == EBUSY) {
+	if (c.func != DUMP && (ret = f2fs_devs_are_umounted()) < 0) {
+		if (ret == -EBUSY) {
 			ret = -1;
 			if (c.func == FSCK)
 				ret = FSCK_OPERATIONAL_ERROR;

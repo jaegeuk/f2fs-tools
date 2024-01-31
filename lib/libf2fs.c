@@ -19,6 +19,12 @@
 #endif
 #include <time.h>
 #include <sys/stat.h>
+#ifdef HAVE_LINUX_LOOP_H
+#include <linux/loop.h>
+#ifdef HAVE_LINUX_MAJOR_H
+#include <linux/major.h>
+#endif
+#endif
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
 #endif
@@ -756,7 +762,7 @@ int f2fs_dev_is_umounted(char *path)
 #ifdef _WIN32
 	return 0;
 #else
-	struct stat *st_buf;
+	struct stat st_buf;
 	int is_rootdev = 0;
 	int ret = 0;
 	char *rootdev_name = get_rootdev();
@@ -807,32 +813,78 @@ int f2fs_dev_is_umounted(char *path)
 	 * If f2fs is umounted with -l, the process can still use
 	 * the file system. In this case, we should not format.
 	 */
-	st_buf = malloc(sizeof(struct stat));
-	ASSERT(st_buf);
+	if (stat(path, &st_buf)) {
+		MSG(0, "Info: stat failed errno:%d\n", errno);
+		return -1;
+	}
 
-	if (stat(path, st_buf) == 0 && S_ISBLK(st_buf->st_mode)) {
+	if (S_ISBLK(st_buf.st_mode)) {
 		int fd = open(path, O_RDONLY | O_EXCL);
 
 		if (fd >= 0) {
 			close(fd);
 		} else if (errno == EBUSY) {
 			MSG(0, "\tError: In use by the system!\n");
-			free(st_buf);
-			return -1;
+			return -EBUSY;
 		}
+	} else if (S_ISREG(st_buf.st_mode)) {
+		/* check whether regular is backfile of loop device */
+#if defined(HAVE_LINUX_LOOP_H) && defined(HAVE_LINUX_MAJOR_H)
+		struct mntent *mnt;
+		struct stat st_loop;
+		FILE *f;
+
+		f = setmntent("/proc/mounts", "r");
+
+		while ((mnt = getmntent(f)) != NULL) {
+			struct loop_info64 loopinfo = {0, };
+			int loop_fd, err;
+
+			if (mnt->mnt_fsname[0] != '/')
+				continue;
+			if (stat(mnt->mnt_fsname, &st_loop) != 0)
+				continue;
+			if (!S_ISBLK(st_loop.st_mode))
+				continue;
+			if (major(st_loop.st_rdev) != LOOP_MAJOR)
+				continue;
+
+			loop_fd = open(mnt->mnt_fsname, O_RDONLY);
+			if (loop_fd < 0) {
+				MSG(0, "Info: open %s failed errno:%d\n",
+					mnt->mnt_fsname, errno);
+				return -1;
+			}
+
+			err = ioctl(loop_fd, LOOP_GET_STATUS64, &loopinfo);
+			close(loop_fd);
+			if (err < 0) {
+				MSG(0, "\tError: ioctl LOOP_GET_STATUS64 failed errno:%d!\n",
+					errno);
+				return -1;
+			}
+
+			if (st_buf.st_dev == loopinfo.lo_device &&
+				st_buf.st_ino == loopinfo.lo_inode) {
+				MSG(0, "\tError: In use by loop device!\n");
+				return -EBUSY;
+			}
+		}
+#endif
 	}
-	free(st_buf);
 	return ret;
 #endif
 }
 
 int f2fs_devs_are_umounted(void)
 {
-	int i;
+	int ret, i;
 
-	for (i = 0; i < c.ndevs; i++)
-		if (f2fs_dev_is_umounted((char *)c.devices[i].path))
-			return -1;
+	for (i = 0; i < c.ndevs; i++) {
+		ret = f2fs_dev_is_umounted((char *)c.devices[i].path);
+		if (ret)
+			return ret;
+	}
 	return 0;
 }
 
