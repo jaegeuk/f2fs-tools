@@ -814,6 +814,9 @@ int f2fs_dev_is_umounted(char *path)
 	 * the file system. In this case, we should not format.
 	 */
 	if (stat(path, &st_buf)) {
+		/* sparse file will be created after this. */
+		if (c.sparse_mode)
+			return 0;
 		MSG(0, "Info: stat failed errno:%d\n", errno);
 		return -1;
 	}
