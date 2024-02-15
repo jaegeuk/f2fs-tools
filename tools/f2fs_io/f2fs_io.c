@@ -1630,6 +1630,52 @@ static void do_removexattr(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define lseek_desc "do lseek for a file"
+#define lseek_help					\
+"f2fs_io lseek [whence] [offset] [file_path]\n\n"	\
+"Do lseek file data in file_path and return the adjusted file offset\n"	\
+"whence can be\n"					\
+"  set  : SEEK_SET, The file offset is set to offset bytes\n"	\
+"  cur  : SEEK_CUR, The file offset is set to its current location plus offset bytes\n"	\
+"  end  : SEEK_END, The file offset is set to the size of the file plus offset bytes\n"	\
+"  data : SEEK_DATA, set the file offset to the next data location from offset\n"	\
+"  hole : SEEK_HOLE, set the file offset to the next hole from offset\n"
+
+static void do_lseek(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd, whence;
+	off_t offset, ret;
+
+	if (argc != 4) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	offset = atoi(argv[2]);
+
+	if (!strcmp(argv[1], "set"))
+		whence = SEEK_SET;
+	else if (!strcmp(argv[1], "cur"))
+		whence = SEEK_CUR;
+	else if (!strcmp(argv[1], "end"))
+		whence = SEEK_END;
+	else if (!strcmp(argv[1], "data"))
+		whence = SEEK_DATA;
+	else if (!strcmp(argv[1], "hole"))
+		whence = SEEK_HOLE;
+	else
+		die("Wrong whence type");
+
+	fd = xopen(argv[3], O_RDONLY, 0);
+
+	ret = lseek(fd, offset, whence);
+	if (ret < 0)
+		die_errno("lseek failed");
+	printf("returned offset=%ld\n", ret);
+	exit(0);
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1671,6 +1717,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(listxattr),
 	CMD(setxattr),
 	CMD(removexattr),
+	CMD(lseek),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
