@@ -1588,10 +1588,13 @@ static void do_listxattr(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define setxattr_desc "setxattr"
 #define setxattr_help "f2fs_io setxattr [name] [value] [file_path]\n\n"
+#define F2FS_SYSTEM_ADVISE_NAME	"system.advise"
 
 static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 {
 	int ret;
+	char *value;
+	unsigned char tmp;
 
 	if (argc != 4) {
 		fputs("Excess arguments\n\n", stderr);
@@ -1599,11 +1602,18 @@ static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 		exit(1);
 	}
 
-	ret = setxattr(argv[3], argv[1], argv[2], strlen(argv[2]), XATTR_CREATE);
+	if (!strcmp(argv[1], F2FS_SYSTEM_ADVISE_NAME)) {
+		tmp = strtoul(argv[2], NULL, 0);
+		value = (char *)&tmp;
+	} else {
+		value = argv[2];
+	}
+
+	ret = setxattr(argv[3], argv[1], value, strlen(argv[2]), XATTR_CREATE);
 	printf("setxattr %s CREATE: name: %s, value: %s: ret=%d\n",
 			argv[3], argv[1], argv[2], ret);
 	if (ret < 0 && errno == EEXIST) {
-		ret = setxattr(argv[3], argv[1], argv[2], strlen(argv[2]), XATTR_REPLACE);
+		ret = setxattr(argv[3], argv[1], value, strlen(argv[2]), XATTR_REPLACE);
 		printf("setxattr %s REPLACE: name: %s, value: %s: ret=%d\n",
 				argv[3], argv[1], argv[2], ret);
 	}
