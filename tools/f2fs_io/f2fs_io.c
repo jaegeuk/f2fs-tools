@@ -597,26 +597,8 @@ static void do_erase(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
-#define write_desc "write data into file"
-#define write_help					\
-"f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path] {delay}\n\n"	\
-"Write given patten data in file_path\n"		\
-"pattern can be\n"					\
-"  zero          : zeros\n"				\
-"  inc_num       : incrementing numbers\n"		\
-"  rand          : random numbers\n"			\
-"IO can be\n"						\
-"  buffered      : buffered IO\n"			\
-"  dio           : O_DIRECT\n"				\
-"  dsync         : O_DIRECT | O_DSYNC\n"		\
-"  osync         : O_SYNC\n"				\
-"  atomic_commit : atomic write & commit\n"		\
-"  atomic_abort  : atomic write & abort\n"		\
-"  atomic_rcommit: atomic replace & commit\n"	\
-"  atomic_rabort : atomic replace & abort\n"	\
-"{delay} is in ms unit and optional only for atomic operations\n"
-
-static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
+static void do_write_with_advice(int argc, char **argv,
+			const struct cmd_desc *cmd, bool with_advice)
 {
 	u64 buf_size = 0, inc_num = 0, written = 0;
 	u64 offset;
@@ -629,12 +611,6 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 	int useconds = 0;
 
 	srand(time(0));
-
-	if (argc < 7 || argc > 8) {
-		fputs("Excess arguments\n\n", stderr);
-		fputs(cmd->cmd_help, stderr);
-		exit(1);
-	}
 
 	bs = atoi(argv[1]);
 	if (bs > 1024)
@@ -672,7 +648,28 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 		die("Wrong IO type");
 	}
 
-	fd = xopen(argv[6], O_CREAT | O_WRONLY | flags, 0755);
+	if (!with_advice) {
+		fd = xopen(argv[6], O_CREAT | O_WRONLY | flags, 0755);
+	} else {
+		unsigned char advice;
+		int ret;
+
+		if (!strcmp(argv[6], "hot"))
+			advice = FADVISE_HOT_BIT;
+		else if (!strcmp(argv[6], "cold"))
+			advice = FADVISE_COLD_BIT;
+		else
+			die("Wrong Advise type");
+
+		fd = xopen(argv[7], O_CREAT | O_WRONLY | flags, 0755);
+
+		ret = fsetxattr(fd, F2FS_SYSTEM_ADVISE_NAME,
+				    (char *)&advice, 1, XATTR_CREATE);
+		if (ret) {
+			fputs("fsetxattr advice failed\n", stderr);
+			exit(1);
+		}
+	}
 
 	if (atomic_commit || atomic_abort) {
 		int ret;
@@ -737,6 +734,67 @@ static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
 				get_current_us() - total_time,
 				max_time);
 	exit(0);
+}
+
+#define write_desc "write data into file"
+#define write_help					\
+"f2fs_io write [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [file_path] {delay}\n\n"	\
+"Write given patten data in file_path\n"		\
+"pattern can be\n"					\
+"  zero          : zeros\n"				\
+"  inc_num       : incrementing numbers\n"		\
+"  rand          : random numbers\n"			\
+"IO can be\n"						\
+"  buffered      : buffered IO\n"			\
+"  dio           : O_DIRECT\n"				\
+"  dsync         : O_DIRECT | O_DSYNC\n"		\
+"  osync         : O_SYNC\n"				\
+"  atomic_commit : atomic write & commit\n"		\
+"  atomic_abort  : atomic write & abort\n"		\
+"  atomic_rcommit: atomic replace & commit\n"		\
+"  atomic_rabort : atomic replace & abort\n"		\
+"{delay} is in ms unit and optional only for atomic operations\n"
+
+static void do_write(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	if (argc < 7 || argc > 8) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+	do_write_with_advice(argc, argv, cmd, false);
+}
+
+#define write_advice_desc "write data into file with a hint"
+#define write_advice_help					\
+"f2fs_io write_advice [chunk_size in 4kb] [offset in chunk_size] [count] [pattern] [IO] [advise] [file_path] {delay}\n\n"	\
+"Write given patten data in file_path\n"		\
+"pattern can be\n"					\
+"  zero          : zeros\n"				\
+"  inc_num       : incrementing numbers\n"		\
+"  rand          : random numbers\n"			\
+"IO can be\n"						\
+"  buffered      : buffered IO\n"			\
+"  dio           : O_DIRECT\n"				\
+"  dsync         : O_DIRECT | O_DSYNC\n"		\
+"  osync         : O_SYNC\n"				\
+"  atomic_commit : atomic write & commit\n"		\
+"  atomic_abort  : atomic write & abort\n"		\
+"  atomic_rcommit: atomic replace & commit\n"		\
+"  atomic_rabort : atomic replace & abort\n"		\
+"advise can be\n"					\
+"  cold : indicate a cold file\n"			\
+"  hot  : indicate a hot file\n"			\
+"{delay} is in ms unit and optional only for atomic operations\n"
+
+static void do_write_advice(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	if (argc < 8 || argc > 9) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+	do_write_with_advice(argc, argv, cmd, true);
 }
 
 #define read_desc "read data from file"
@@ -1588,7 +1646,6 @@ static void do_listxattr(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define setxattr_desc "setxattr"
 #define setxattr_help "f2fs_io setxattr [name] [value] [file_path]\n\n"
-#define F2FS_SYSTEM_ADVISE_NAME	"system.advise"
 
 static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -1704,6 +1761,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(fallocate),
 	CMD(erase),
 	CMD(write),
+	CMD(write_advice),
 	CMD(read),
 	CMD(randread),
 	CMD(fiemap),

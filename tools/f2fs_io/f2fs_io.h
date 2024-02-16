@@ -167,6 +167,10 @@ struct fscrypt_get_policy_ex_arg {
 #define F2FS_IOC_FSGETXATTR		FS_IOC_FSGETXATTR
 #define F2FS_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
 
+#define F2FS_SYSTEM_ADVISE_NAME	"system.advise"
+#define FADVISE_COLD_BIT	0x01
+#define FADVISE_HOT_BIT		0x20
+
 #ifndef FS_IMMUTABLE_FL
 #define FS_IMMUTABLE_FL			0x00000010 /* Immutable file */
 #endif
