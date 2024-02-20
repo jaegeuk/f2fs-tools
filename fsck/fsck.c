@@ -1071,13 +1071,13 @@ check_next:
 			qf_szchk_type[cur_qtype] = QF_SZCHK_INLINE;
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs]);
 
-		if (blkaddr != 0) {
+		if (blkaddr != NULL_ADDR) {
 			ASSERT_MSG("[0x%x] wrong inline reserve blkaddr:%u",
 					nid, blkaddr);
 			if (c.fix_on) {
 				FIX_MSG("inline_data has wrong 0'th block = %x",
 								blkaddr);
-				node_blk->i.i_addr[ofs] = 0;
+				node_blk->i.i_addr[ofs] = NULL_ADDR;
 				node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 				need_fix = 1;
 			}
@@ -1121,7 +1121,7 @@ check_next:
 			if (c.fix_on) {
 				FIX_MSG("inline_dentry has wrong 0'th block = %x",
 								blkaddr);
-				node_blk->i.i_addr[ofs] = 0;
+				node_blk->i.i_addr[ofs] = NULL_ADDR;
 				node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
 				need_fix = 1;
 			}
@@ -1161,8 +1161,8 @@ check_next:
 					node_blk->i.i_addr[ofs + idx] =
 							NULL_ADDR;
 					need_fix = 1;
-					FIX_MSG("[0x%x] i_addr[%d] = 0", nid,
-							ofs + idx);
+					FIX_MSG("[0x%x] i_addr[%d] = NULL_ADDR",
+							nid, ofs + idx);
 				}
 				continue;
 			}
@@ -1190,9 +1190,9 @@ check_next:
 			if (cur_qtype != -1 && blkaddr != NEW_ADDR)
 				qf_last_blkofs[cur_qtype] = child.pgofs;
 		} else if (c.fix_on) {
-			node_blk->i.i_addr[ofs + idx] = 0;
+			node_blk->i.i_addr[ofs + idx] = NULL_ADDR;
 			need_fix = 1;
-			FIX_MSG("[0x%x] i_addr[%d] = 0", nid, ofs + idx);
+			FIX_MSG("[0x%x] i_addr[%d] = NULL_ADDR", nid, ofs + idx);
 		}
 	}
 
