@@ -1253,8 +1253,8 @@ check:
 	}
 
 	if (i_blocks != *blk_cnt) {
-		ASSERT_MSG("ino: 0x%x has i_blocks: %08"PRIx64", "
-				"but has %u blocks",
+		ASSERT_MSG("ino: 0x%x has i_blocks: 0x%08"PRIx64", "
+				"but has 0x%x blocks",
 				nid, i_blocks, *blk_cnt);
 		if (c.fix_on) {
 			node_blk->i.i_blocks = cpu_to_le64(*blk_cnt);
