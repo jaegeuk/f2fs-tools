@@ -257,9 +257,6 @@ struct f2fs_sb_info {
 	struct f2fs_checkpoint *ckpt;
 	int cur_cp;
 
-	struct list_head orphan_inode_list;
-	unsigned int n_orphans;
-
 	/* basic file system units */
 	unsigned int log_sectors_per_block;     /* log2 sectors per block */
 	unsigned int log_blocksize;             /* log2 block size */
