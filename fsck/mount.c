@@ -679,6 +679,7 @@ static char *stop_reason_str[] = {
 	[STOP_CP_REASON_CORRUPTED_SUMMARY]	= "corrupted_summary",
 	[STOP_CP_REASON_UPDATE_INODE]		= "update_inode",
 	[STOP_CP_REASON_FLUSH_FAIL]		= "flush_fail",
+	[STOP_CP_REASON_NO_SEGMENT]		= "no_segment",
 };
 
 void print_sb_stop_reason(struct f2fs_super_block *sb)
