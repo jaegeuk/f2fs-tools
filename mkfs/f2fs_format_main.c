@@ -49,7 +49,6 @@ static void mkfs_usage()
 {
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
-	MSG(0, "  -a heap-based allocation [default:0]\n");
 	MSG(0, "  -b filesystem block size [default:4096]\n");
 	MSG(0, "  -c device1[,device2,...] up to 7 additional devices, except meta device\n");
 	MSG(0, "  -d debug level [default:0]\n");
@@ -84,8 +83,6 @@ static void f2fs_show_info()
 	MSG(0, "\n    F2FS-tools: mkfs.f2fs Ver: %s (%s)\n\n",
 				F2FS_TOOLS_VERSION,
 				F2FS_TOOLS_DATE);
-	if (c.heap == 0)
-		MSG(0, "Info: Disable heap-based policy\n");
 
 	MSG(0, "Info: Debug level = %d\n", c.dbg_lv);
 	if (c.extension_list[0])
@@ -191,7 +188,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 			c.dbg_lv = -1;
 			break;
 		case 'a':
-			c.heap = atoi(optarg);
+			MSG(0, "Info: heap allocation is deprecated\n");
 			break;
 		case 'b':
 			c.blksize = atoi(optarg);

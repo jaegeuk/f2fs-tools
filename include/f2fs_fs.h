@@ -1476,7 +1476,6 @@ struct f2fs_configuration {
 	char *vol_uuid;
 	uint16_t s_encoding;
 	uint16_t s_encoding_flags;
-	int heap;
 	int32_t kd;
 	int32_t dump_fd;
 	struct device_info devices[MAX_DEVICES];
