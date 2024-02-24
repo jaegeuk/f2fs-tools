@@ -1760,25 +1760,27 @@ extern uint32_t f2fs_get_usable_segments(struct f2fs_super_block *sb);
 #define ZONE_ALIGN(blks)	SIZE_ALIGN(blks, c.blks_per_seg * \
 					c.segs_per_zone)
 
-static inline double get_reserved(struct f2fs_super_block *sb, double ovp)
+static inline uint32_t get_reserved(struct f2fs_super_block *sb, double ovp)
 {
-	double reserved;
 	uint32_t usable_main_segs = f2fs_get_usable_segments(sb);
 	uint32_t segs_per_sec = round_up(usable_main_segs, get_sb(section_count));
+	uint32_t reserved;
 
 	if (c.conf_reserved_sections)
 		reserved = c.conf_reserved_sections * segs_per_sec;
 	else
 		reserved = (100 / ovp + 1 + NR_CURSEG_TYPE) * segs_per_sec;
 
-	return reserved;
+	/* Let's keep the section alignment */
+	return round_up(reserved, segs_per_sec) * segs_per_sec;
 }
 
 static inline double get_best_overprovision(struct f2fs_super_block *sb)
 {
-	double reserved, ovp, candidate, end, diff, space;
+	double ovp, candidate, end, diff, space;
 	double max_ovp = 0, max_space = 0;
 	uint32_t usable_main_segs = f2fs_get_usable_segments(sb);
+	uint32_t reserved;
 
 	if (get_sb(segment_count_main) < 256) {
 		candidate = 10;
@@ -1795,7 +1797,7 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 		ovp = (usable_main_segs - reserved) * candidate / 100;
 		if (ovp < 0)
 			continue;
-		space = usable_main_segs - max(reserved, ovp) -
+		space = usable_main_segs - max((double)reserved, ovp) -
 					2 * get_sb(segs_per_sec);
 		if (max_space < space) {
 			max_space = space;
