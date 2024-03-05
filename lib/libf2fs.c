@@ -854,9 +854,15 @@ int f2fs_dev_is_umounted(char *path)
 
 			loop_fd = open(mnt->mnt_fsname, O_RDONLY);
 			if (loop_fd < 0) {
+				/* non-root users have no permission */
+				if (errno == EPERM || errno == EACCES) {
+					MSG(0, "Info: open %s failed errno:%d - be careful to overwrite a mounted loopback file.\n",
+							mnt->mnt_fsname, errno);
+					return 0;
+				}
 				MSG(0, "Info: open %s failed errno:%d\n",
-					mnt->mnt_fsname, errno);
-				return -1;
+							mnt->mnt_fsname, errno);
+				return -errno;
 			}
 
 			err = ioctl(loop_fd, LOOP_GET_STATUS64, &loopinfo);
@@ -864,7 +870,7 @@ int f2fs_dev_is_umounted(char *path)
 			if (err < 0) {
 				MSG(0, "\tError: ioctl LOOP_GET_STATUS64 failed errno:%d!\n",
 					errno);
-				return -1;
+				return -errno;
 			}
 
 			if (st_buf.st_dev == loopinfo.lo_device &&
