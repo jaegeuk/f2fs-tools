@@ -1743,6 +1743,46 @@ static void do_lseek(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define get_advise_desc "get_advise"
+#define get_advise_help "f2fs_io get_advise [file_path]\n\n"
+
+static void do_get_advise(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret;
+	unsigned char value;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = getxattr(argv[1], F2FS_SYSTEM_ADVISE_NAME, &value, sizeof(value));
+	if (ret != sizeof(value)) {
+		perror("getxattr");
+		exit(1);
+	}
+
+	printf("i_advise=0x%x, advise_type: ", value);
+	if (value & FADVISE_COLD_BIT)
+		printf("cold ");
+	if (value & FADVISE_LOST_PINO_BIT)
+		printf("lost_pino ");
+	if (value & FADVISE_ENCRYPT_BIT)
+		printf("encrypt ");
+	if (value & FADVISE_ENC_NAME_BIT)
+		printf("enc_name ");
+	if (value & FADVISE_KEEP_SIZE_BIT)
+		printf("keep_size ");
+	if (value & FADVISE_HOT_BIT)
+		printf("hot ");
+	if (value & FADVISE_VERITY_BIT)
+		printf("verity ");
+	if (value & FADVISE_TRUNC_BIT)
+		printf("trunc ");
+	printf("\n");
+}
+
 #define CMD_HIDDEN 	0x0001
 #define CMD(name) { #name, do_##name, name##_desc, name##_help, 0 }
 #define _CMD(name) { #name, do_##name, NULL, NULL, CMD_HIDDEN }
@@ -1786,6 +1826,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(setxattr),
 	CMD(removexattr),
 	CMD(lseek),
+	CMD(get_advise),
 	{ NULL, NULL, NULL, NULL, 0 }
 };
 
