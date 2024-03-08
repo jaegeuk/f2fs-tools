@@ -3288,38 +3288,39 @@ static int chk_and_fix_wp_with_sit(int UNUSED(i), void *blkzone, void *opaque)
 
 	last_valid_blkoff = last_vblk_off_in_zone(sbi, zone_segno);
 
-	/*
-	 * When there is no valid block in the zone, check write pointer is
-	 * at zone start. If not, reset the write pointer.
-	 */
-	if (last_valid_blkoff < 0 &&
-	    blk_zone_wp_sector(blkz) != blk_zone_sector(blkz)) {
-		if (!c.fix_on) {
-			MSG(0, "Inconsistent write pointer: wp[0x%x,0x%x]\n",
-			    wp_segno, wp_blkoff);
-			fsck->chk.wp_inconsistent_zones++;
-			return 0;
-		}
-
-		FIX_MSG("Reset write pointer of zone at segment 0x%x",
-			zone_segno);
-		ret = f2fs_reset_zone(wpd->dev_index, blkz);
-		if (ret) {
-			printf("[FSCK] Write pointer reset failed: %s\n",
-			       dev->path);
-			return ret;
-		}
-		fsck->chk.wp_fixed = 1;
-		return 0;
-	}
-
 	/* if a curseg points to the zone, do not finishing zone */
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *cs = CURSEG_I(sbi, i);
 
 		if (zone_segno <= cs->segno &&
-				cs->segno < zone_segno + segs_per_zone)
+				cs->segno < zone_segno + segs_per_zone) {
+			/*
+			 * When there is no valid block in the zone, check
+			 * write pointer is at zone start. If not, reset
+			 * the write pointer.
+			 */
+			if (last_valid_blkoff < 0 &&
+			    blk_zone_wp_sector(blkz) != blk_zone_sector(blkz)) {
+				if (!c.fix_on) {
+					MSG(0, "Inconsistent write pointer: "
+					       "wp[0x%x,0x%x]\n",
+					       wp_segno, wp_blkoff);
+					fsck->chk.wp_inconsistent_zones++;
+					return 0;
+				}
+
+				FIX_MSG("Reset write pointer of zone at "
+					"segment 0x%x", zone_segno);
+				ret = f2fs_reset_zone(wpd->dev_index, blkz);
+				if (ret) {
+					printf("[FSCK] Write pointer reset "
+					       "failed: %s\n", dev->path);
+					return ret;
+				}
+				fsck->chk.wp_fixed = 1;
+			}
 			return 0;
+		}
 	}
 
 	/*
