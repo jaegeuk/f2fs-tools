@@ -442,7 +442,7 @@ static void do_fadvise(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define pinfile_desc "pin file control"
 #define pinfile_help						\
-"f2fs_io pinfile [get|set] [file]\n\n"			\
+"f2fs_io pinfile [get|set|unset] [file]\n\n"			\
 "get/set pinning given the file\n"				\
 
 static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
@@ -464,7 +464,14 @@ static void do_pinfile(int argc, char **argv, const struct cmd_desc *cmd)
 		ret = ioctl(fd, F2FS_IOC_SET_PIN_FILE, &pin);
 		if (ret != 0)
 			die_errno("F2FS_IOC_SET_PIN_FILE failed");
-		printf("set_pin_file: %u blocks moved in %s\n", ret, argv[2]);
+		printf("%s pinfile: %u blocks moved in %s\n",
+					argv[1], ret, argv[2]);
+	} else if (!strcmp(argv[1], "unset")) {
+		pin = 0;
+		ret = ioctl(fd, F2FS_IOC_SET_PIN_FILE, &pin);
+		if (ret != 0)
+			die_errno("F2FS_IOC_SET_PIN_FILE failed");
+		printf("%s pinfile in %s\n", argv[1], argv[2]);
 	} else if (!strcmp(argv[1], "get")) {
 		unsigned int flags;
 
