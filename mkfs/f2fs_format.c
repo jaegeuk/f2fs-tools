@@ -778,7 +778,8 @@ static int f2fs_write_check_point_pack(void)
 		 * In non configurable reserved section case, overprovision
 		 * segments are always bigger than two sections.
 		 */
-		if (get_cp(overprov_segment_count) < 2 * get_sb(segs_per_sec)) {
+		if (get_cp(overprov_segment_count) <
+					overprovision_segment_buffer(sb)) {
 			MSG(0, "\tError: Not enough overprovision segments (%u)\n",
 			    get_cp(overprov_segment_count));
 			goto free_cp_payload;
@@ -787,7 +788,7 @@ static int f2fs_write_check_point_pack(void)
 				get_cp(rsvd_segment_count));
 	 } else {
 		set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
-				2 * get_sb(segs_per_sec));
+				overprovision_segment_buffer(sb));
 	 }
 
 	if (f2fs_get_usable_segments(sb) <= get_cp(overprov_segment_count)) {

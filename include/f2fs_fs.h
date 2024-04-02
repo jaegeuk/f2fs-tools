@@ -1775,6 +1775,12 @@ static inline uint32_t get_reserved(struct f2fs_super_block *sb, double ovp)
 	return round_up(reserved, segs_per_sec) * segs_per_sec;
 }
 
+static inline uint32_t overprovision_segment_buffer(struct f2fs_super_block *sb)
+{
+	/* Give 6 current sections to avoid huge GC overheads. */
+	return 6 * get_sb(segs_per_sec);
+}
+
 static inline double get_best_overprovision(struct f2fs_super_block *sb)
 {
 	double ovp, candidate, end, diff, space;
@@ -1798,7 +1804,7 @@ static inline double get_best_overprovision(struct f2fs_super_block *sb)
 		if (ovp < 0)
 			continue;
 		space = usable_main_segs - max((double)reserved, ovp) -
-					2 * get_sb(segs_per_sec);
+					overprovision_segment_buffer(sb);
 		if (max_space < space) {
 			max_space = space;
 			max_ovp = candidate;
