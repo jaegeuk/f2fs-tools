@@ -429,19 +429,25 @@ void print_extention_list(struct f2fs_super_block *sb, int cold)
 
 	printf("%s file extentsions\n", cold ? "cold" : "hot");
 
-	for (i = start; i < end; i++) {
+	for (i = 0; i < end - start; i++) {
 		if (c.layout) {
 			printf("%-30s %-8.8s\n", "extension_list",
-						sb->extension_list[i]);
+					sb->extension_list[start + i]);
 		} else {
 			if (i % 4 == 0)
 				printf("%-30s\t\t[", "");
 
-			printf("%-8.8s", sb->extension_list[i]);
+			printf("%-8.8s", sb->extension_list[start + i]);
 
-			if (i % 4 == 4 - 1 || i == end - start - 1)
+			if (i % 4 == 4 - 1)
 				printf("]\n");
 		}
+	}
+
+	for (; i < round_up(end - start, 4) * 4; i++) {
+		printf("%-8.8s", "");
+		if (i % 4 == 4 - 1)
+			printf("]\n");
 	}
 }
 
