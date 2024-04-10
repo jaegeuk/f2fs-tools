@@ -296,17 +296,19 @@ static int f2fs_prepare_super_block(void)
 	for (i = 0; i < c.ndevs; i++) {
 		if (i == 0) {
 			c.devices[i].total_segments =
-				(c.devices[i].total_sectors *
+				((c.devices[i].total_sectors *
 				c.sector_size - zone_align_start_offset) /
-				segment_size_bytes;
+				segment_size_bytes) / c.segs_per_zone *
+				c.segs_per_zone;
 			c.devices[i].start_blkaddr = 0;
 			c.devices[i].end_blkaddr = c.devices[i].total_segments *
 						c.blks_per_seg - 1 +
 						sb->segment0_blkaddr;
 		} else {
 			c.devices[i].total_segments =
-				c.devices[i].total_sectors /
-				(c.sectors_per_blk * c.blks_per_seg);
+				(c.devices[i].total_sectors /
+				(c.sectors_per_blk * c.blks_per_seg)) /
+				c.segs_per_zone * c.segs_per_zone;
 			c.devices[i].start_blkaddr =
 					c.devices[i - 1].end_blkaddr + 1;
 			c.devices[i].end_blkaddr = c.devices[i].start_blkaddr +
@@ -321,8 +323,7 @@ static int f2fs_prepare_super_block(void)
 
 		c.total_segments += c.devices[i].total_segments;
 	}
-	set_sb(segment_count, (c.total_segments / c.segs_per_zone *
-						c.segs_per_zone));
+	set_sb(segment_count, c.total_segments);
 	set_sb(segment_count_ckpt, F2FS_NUMBER_OF_CHECKPOINT_PACK);
 
 	set_sb(sit_blkaddr, get_sb(segment0_blkaddr) +
