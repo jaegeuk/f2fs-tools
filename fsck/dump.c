@@ -247,26 +247,7 @@ out:
 		printf("\n");
 }
 
-static void dump_folder_contents(struct f2fs_sb_info *sbi, u8 *bitmap,
-				struct f2fs_dir_entry *dentry,
-				__u8 (*filenames)[F2FS_SLOT_LEN], int max)
-{
-	int i;
-	int name_len;
-
-	for (i = 0; i < max; i++) {
-		if (test_bit_le(i, bitmap) == 0)
-			continue;
-		name_len = le16_to_cpu(dentry[i].name_len);
-		if (name_len == 1 && filenames[i][0] == '.')
-			continue;
-		if (name_len == 2 && filenames[i][0] == '.' && filenames[i][1] == '.')
-			continue;
-		dump_node(sbi, le32_to_cpu(dentry[i].ino), 1, NULL, 0, 1);
-	}
-}
-
-static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr, bool is_folder)
+static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr)
 {
 	char buf[F2FS_BLKSIZE];
 
@@ -307,19 +288,12 @@ static void dump_data_blk(struct f2fs_sb_info *sbi, __u64 offset, u32 blkaddr, b
 		ASSERT(ret >= 0);
 	}
 
-	if (is_folder) {
-		struct f2fs_dentry_block *d = (struct f2fs_dentry_block *) buf;
-
-		dump_folder_contents(sbi, d->dentry_bitmap, F2FS_DENTRY_BLOCK_DENTRIES(d),
-					F2FS_DENTRY_BLOCK_FILENAMES(d), NR_DENTRY_IN_BLOCK);
-	} else {
-		/* write blkaddr */
-		dev_write_dump(buf, offset, F2FS_BLKSIZE);
-	}
+	/* write blkaddr */
+	dev_write_dump(buf, offset, F2FS_BLKSIZE);
 }
 
 static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
-				u32 nid, u32 addr_per_block, u64 *ofs, int is_dir)
+				u32 nid, u32 addr_per_block, u64 *ofs)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
@@ -356,20 +330,20 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 		switch (ntype) {
 		case TYPE_DIRECT_NODE:
 			dump_data_blk(sbi, *ofs * F2FS_BLKSIZE,
-					le32_to_cpu(node_blk->dn.addr[i]), is_dir);
+					le32_to_cpu(node_blk->dn.addr[i]));
 			(*ofs)++;
 			break;
 		case TYPE_INDIRECT_NODE:
 			dump_node_blk(sbi, TYPE_DIRECT_NODE,
 					le32_to_cpu(node_blk->in.nid[i]),
 					addr_per_block,
-					ofs, is_dir);
+					ofs);
 			break;
 		case TYPE_DOUBLE_INDIRECT_NODE:
 			dump_node_blk(sbi, TYPE_INDIRECT_NODE,
 					le32_to_cpu(node_blk->in.nid[i]),
 					addr_per_block,
-					ofs, is_dir);
+					ofs);
 			break;
 		}
 	}
@@ -461,25 +435,12 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u32 i = 0;
 	u64 ofs = 0;
 	u32 addr_per_block;
-	bool is_dir = S_ISDIR(le16_to_cpu(node_blk->i.i_mode));
 
-	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
+	if((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		/* recover from inline data */
 		dev_write_dump(((unsigned char *)node_blk) + INLINE_DATA_OFFSET,
 						0, MAX_INLINE_DATA(node_blk));
-		return -1;
-	}
-
-	if ((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
-		void *inline_dentry = inline_data_addr(node_blk);
-		struct f2fs_dentry_ptr d;
-
-		make_dentry_ptr(&d, node_blk, inline_dentry, 2);
-
-		DBG(3, "ino[0x%x] has inline dentries!\n", nid);
-		/* recover from inline dentry */
-		dump_folder_contents(sbi, d.bitmap, d.dentry, d.filename, d.max);
 		return -1;
 	}
 
@@ -489,7 +450,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	/* check data blocks in inode */
 	for (i = 0; i < ADDRS_PER_INODE(&node_blk->i); i++, ofs++)
 		dump_data_blk(sbi, ofs * F2FS_BLKSIZE, le32_to_cpu(
-			node_blk->i.i_addr[get_extra_isize(node_blk) + i]), is_dir);
+			node_blk->i.i_addr[get_extra_isize(node_blk) + i]));
 
 	/* check node blocks in inode */
 	for (i = 0; i < 5; i++) {
@@ -497,20 +458,17 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 			dump_node_blk(sbi, TYPE_DIRECT_NODE,
 					le32_to_cpu(F2FS_INODE_I_NID(&node_blk->i, i)),
 					addr_per_block,
-					&ofs,
-					is_dir);
+					&ofs);
 		else if (i == 2 || i == 3)
 			dump_node_blk(sbi, TYPE_INDIRECT_NODE,
 					le32_to_cpu(F2FS_INODE_I_NID(&node_blk->i, i)),
 					addr_per_block,
-					&ofs,
-					is_dir);
+					&ofs);
 		else if (i == 4)
 			dump_node_blk(sbi, TYPE_DOUBLE_INDIRECT_NODE,
 					le32_to_cpu(F2FS_INODE_I_NID(&node_blk->i, i)),
 					addr_per_block,
-					&ofs,
-					is_dir);
+					&ofs);
 		else
 			ASSERT(0);
 	}
@@ -521,52 +479,8 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	return 0;
 }
 
-static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
-				struct f2fs_node *node_blk, char *path)
-{
-	struct f2fs_inode *inode = &node_blk->i;
-	int ret;
-
-	c.dump_fd = open(path, O_TRUNC|O_CREAT|O_RDWR, 0666);
-	ASSERT(c.dump_fd >= 0);
-
-	/* dump file's data */
-	dump_inode_blk(sbi, ni->ino, node_blk);
-
-	/* adjust file size */
-	ret = ftruncate(c.dump_fd, le32_to_cpu(inode->i_size));
-	ASSERT(ret >= 0);
-
-	close(c.dump_fd);
-}
-
-static void dump_folder(struct f2fs_sb_info *sbi, struct node_info *ni,
-				struct f2fs_node *node_blk, char *path, int is_root)
-{
-	if (!is_root) {
-#if defined(__MINGW32__)
-		if (_mkdir(path) < 0 && errno != EEXIST) {
-			MSG(0, "Failed to create directory %s\n", path);
-			return;
-		}
-		ASSERT(_chdir(path) == 0);
-#else
-		if (mkdir(path, 0777) < 0 && errno != EEXIST) {
-			MSG(0, "Failed to create directory %s\n", path);
-			return;
-		}
-		ASSERT(chdir(path) == 0);
-#endif
-	}
-	/* dump folder data */
-	dump_inode_blk(sbi, ni->ino, node_blk);
-	if (!is_root)
-		ASSERT(chdir("..") == 0);
-}
-
-static int dump_filesystem(struct f2fs_sb_info *sbi, struct node_info *ni,
-				struct f2fs_node *node_blk, int force, char *base_path,
-				bool is_base, bool allow_folder)
+static int dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
+				struct f2fs_node *node_blk, int force)
 {
 	struct f2fs_inode *inode = &node_blk->i;
 	u32 imode = le16_to_cpu(inode->i_mode);
@@ -575,7 +489,6 @@ static int dump_filesystem(struct f2fs_sb_info *sbi, struct node_info *ni,
 	char path[1024] = {0};
 	char ans[255] = {0};
 	int is_encrypted = file_is_encrypt(inode);
-	int is_root = sbi->root_ino_num == ni->nid;
 	int ret;
 
 	if (is_encrypted) {
@@ -583,15 +496,11 @@ static int dump_filesystem(struct f2fs_sb_info *sbi, struct node_info *ni,
 		return -1;
 	}
 
-	if ((!S_ISREG(imode) && !S_ISLNK(imode) && !(S_ISDIR(imode) && allow_folder))) {
-		MSG(force, "Not a valid file type\n\n");
+	if ((!S_ISREG(imode) && !S_ISLNK(imode)) ||
+				namelen == 0 || namelen > F2FS_NAME_LEN) {
+		MSG(force, "Not a regular file or wrong name info\n\n");
 		return -1;
 	}
-	if (!is_root && (namelen == 0 || namelen > F2FS_NAME_LEN)) {
-		MSG(force, "Wrong name info\n\n");
-		return -1;
-	}
-	base_path = base_path ?: "./lost_found";
 	if (force)
 		goto dump;
 
@@ -599,59 +508,31 @@ static int dump_filesystem(struct f2fs_sb_info *sbi, struct node_info *ni,
 	if (c.show_file_map)
 		return dump_inode_blk(sbi, ni->ino, node_blk);
 
-	printf("Do you want to dump this %s into %s/? [Y/N] ",
-			S_ISREG(imode) || S_ISLNK(imode) ? "file" : "folder",
-			base_path);
+	printf("Do you want to dump this file into ./lost_found/? [Y/N] ");
 	ret = scanf("%s", ans);
 	ASSERT(ret >= 0);
 
 	if (!strcasecmp(ans, "y")) {
 dump:
-		if (is_base) {
-			getcwd(path, sizeof(path));
-#if defined(__MINGW32__)
-			ret = _mkdir(base_path);
-
-			ASSERT(ret == 0 || errno == EEXIST);
-			ASSERT(_chdir(base_path) == 0);
-#else
-			ret = mkdir(base_path, 0777);
-
-			ASSERT(ret == 0 || errno == EEXIST);
-			ASSERT(chdir(base_path) == 0);
-#endif
-		}
+		ret = system("mkdir -p ./lost_found");
+		ASSERT(ret >= 0);
 
 		/* make a file */
-		if (!is_root) {
-			strncpy(name, (const char *)inode->i_name, namelen);
-			name[namelen] = 0;
-		}
+		strncpy(name, (const char *)inode->i_name, namelen);
+		name[namelen] = 0;
+		sprintf(path, "./lost_found/%s", name);
 
-		if (S_ISREG(imode) || S_ISLNK(imode)) {
-			dump_file(sbi, ni, node_blk, name);
-		} else {
-			dump_folder(sbi, ni, node_blk, name, is_root);
-		}
+		c.dump_fd = open(path, O_TRUNC|O_CREAT|O_RDWR, 0666);
+		ASSERT(c.dump_fd >= 0);
 
-		/* fix up mode/owner */
-		if (c.preserve_perms) {
-			if (is_root)
-				strncpy(name, ".", 2);
-#if defined(__MINGW32__)
-			_chmod(name, imode);
-			MSG(0, "Not setting Owner for %s. Would be %d/%d\n", name, inode->i_uid, inode->i_gid);
-#else
-			chmod(name, imode);
-			chown(name, inode->i_uid, inode->i_gid);
-#endif
-		}
-		if (is_base)
-#if defined(__MINGW32__)
-			_chdir(path);
-#else
-			chdir(path);
-#endif
+		/* dump file's data */
+		dump_inode_blk(sbi, ni->ino, node_blk);
+
+		/* adjust file size */
+		ret = ftruncate(c.dump_fd, le32_to_cpu(inode->i_size));
+		ASSERT(ret >= 0);
+
+		close(c.dump_fd);
 	}
 	return 0;
 }
@@ -701,7 +582,7 @@ void dump_node_scan_disk(struct f2fs_sb_info *sbi, nid_t nid)
 	free(node_blk);
 }
 
-int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force, char *base_path, int base, int allow_folder)
+int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force)
 {
 	struct node_info ni;
 	struct f2fs_node *node_blk;
@@ -736,7 +617,7 @@ int dump_node(struct f2fs_sb_info *sbi, nid_t nid, int force, char *base_path, i
 			print_node_info(sbi, node_blk, force);
 
 		if (ni.ino == ni.nid)
-			ret = dump_filesystem(sbi, &ni, node_blk, force, base_path, base, allow_folder);
+			ret = dump_file(sbi, &ni, node_blk, force);
 	} else {
 		print_node_info(sbi, node_blk, force);
 		MSG(force, "Invalid (i)node block\n\n");
