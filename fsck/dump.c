@@ -377,7 +377,7 @@ static void dump_node_blk(struct f2fs_sb_info *sbi, int ntype,
 }
 
 #ifdef HAVE_FSETXATTR
-static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk, int is_dir)
+static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk)
 {
 	void *xattr;
 	void *last_base_addr;
@@ -431,24 +431,12 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk, int
 
 		DBG(1, "fd %d xattr_name %s\n", c.dump_fd, xattr_name);
 #if defined(__linux__)
-		if (is_dir) {
-			ret = setxattr(".", xattr_name, value,
-							le16_to_cpu(ent->e_value_size), 0);
-		} else {
-			ret = fsetxattr(c.dump_fd, xattr_name, value,
-							le16_to_cpu(ent->e_value_size), 0);
-		}
-
+		ret = fsetxattr(c.dump_fd, xattr_name, value,
+				le16_to_cpu(ent->e_value_size), 0);
 #elif defined(__APPLE__)
-		if (is_dir) {
-			ret = setxattr(".", xattr_name, value,
-					le16_to_cpu(ent->e_value_size), 0,
-					XATTR_CREATE);
-		} else {
-			ret = fsetxattr(c.dump_fd, xattr_name, value,
-					le16_to_cpu(ent->e_value_size), 0,
-					XATTR_CREATE);
-		}
+		ret = fsetxattr(c.dump_fd, xattr_name, value,
+				le16_to_cpu(ent->e_value_size), 0,
+				XATTR_CREATE);
 #endif
 		if (ret)
 			MSG(0, "XATTR index 0x%x set xattr failed error %d\n",
@@ -461,7 +449,7 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk, int
 }
 #else
 static void dump_xattr(struct f2fs_sb_info *UNUSED(sbi),
-				struct f2fs_node *UNUSED(node_blk), int UNUSED(is_dir))
+				struct f2fs_node *UNUSED(node_blk))
 {
 	MSG(0, "XATTR does not support\n");
 }
@@ -474,15 +462,13 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	u64 ofs = 0;
 	u32 addr_per_block;
 	bool is_dir = S_ISDIR(le16_to_cpu(node_blk->i.i_mode));
-	int ret = 0;
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		/* recover from inline data */
 		dev_write_dump(((unsigned char *)node_blk) + INLINE_DATA_OFFSET,
 						0, MAX_INLINE_DATA(node_blk));
-		ret = -1;
-		goto dump_xattr;
+		return -1;
 	}
 
 	if ((node_blk->i.i_inline & F2FS_INLINE_DENTRY)) {
@@ -494,8 +480,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		DBG(3, "ino[0x%x] has inline dentries!\n", nid);
 		/* recover from inline dentry */
 		dump_folder_contents(sbi, d.bitmap, d.dentry, d.filename, d.max);
-		ret = -1;
-		goto dump_xattr;
+		return -1;
 	}
 
 	c.show_file_map_max_offset = f2fs_max_file_offset(&node_blk->i);
@@ -531,9 +516,9 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 	/* last block in extent cache */
 	print_extent(true);
-dump_xattr:
-	dump_xattr(sbi, node_blk, is_dir);
-	return ret;
+
+	dump_xattr(sbi, node_blk);
+	return 0;
 }
 
 static void dump_file(struct f2fs_sb_info *sbi, struct node_info *ni,
