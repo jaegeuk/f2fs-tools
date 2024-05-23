@@ -867,8 +867,15 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	if (!do_mmap) {
 		for (i = 0; i < count; i++) {
 			ret = pread(fd, buf, buf_size, offset + buf_size * i);
-			if (ret != buf_size)
+			if (ret != buf_size) {
+				printf("pread expected: %"PRIu64", readed: %"PRIu64"\n",
+						buf_size, ret);
+				if (ret > 0) {
+					read_cnt += ret;
+					memcpy(print_buf, buf, print_bytes);
+				}
 				break;
+			}
 
 			read_cnt += ret;
 			if (i == 0)
