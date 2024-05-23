@@ -44,7 +44,8 @@ is used to retrieve f2fs metadata (usually in a disk partition).
 \fIdevice\fP is the special file corresponding to the device (e.g.
 \fI/dev/sdXX\fP).
 
-Currently, it can retrieve 1) a file given its inode number, 2) NAT
+Currently, it can retrieve 1) a file or folder given its inode number
+(folders are dumped recursively), 2) NAT
 entries into a file, 3) SIT entries into a file, 4) SSA entries into
 a file, 5) reverse information from the given block address.
 .PP
@@ -55,6 +56,20 @@ is 0 on success and -1 on failure.
 .TP
 .BI \-i " inode number"
 Specify an inode number to dump out.
+.TP
+.BI \-r
+Dump out from the root inode.
+.TP
+.BI \-f
+Do not prompt before dumping
+.TP
+.BI \-y
+Alias for \-f
+.TP
+.BI \-o " path"
+Dump inodes to the given path
+.BI \-P
+Preserve mode/owner/group for dumped inode
 .TP
 .BI \-I " inode number"
 Specify an inode number and scan full disk to dump out, include history inode block

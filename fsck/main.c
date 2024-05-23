@@ -34,7 +34,7 @@ struct f2fs_fsck gfsck;
 
 INIT_FEATURE_TABLE;
 
-#ifdef WITH_SLOAD
+#if defined(WITH_SLOAD) || defined(WITH_DUMP)
 static char *absolute_path(const char *file)
 {
 	char *ret;
@@ -384,7 +384,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
 #ifdef WITH_DUMP
-		const char *option_string = "d:i:I:n:Ms:Sa:b:V";
+		const char *option_string = "d:fi:I:n:Mo:Prs:Sa:b:Vy";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -395,6 +395,8 @@ void f2fs_parse_options(int argc, char *argv[])
 			.end_ssa = -1,
 			.blk_addr = -1,
 			.scan_nid = 0,
+			.use_root_nid = 0,
+			.base_path = NULL,
 		};
 
 		c.func = DUMP;
@@ -455,6 +457,24 @@ void f2fs_parse_options(int argc, char *argv[])
 				else
 					ret = sscanf(optarg, "%x",
 							&dump_opt.blk_addr);
+				break;
+			case 'y':
+			case 'f':
+				c.force = 1;
+				break;
+			case 'r':
+				dump_opt.use_root_nid = 1;
+				break;
+			case 'o':
+				dump_opt.base_path = absolute_path(optarg);
+				break;
+			case 'P':
+#if defined(__MINGW32__)
+				MSG(0, "-P not supported for Windows\n");
+				err = EWRONG_OPT;
+#else
+				c.preserve_perms = 1;
+#endif
 				break;
 			case 'V':
 				show_version(prog);
@@ -914,6 +934,9 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	struct f2fs_checkpoint *ckpt = F2FS_CKPT(sbi);
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 
+	if (opt->use_root_nid)
+		opt->nid = sbi->root_ino_num;
+
 	if (opt->end_nat == -1)
 		opt->end_nat = NM_I(sbi)->max_nid;
 	if (opt->end_sit == -1)
@@ -929,7 +952,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	if (opt->blk_addr != -1)
 		dump_info_from_blkaddr(sbi, opt->blk_addr);
 	if (opt->nid)
-		dump_node(sbi, opt->nid, 0);
+		dump_node(sbi, opt->nid, c.force, opt->base_path, 1, 1);
 	if (opt->scan_nid)
 		dump_node_scan_disk(sbi, opt->scan_nid);
 
