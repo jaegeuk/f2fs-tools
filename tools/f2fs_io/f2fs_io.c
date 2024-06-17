@@ -182,16 +182,19 @@ static void do_fsync(int argc, char **argv, const struct cmd_desc *cmd)
 static void do_set_verity(int argc, char **argv, const struct cmd_desc *cmd)
 {
 	int ret, fd;
+	struct fsverity_enable_arg args = {.version = 1};
+
+	args.hash_algorithm = FS_VERITY_HASH_ALG_SHA256;
+	args.block_size = 4096;
 
 	if (argc != 2) {
 		fputs("Excess arguments\n\n", stderr);
 		fputs(cmd->cmd_help, stderr);
 		exit(1);
 	}
+	fd = open(argv[1], O_RDONLY);
 
-	fd = open(argv[1], O_RDWR);
-
-	ret = ioctl(fd, FS_IOC_ENABLE_VERITY);
+	ret = ioctl(fd, FS_IOC_ENABLE_VERITY, &args);
 	if (ret < 0) {
 		perror("FS_IOC_ENABLE_VERITY");
 		exit(1);

@@ -13,6 +13,7 @@
 #define HAVE_LINUX_XATTR_H 1
 #define HAVE_LINUX_FS_H 1
 #define HAVE_LINUX_FIEMAP_H 1
+#define HAVE_LINUX_VERITY_H 1
 #define HAVE_MNTENT_H 1
 #define HAVE_STDLIB_H 1
 #define HAVE_STRING_H 1
