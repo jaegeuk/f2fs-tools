@@ -479,7 +479,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	if ((node_blk->i.i_inline & F2FS_INLINE_DATA)) {
 		DBG(3, "ino[0x%x] has inline data!\n", nid);
 		/* recover from inline data */
-		dev_write_dump(((unsigned char *)node_blk) + INLINE_DATA_OFFSET,
+		dev_write_dump(inline_data_addr(node_blk),
 						0, MAX_INLINE_DATA(node_blk));
 		ret = -1;
 		goto dump_xattr;
