@@ -618,7 +618,8 @@ fsck_again:
 			goto out_err;
 		break;
 	case RESIZE:
-		if (do_resize(sbi))
+                ret = do_resize(sbi);
+		if (ret)
 			goto out_err;
 		break;
 	case SLOAD:
