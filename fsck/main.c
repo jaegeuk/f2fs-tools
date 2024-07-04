@@ -834,7 +834,9 @@ void f2fs_parse_options(int argc, char *argv[])
 		static struct inject_option inject_opt = {
 			.sb = -1,
 			.cp = -1,
+			.nat = -1,
 			.idx = -1,
+			.nid = -1,
 		};
 
 		err = inject_parse_options(argc, argv, &inject_opt);

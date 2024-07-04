@@ -12,6 +12,16 @@
 #include <getopt.h>
 #include "inject.h"
 
+static void print_raw_nat_entry_info(struct f2fs_nat_entry *ne)
+{
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u8(ne, version);
+	DISP_u32(ne, ino);
+	DISP_u32(ne, block_addr);
+}
+
 void inject_usage(void)
 {
 	MSG(0, "\nUsage: inject.f2fs [options] device\n");
@@ -22,8 +32,10 @@ void inject_usage(void)
 	MSG(0, "  --val <new value> new value to set\n");
 	MSG(0, "  --str <new string> new string to set\n");
 	MSG(0, "  --idx <slot index> which slot is injected in an array\n");
+	MSG(0, "  --nid <nid> which nid is injected\n");
 	MSG(0, "  --sb <0|1|2> --mb <name> [--idx <index>] --val/str <value/string> inject superblock\n");
 	MSG(0, "  --cp <0|1|2> --mb <name> [--idx <index>] --val <value> inject checkpoint\n");
+	MSG(0, "  --nat <0|1|2> --mb <name> --nid <nid> --val <value> inject nat entry\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -59,6 +71,19 @@ static void inject_cp_usage(void)
 	MSG(0, "  cur_data_blkoff: inject cur_data_blkoff array selected by --idx <index>\n");
 }
 
+static void inject_nat_usage(void)
+{
+	MSG(0, "inject.f2fs --nat <0|1|2> --mb <name> --nid <nid> --val <value> inject nat entry\n");
+	MSG(0, "[nat]:\n");
+	MSG(0, "  0: auto select the current nat pack\n");
+	MSG(0, "  1: select the first nat pack\n");
+	MSG(0, "  2: select the second nat pack\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  version: inject nat entry version\n");
+	MSG(0, "  ino: inject nat entry ino\n");
+	MSG(0, "  block_addr: inject nat entry block_addr\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -73,6 +98,8 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"str", required_argument, 0, 5},
 		{"sb", required_argument, 0, 6},
 		{"cp", required_argument, 0, 7},
+		{"nat", required_argument, 0, 8},
+		{"nid", required_argument, 0, 9},
 		{0, 0, 0, 0}
 	};
 
@@ -123,6 +150,21 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				return -ERANGE;
 			MSG(0, "Info: inject cp pack %s\n", pack[opt->cp]);
 			break;
+		case 8:
+			if (!is_digits(optarg))
+				return EWRONG_OPT;
+			opt->nat = atoi(optarg);
+			if (opt->nat < 0 || opt->nat > 2)
+				return -ERANGE;
+			MSG(0, "Info: inject nat pack %s\n", pack[opt->nat]);
+			break;
+		case 9:
+			opt->nid = strtol(optarg, &endptr, 0);
+			if (opt->nid == LONG_MAX || opt->nid == LONG_MIN ||
+			    *endptr != '\0')
+				return -ERANGE;
+			MSG(0, "Info: inject nid %u : 0x%x\n", opt->nid, opt->nid);
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -139,6 +181,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				exit(0);
 			} else if (opt->cp >= 0) {
 				inject_cp_usage();
+				exit(0);
+			} else if (opt->nat >= 0) {
+				inject_nat_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -315,6 +360,81 @@ out:
 	return ret;
 }
 
+static int inject_nat(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct f2fs_nm_info *nm_i = NM_I(sbi);
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	struct f2fs_nat_block *nat_blk;
+	struct f2fs_nat_entry *ne;
+	block_t blk_addr;
+	unsigned int offs;
+	bool is_set;
+	int ret;
+
+	if (!IS_VALID_NID(sbi, opt->nid)) {
+		ERR_MSG("Invalid nid %u range [%u:%lu]\n", opt->nid, 0,
+			NAT_ENTRY_PER_BLOCK *
+			((get_sb(segment_count_nat) << 1) <<
+			 sbi->log_blocks_per_seg));
+		return -EINVAL;
+	}
+
+	nat_blk = calloc(F2FS_BLKSIZE, 1);
+	ASSERT(nat_blk);
+
+	/* change NAT version bitmap temporarily to select specified pack */
+	is_set = f2fs_test_bit(opt->nid, nm_i->nat_bitmap);
+	if (opt->nat == 0) {
+		opt->nat = is_set ? 2 : 1;
+	} else {
+		if (opt->nat == 1)
+			f2fs_clear_bit(opt->nid, nm_i->nat_bitmap);
+		else
+			f2fs_set_bit(opt->nid, nm_i->nat_bitmap);
+	}
+
+	blk_addr = current_nat_addr(sbi, opt->nid, NULL);
+
+	ret = dev_read_block(nat_blk, blk_addr);
+	ASSERT(ret >= 0);
+
+	offs = opt->nid % NAT_ENTRY_PER_BLOCK;
+	ne = &nat_blk->entries[offs];
+
+	if (!strcmp(opt->mb, "version")) {
+		MSG(0, "Info: inject nat entry version of nid %u "
+		    "in pack %d: %d -> %d\n", opt->nid, opt->nat,
+		    ne->version, (u8)opt->val);
+		ne->version = (u8)opt->val;
+	} else if (!strcmp(opt->mb, "ino")) {
+		MSG(0, "Info: inject nat entry ino of nid %u "
+		    "in pack %d: %d -> %d\n", opt->nid, opt->nat,
+		    le32_to_cpu(ne->ino), (nid_t)opt->val);
+		ne->ino = cpu_to_le32((nid_t)opt->val);
+	} else if (!strcmp(opt->mb, "block_addr")) {
+		MSG(0, "Info: inject nat entry block_addr of nid %u "
+		    "in pack %d: 0x%x -> 0x%x\n", opt->nid, opt->nat,
+		    le32_to_cpu(ne->block_addr), (block_t)opt->val);
+		ne->block_addr = cpu_to_le32((block_t)opt->val);
+	} else {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		free(nat_blk);
+		return -EINVAL;
+	}
+	print_raw_nat_entry_info(ne);
+
+	ret = dev_write_block(nat_blk, blk_addr);
+	ASSERT(ret >= 0);
+	/* restore NAT version bitmap */
+	if (is_set)
+		f2fs_set_bit(opt->nid, nm_i->nat_bitmap);
+	else
+		f2fs_clear_bit(opt->nid, nm_i->nat_bitmap);
+
+	free(nat_blk);
+	return ret;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -324,6 +444,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 		ret = inject_sb(sbi, opt);
 	else if (opt->cp >= 0)
 		ret = inject_cp(sbi, opt);
+	else if (opt->nat >= 0)
+		ret = inject_nat(sbi, opt);
 
 	return ret;
 }

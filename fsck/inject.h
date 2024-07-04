@@ -24,8 +24,10 @@ struct inject_option {
 	unsigned int idx;	/* slot index */
 	long long val;		/* new value */
 	char *str;		/* new string */
+	nid_t nid;
 	int sb;			/* which sb */
 	int cp;			/* which cp */
+	int nat;		/* which nat pack */
 };
 
 void inject_usage(void);
