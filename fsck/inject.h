@@ -20,6 +20,11 @@
 #include "fsck.h"
 
 struct inject_option {
+	const char *mb;		/* member name */
+	unsigned int idx;	/* slot index */
+	long long val;		/* new value */
+	char *str;		/* new string */
+	int sb;			/* which sb */
 };
 
 void inject_usage(void);

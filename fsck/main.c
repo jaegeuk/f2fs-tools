@@ -831,7 +831,10 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif /* WITH_LABEL */
 	} else if (!strcmp("inject.f2fs", prog)) {
 #ifdef WITH_INJECT
-		static struct inject_option inject_opt;
+		static struct inject_option inject_opt = {
+			.sb = -1,
+			.idx = -1,
+		};
 
 		err = inject_parse_options(argc, argv, &inject_opt);
 		if (err < 0) {

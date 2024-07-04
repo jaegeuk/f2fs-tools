@@ -1224,7 +1224,7 @@ int init_sb_info(struct f2fs_sb_info *sbi)
 			c.devices[i].path = strdup((char *)sb->devs[i].path);
 			if (get_device_info(i))
 				ASSERT(0);
-		} else {
+		} else if (c.func != INJECT) {
 			ASSERT(!strcmp((char *)sb->devs[i].path,
 						(char *)c.devices[i].path));
 		}
@@ -4030,7 +4030,7 @@ int f2fs_do_mount(struct f2fs_sb_info *sbi)
 	}
 	cp = F2FS_CKPT(sbi);
 
-	if (c.func != FSCK && c.func != DUMP &&
+	if (c.func != FSCK && c.func != DUMP && c.func != INJECT &&
 		!is_set_ckpt_flags(F2FS_CKPT(sbi), CP_UMOUNT_FLAG)) {
 		ERR_MSG("Mount unclean image to replay log first\n");
 		return -1;
