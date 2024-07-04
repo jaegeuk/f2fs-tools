@@ -32,6 +32,7 @@ struct inject_option {
 	int sit;		/* which sit pack */
 	bool ssa;
 	bool node;
+	bool dent;
 };
 
 void inject_usage(void);

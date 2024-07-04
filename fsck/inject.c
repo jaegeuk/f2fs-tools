@@ -10,6 +10,7 @@
  */
 
 #include <getopt.h>
+#include "node.h"
 #include "inject.h"
 
 static void print_raw_nat_entry_info(struct f2fs_nat_entry *ne)
@@ -74,6 +75,17 @@ static void print_node_footer_info(struct node_footer *footer)
 	DISP_u32(footer, next_blkaddr);
 }
 
+static void print_raw_dentry_info(struct f2fs_dir_entry *dentry)
+{
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u32(dentry, hash_code);
+	DISP_u32(dentry, ino);
+	DISP_u16(dentry, name_len);
+	DISP_u8(dentry, file_type);
+}
+
 void inject_usage(void)
 {
 	MSG(0, "\nUsage: inject.f2fs [options] device\n");
@@ -92,6 +104,7 @@ void inject_usage(void)
 	MSG(0, "  --sit <0|1|2> --mb <name> --blk <blk> [--idx <index>] --val <value> inject sit entry\n");
 	MSG(0, "  --ssa --mb <name> --blk <blk> [--idx <index>] --val <value> inject summary entry\n");
 	MSG(0, "  --node --mb <name> --nid <nid> [--idx <index>] --val <value> inject node\n");
+	MSG(0, "  --dent --mb <name> --nid <ino> [--idx <index>] --val <value> inject ino's dentry\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -186,6 +199,16 @@ static void inject_node_usage(void)
 	MSG(0, "  addr: inject {in}direct node nid/addr array selected by --idx <index>\n");
 }
 
+static void inject_dent_usage(void)
+{
+	MSG(0, "inject.f2fs --dent --mb <name> --nid <nid> [--idx <index>] --val <value> inject dentry\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  d_bitmap: inject dentry block d_bitmap of nid\n");
+	MSG(0, "  d_hash: inject dentry hash\n");
+	MSG(0, "  d_ino: inject dentry ino\n");
+	MSG(0, "  d_ftype: inject dentry ftype\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -206,6 +229,7 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"blk", required_argument, 0, 11},
 		{"ssa", no_argument, 0, 12},
 		{"node", no_argument, 0, 13},
+		{"dent", no_argument, 0, 14},
 		{0, 0, 0, 0}
 	};
 
@@ -298,6 +322,10 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 			opt->node = true;
 			MSG(0, "Info: inject node\n");
 			break;
+		case 14:
+			opt->dent = true;
+			MSG(0, "Info: inject dentry\n");
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -326,6 +354,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				exit(0);
 			} else if (opt->node) {
 				inject_node_usage();
+				exit(0);
+			} else if (opt->dent) {
+				inject_dent_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -902,6 +933,157 @@ out:
 	return ret;
 }
 
+static int find_dir_entry(struct f2fs_dentry_ptr *d, nid_t ino)
+{
+	struct f2fs_dir_entry *de;
+	int slot = 0;
+
+	while (slot < d->max) {
+		if (!test_bit_le(slot, d->bitmap)) {
+			slot++;
+			continue;
+		}
+
+		de = &d->dentry[slot];
+		if (le32_to_cpu(de->ino) == ino && de->hash_code != 0)
+			return slot;
+		if (de->name_len == 0) {
+			slot++;
+			continue;
+		}
+		slot += GET_DENTRY_SLOTS(le16_to_cpu(de->name_len));
+	}
+
+	return -ENOENT;
+}
+
+static int inject_dentry(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct node_info ni;
+	struct f2fs_node *node_blk = NULL;
+	struct f2fs_inode *inode;
+	struct f2fs_dentry_ptr d;
+	void *inline_dentry;
+	struct f2fs_dentry_block *dent_blk = NULL;
+	block_t addr = 0;
+	void *buf = NULL;
+	struct f2fs_dir_entry *dent = NULL;
+	struct dnode_of_data dn;
+	nid_t pino;
+	int slot = -ENOENT, ret;
+
+	node_blk = malloc(F2FS_BLKSIZE);
+	ASSERT(node_blk != NULL);
+
+	/* get child inode */
+	get_node_info(sbi, opt->nid, &ni);
+	ret = dev_read_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+	pino = le32_to_cpu(node_blk->i.i_pino);
+
+	/* get parent inode */
+	get_node_info(sbi, pino, &ni);
+	ret = dev_read_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+	inode = &node_blk->i;
+
+	/* find child dentry */
+	if (inode->i_inline & F2FS_INLINE_DENTRY) {
+		inline_dentry = inline_data_addr(node_blk);
+		make_dentry_ptr(&d, node_blk, inline_dentry, 2);
+		addr = ni.blk_addr;
+		buf = node_blk;
+
+		slot = find_dir_entry(&d, opt->nid);
+		if (slot >= 0)
+			dent = &d.dentry[slot];
+	} else {
+		unsigned int level, dirlevel, nbucket;
+		unsigned long i, end;
+
+		level = le32_to_cpu(inode->i_current_depth);
+		dirlevel = le32_to_cpu(inode->i_dir_level);
+		nbucket = dir_buckets(level, dirlevel);
+		end = dir_block_index(level, dirlevel, nbucket) +
+						bucket_blocks(level);
+
+		dent_blk = malloc(F2FS_BLKSIZE);
+		ASSERT(dent_blk != NULL);
+
+		for (i = 0; i < end; i++) {
+			memset(&dn, 0, sizeof(dn));
+			set_new_dnode(&dn, node_blk, NULL, pino);
+			ret = get_dnode_of_data(sbi, &dn, i, LOOKUP_NODE);
+			if (ret < 0)
+				break;
+			addr = dn.data_blkaddr;
+			if (dn.inode_blk != dn.node_blk)
+				free(dn.node_blk);
+			if (addr == NULL_ADDR || addr == NEW_ADDR)
+				continue;
+			if (!f2fs_is_valid_blkaddr(sbi, addr, DATA_GENERIC)) {
+				MSG(0, "invalid blkaddr 0x%x at offset %lu\n",
+				    addr, i);
+				continue;
+			}
+			ret = dev_read_block(dent_blk, addr);
+			ASSERT(ret >= 0);
+
+			make_dentry_ptr(&d, node_blk, dent_blk, 1);
+			slot = find_dir_entry(&d, opt->nid);
+			if (slot >= 0) {
+				dent = &d.dentry[slot];
+				buf = dent_blk;
+				break;
+			}
+		}
+	}
+
+	if (slot < 0) {
+		ERR_MSG("dentry of ino %u not found\n", opt->nid);
+		ret = -ENOENT;
+		goto out;
+	}
+
+	if (!strcmp(opt->mb, "d_bitmap")) {
+		MSG(0, "Info: inject dentry bitmap of nid %u: 1 -> 0\n",
+		    opt->nid);
+		test_and_clear_bit_le(slot, d.bitmap);
+	} else if (!strcmp(opt->mb, "d_hash")) {
+		MSG(0, "Info: inject dentry d_hash of nid %u: "
+		    "0x%x -> 0x%x\n", opt->nid, le32_to_cpu(dent->hash_code),
+		    (u32)opt->val);
+		dent->hash_code = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "d_ino")) {
+		MSG(0, "Info: inject dentry d_ino of nid %u: "
+		    "%u -> %u\n", opt->nid, le32_to_cpu(dent->ino),
+		    (nid_t)opt->val);
+		dent->ino = cpu_to_le32((nid_t)opt->val);
+	} else if (!strcmp(opt->mb, "d_ftype")) {
+		MSG(0, "Info: inject dentry d_type of nid %u: "
+		    "%d -> %d\n", opt->nid, dent->file_type,
+		    (u8)opt->val);
+		dent->file_type = (u8)opt->val;
+	} else {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	print_raw_dentry_info(dent);
+
+	if (inode->i_inline & F2FS_INLINE_DENTRY)
+		ret = update_inode(sbi, buf, &addr);
+	else
+		ret = update_block(sbi, buf, &addr, NULL);
+	ASSERT(ret >= 0);
+
+out:
+	free(node_blk);
+	free(dent_blk);
+	return ret;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -919,6 +1101,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 		ret = inject_ssa(sbi, opt);
 	else if (opt->node)
 		ret = inject_node(sbi, opt);
+	else if (opt->dent)
+		ret = inject_dentry(sbi, opt);
 
 	return ret;
 }
