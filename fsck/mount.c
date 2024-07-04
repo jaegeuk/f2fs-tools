@@ -3438,6 +3438,32 @@ void write_checkpoints(struct f2fs_sb_info *sbi)
 	write_checkpoint(sbi);
 }
 
+void write_raw_cp_blocks(struct f2fs_sb_info *sbi,
+			 struct f2fs_checkpoint *cp, int which)
+{
+	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
+	uint32_t crc;
+	block_t cp_blkaddr;
+	int ret;
+
+	crc = f2fs_checkpoint_chksum(cp);
+	*((__le32 *)((unsigned char *)cp + get_cp(checksum_offset))) =
+							cpu_to_le32(crc);
+
+	cp_blkaddr = get_sb(cp_blkaddr);
+	if (which == 2)
+		cp_blkaddr += 1 << get_sb(log_blocks_per_seg);
+
+	/* write the first cp block in this CP pack */
+	ret = dev_write_block(cp, cp_blkaddr);
+	ASSERT(ret >= 0);
+
+	/* write the second cp block in this CP pack */
+	cp_blkaddr += get_cp(cp_pack_total_block_count) - 1;
+	ret = dev_write_block(cp, cp_blkaddr);
+	ASSERT(ret >= 0);
+}
+
 void build_nat_area_bitmap(struct f2fs_sb_info *sbi)
 {
 	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_HOT_DATA);

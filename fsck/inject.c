@@ -23,6 +23,7 @@ void inject_usage(void)
 	MSG(0, "  --str <new string> new string to set\n");
 	MSG(0, "  --idx <slot index> which slot is injected in an array\n");
 	MSG(0, "  --sb <0|1|2> --mb <name> [--idx <index>] --val/str <value/string> inject superblock\n");
+	MSG(0, "  --cp <0|1|2> --mb <name> [--idx <index>] --val <value> inject checkpoint\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -42,6 +43,22 @@ static void inject_sb_usage(void)
 	MSG(0, "  devs.path: inject path in devs array selected by --idx <index> specified by --str <string>\n");
 }
 
+static void inject_cp_usage(void)
+{
+	MSG(0, "inject.f2fs --cp <0|1|2> --mb <name> [--idx <index>] --val <value> inject checkpoint\n");
+	MSG(0, "[cp]:\n");
+	MSG(0, "  0: auto select the current cp pack\n");
+	MSG(0, "  1: select the first cp pack\n");
+	MSG(0, "  2: select the second cp pack\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  checkpoint_ver: inject checkpoint_ver\n");
+	MSG(0, "  ckpt_flags: inject ckpt_flags\n");
+	MSG(0, "  cur_node_segno: inject cur_node_segno array selected by --idx <index>\n");
+	MSG(0, "  cur_node_blkoff: inject cur_node_blkoff array selected by --idx <index>\n");
+	MSG(0, "  cur_data_segno: inject cur_data_segno array selected by --idx <index>\n");
+	MSG(0, "  cur_data_blkoff: inject cur_data_blkoff array selected by --idx <index>\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -55,6 +72,7 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"val", required_argument, 0, 4},
 		{"str", required_argument, 0, 5},
 		{"sb", required_argument, 0, 6},
+		{"cp", required_argument, 0, 7},
 		{0, 0, 0, 0}
 	};
 
@@ -97,6 +115,14 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				return -ERANGE;
 			MSG(0, "Info: inject sb %s\n", pack[opt->sb]);
 			break;
+		case 7:
+			if (!is_digits(optarg))
+				return EWRONG_OPT;
+			opt->cp = atoi(optarg);
+			if (opt->cp < 0 || opt->cp > 2)
+				return -ERANGE;
+			MSG(0, "Info: inject cp pack %s\n", pack[opt->cp]);
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -110,6 +136,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		default:
 			if (opt->sb >= 0) {
 				inject_sb_usage();
+				exit(0);
+			} else if (opt->cp >= 0) {
+				inject_cp_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -190,6 +219,102 @@ out:
 	return ret;
 }
 
+static int inject_cp(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct f2fs_checkpoint *cp, *cur_cp = F2FS_CKPT(sbi);
+	char *buf = NULL;
+	int ret = 0;
+
+	if (opt->cp == 0)
+		opt->cp = sbi->cur_cp;
+
+	if (opt->cp != sbi->cur_cp) {
+		struct f2fs_super_block *sb = sbi->raw_super;
+		block_t cp_addr;
+
+		buf = calloc(1, F2FS_BLKSIZE);
+		ASSERT(buf != NULL);
+
+		cp_addr = get_sb(cp_blkaddr);
+		if (opt->cp == 2)
+			cp_addr += 1 << get_sb(log_blocks_per_seg);
+		ret = dev_read_block(buf, cp_addr);
+		ASSERT(ret >= 0);
+
+		cp = (struct f2fs_checkpoint *)buf;
+		sbi->ckpt = cp;
+		sbi->cur_cp = opt->cp;
+	} else {
+		cp = cur_cp;
+	}
+
+	if (!strcmp(opt->mb, "checkpoint_ver")) {
+		MSG(0, "Info: inject checkpoint_ver of cp %d: 0x%llx -> 0x%lx\n",
+		    opt->cp, get_cp(checkpoint_ver), (u64)opt->val);
+		set_cp(checkpoint_ver, (u64)opt->val);
+	} else if (!strcmp(opt->mb, "ckpt_flags")) {
+		MSG(0, "Info: inject ckpt_flags of cp %d: 0x%x -> 0x%x\n",
+		    opt->cp, get_cp(ckpt_flags), (u32)opt->val);
+		set_cp(ckpt_flags, (u32)opt->val);
+	} else if (!strcmp(opt->mb, "cur_node_segno")) {
+		if (opt->idx >= MAX_ACTIVE_NODE_LOGS) {
+			ERR_MSG("invalid index %u of cp->cur_node_segno[]\n",
+				opt->idx);
+			ret = -EINVAL;
+			goto out;
+		}
+		MSG(0, "Info: inject cur_node_segno[%d] of cp %d: 0x%x -> 0x%x\n",
+		    opt->idx, opt->cp, get_cp(cur_node_segno[opt->idx]),
+		    (u32)opt->val);
+		set_cp(cur_node_segno[opt->idx], (u32)opt->val);
+	} else if (!strcmp(opt->mb, "cur_node_blkoff")) {
+		if (opt->idx >= MAX_ACTIVE_NODE_LOGS) {
+			ERR_MSG("invalid index %u of cp->cur_node_blkoff[]\n",
+				opt->idx);
+			ret = -EINVAL;
+			goto out;
+		}
+		MSG(0, "Info: inject cur_node_blkoff[%d] of cp %d: 0x%x -> 0x%x\n",
+		    opt->idx, opt->cp, get_cp(cur_node_blkoff[opt->idx]),
+		    (u16)opt->val);
+		set_cp(cur_node_blkoff[opt->idx], (u16)opt->val);
+	} else if (!strcmp(opt->mb, "cur_data_segno")) {
+		if (opt->idx >= MAX_ACTIVE_DATA_LOGS) {
+			ERR_MSG("invalid index %u of cp->cur_data_segno[]\n",
+				opt->idx);
+			ret = -EINVAL;
+			goto out;
+		}
+		MSG(0, "Info: inject cur_data_segno[%d] of cp %d: 0x%x -> 0x%x\n",
+		    opt->idx, opt->cp, get_cp(cur_data_segno[opt->idx]),
+		    (u32)opt->val);
+		set_cp(cur_data_segno[opt->idx], (u32)opt->val);
+	} else if (!strcmp(opt->mb, "cur_data_blkoff")) {
+		if (opt->idx >= MAX_ACTIVE_DATA_LOGS) {
+			ERR_MSG("invalid index %u of cp->cur_data_blkoff[]\n",
+				opt->idx);
+			ret = -EINVAL;
+			goto out;
+		}
+		MSG(0, "Info: inject cur_data_blkoff[%d] of cp %d: 0x%x -> 0x%x\n",
+		    opt->idx, opt->cp, get_cp(cur_data_blkoff[opt->idx]),
+		    (u16)opt->val);
+		set_cp(cur_data_blkoff[opt->idx], (u16)opt->val);
+	} else {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	print_ckpt_info(sbi);
+	write_raw_cp_blocks(sbi, cp, opt->cp);
+
+out:
+	free(buf);
+	sbi->ckpt = cur_cp;
+	return ret;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -197,6 +322,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 
 	if (opt->sb >= 0)
 		ret = inject_sb(sbi, opt);
+	else if (opt->cp >= 0)
+		ret = inject_cp(sbi, opt);
 
 	return ret;
 }

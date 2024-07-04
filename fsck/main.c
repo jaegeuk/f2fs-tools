@@ -833,6 +833,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #ifdef WITH_INJECT
 		static struct inject_option inject_opt = {
 			.sb = -1,
+			.cp = -1,
 			.idx = -1,
 		};
 

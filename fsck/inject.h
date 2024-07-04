@@ -25,6 +25,7 @@ struct inject_option {
 	long long val;		/* new value */
 	char *str;		/* new string */
 	int sb;			/* which sb */
+	int cp;			/* which cp */
 };
 
 void inject_usage(void);
