@@ -29,6 +29,15 @@
 #include <stdbool.h>
 #include "quotaio.h"
 #include "compress.h"
+#ifdef WITH_INJECT
+#include "inject.h"
+#else
+static void inject_usage(void)
+{
+	MSG(0, "\ninject.f2fs not supported\n");
+	exit(1);
+}
+#endif
 
 struct f2fs_fsck gfsck;
 
@@ -196,6 +205,8 @@ static void error_out(char *prog)
 		sload_usage();
 	else if (!strcmp("f2fslabel", prog))
 		label_usage();
+	else if (!strcmp("inject.f2fs", prog))
+		inject_usage();
 	else
 		MSG(0, "\nWrong program.\n");
 }
@@ -818,6 +829,18 @@ void f2fs_parse_options(int argc, char *argv[])
 			c.vol_label = NULL;
 		}
 #endif /* WITH_LABEL */
+	} else if (!strcmp("inject.f2fs", prog)) {
+#ifdef WITH_INJECT
+		static struct inject_option inject_opt;
+
+		err = inject_parse_options(argc, argv, &inject_opt);
+		if (err < 0) {
+			err = EWRONG_OPT;
+		}
+
+		c.func = INJECT;
+		c.private = &inject_opt;
+#endif /* WITH_INJECT */
 	}
 
 	if (err == NOERROR) {
@@ -1236,6 +1259,12 @@ fsck_again:
 #ifdef WITH_LABEL
 	case LABEL:
 		if (do_label(sbi))
+			goto out_err;
+		break;
+#endif
+#ifdef WITH_INJECT
+	case INJECT:
+		if (do_inject(sbi))
 			goto out_err;
 		break;
 #endif

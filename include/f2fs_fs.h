@@ -45,6 +45,7 @@
 #define WITH_RESIZE
 #define WITH_SLOAD
 #define WITH_LABEL
+#define WITH_INJECT
 #endif
 
 #include <inttypes.h>
@@ -427,6 +428,7 @@ enum f2fs_config_func {
 	RESIZE,
 	SLOAD,
 	LABEL,
+	INJECT,
 };
 
 enum default_set {
