@@ -353,4 +353,7 @@ int update_inode(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 int flush_nat_journal_entries(struct f2fs_sb_info *sbi);
 int flush_sit_journal_entries(struct f2fs_sb_info *sbi);
 
+/* main.c */
+int is_digits(char *optarg);
+
 #endif /* _FSCK_H_ */

@@ -171,7 +171,7 @@ void label_usage()
 	exit(1);
 }
 
-static int is_digits(char *optarg)
+int is_digits(char *optarg)
 {
 	unsigned int i;
 
