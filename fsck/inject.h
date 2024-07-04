@@ -25,9 +25,11 @@ struct inject_option {
 	long long val;		/* new value */
 	char *str;		/* new string */
 	nid_t nid;
+	block_t blk;
 	int sb;			/* which sb */
 	int cp;			/* which cp */
 	int nat;		/* which nat pack */
+	int sit;		/* which sit pack */
 };
 
 void inject_usage(void);

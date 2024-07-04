@@ -835,6 +835,7 @@ void f2fs_parse_options(int argc, char *argv[])
 			.sb = -1,
 			.cp = -1,
 			.nat = -1,
+			.sit = -1,
 			.idx = -1,
 			.nid = -1,
 		};

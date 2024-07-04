@@ -22,6 +22,27 @@ static void print_raw_nat_entry_info(struct f2fs_nat_entry *ne)
 	DISP_u32(ne, block_addr);
 }
 
+static void print_raw_sit_entry_info(struct f2fs_sit_entry *se)
+{
+	int i;
+
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u16(se, vblocks);
+	if (c.layout)
+		printf("%-30s ", "valid_map:");
+	else
+		printf("%-30s\t\t[", "valid_map");
+	for (i = 0; i < SIT_VBLOCK_MAP_SIZE; i++)
+		printf("%02x", se->valid_map[i]);
+	if (c.layout)
+		printf("\n");
+	else
+		printf("]\n");
+	DISP_u64(se, mtime);
+}
+
 void inject_usage(void)
 {
 	MSG(0, "\nUsage: inject.f2fs [options] device\n");
@@ -33,9 +54,11 @@ void inject_usage(void)
 	MSG(0, "  --str <new string> new string to set\n");
 	MSG(0, "  --idx <slot index> which slot is injected in an array\n");
 	MSG(0, "  --nid <nid> which nid is injected\n");
+	MSG(0, "  --blk <blkaddr> which blkaddr is injected\n");
 	MSG(0, "  --sb <0|1|2> --mb <name> [--idx <index>] --val/str <value/string> inject superblock\n");
 	MSG(0, "  --cp <0|1|2> --mb <name> [--idx <index>] --val <value> inject checkpoint\n");
 	MSG(0, "  --nat <0|1|2> --mb <name> --nid <nid> --val <value> inject nat entry\n");
+	MSG(0, "  --sit <0|1|2> --mb <name> --blk <blk> [--idx <index>] --val <value> inject sit entry\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -84,6 +107,19 @@ static void inject_nat_usage(void)
 	MSG(0, "  block_addr: inject nat entry block_addr\n");
 }
 
+static void inject_sit_usage(void)
+{
+	MSG(0, "inject.f2fs --sit <0|1|2> --mb <name> --blk <blk> [--idx <index>] --val <value> inject sit entry\n");
+	MSG(0, "[sit]:\n");
+	MSG(0, "  0: auto select the current sit pack\n");
+	MSG(0, "  1: select the first sit pack\n");
+	MSG(0, "  2: select the second sit pack\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  vblocks: inject sit entry vblocks\n");
+	MSG(0, "  valid_map: inject sit entry valid_map\n");
+	MSG(0, "  mtime: inject sit entry mtime\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -100,6 +136,8 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"cp", required_argument, 0, 7},
 		{"nat", required_argument, 0, 8},
 		{"nid", required_argument, 0, 9},
+		{"sit", required_argument, 0, 10},
+		{"blk", required_argument, 0, 11},
 		{0, 0, 0, 0}
 	};
 
@@ -165,6 +203,21 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				return -ERANGE;
 			MSG(0, "Info: inject nid %u : 0x%x\n", opt->nid, opt->nid);
 			break;
+		case 10:
+			if (!is_digits(optarg))
+				return EWRONG_OPT;
+			opt->sit = atoi(optarg);
+			if (opt->sit < 0 || opt->sit > 2)
+				return -ERANGE;
+			MSG(0, "Info: inject sit pack %s\n", pack[opt->sit]);
+			break;
+		case 11:
+			opt->blk = strtol(optarg, &endptr, 0);
+			if (opt->blk == LONG_MAX || opt->blk == LONG_MIN ||
+			    *endptr != '\0')
+				return -ERANGE;
+			MSG(0, "Info: inject blkaddr %u : 0x%x\n", opt->blk, opt->blk);
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -184,6 +237,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				exit(0);
 			} else if (opt->nat >= 0) {
 				inject_nat_usage();
+				exit(0);
+			} else if (opt->sit >= 0) {
+				inject_sit_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -435,6 +491,81 @@ static int inject_nat(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	return ret;
 }
 
+static int inject_sit(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct sit_info *sit_i = SIT_I(sbi);
+	struct f2fs_sit_block *sit_blk;
+	struct f2fs_sit_entry *sit;
+	unsigned int segno, offs;
+	bool is_set;
+
+	if (!f2fs_is_valid_blkaddr(sbi, opt->blk, DATA_GENERIC)) {
+		ERR_MSG("Invalid blkaddr 0x%x (valid range [0x%x:0x%lx])\n",
+			opt->blk, SM_I(sbi)->main_blkaddr,
+			(unsigned long)le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count));
+		return -EINVAL;
+	}
+
+	sit_blk = calloc(F2FS_BLKSIZE, 1);
+	ASSERT(sit_blk);
+
+	segno = GET_SEGNO(sbi, opt->blk);
+	/* change SIT version bitmap temporarily to select specified pack */
+	is_set = f2fs_test_bit(segno, sit_i->sit_bitmap);
+	if (opt->sit == 0) {
+		opt->sit = is_set ? 2 : 1;
+	} else {
+		if (opt->sit == 1)
+			f2fs_clear_bit(segno, sit_i->sit_bitmap);
+		else
+			f2fs_set_bit(segno, sit_i->sit_bitmap);
+	}
+	get_current_sit_page(sbi, segno, sit_blk);
+	offs = SIT_ENTRY_OFFSET(sit_i, segno);
+	sit = &sit_blk->entries[offs];
+
+	if (!strcmp(opt->mb, "vblocks")) {
+		MSG(0, "Info: inject sit entry vblocks of block 0x%x "
+		    "in pack %d: %u -> %u\n", opt->blk, opt->sit,
+		    le16_to_cpu(sit->vblocks), (u16)opt->val);
+		sit->vblocks = cpu_to_le16((u16)opt->val);
+	} else if (!strcmp(opt->mb, "valid_map")) {
+		if (opt->idx == -1) {
+			MSG(0, "Info: auto idx = %u\n", offs);
+			opt->idx = offs;
+		}
+		if (opt->idx >= SIT_VBLOCK_MAP_SIZE) {
+			ERR_MSG("invalid idx %u of valid_map[]\n", opt->idx);
+			free(sit_blk);
+			return -ERANGE;
+		}
+		MSG(0, "Info: inject sit entry valid_map[%d] of block 0x%x "
+		    "in pack %d: 0x%02x -> 0x%02x\n", opt->idx, opt->blk,
+		    opt->sit, sit->valid_map[opt->idx], (u8)opt->val);
+		sit->valid_map[opt->idx] = (u8)opt->val;
+	} else if (!strcmp(opt->mb, "mtime")) {
+		MSG(0, "Info: inject sit entry mtime of block 0x%x "
+		    "in pack %d: %lu -> %lu\n", opt->blk, opt->sit,
+		    le64_to_cpu(sit->mtime), (u64)opt->val);
+		sit->mtime = cpu_to_le64((u64)opt->val);
+	} else {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		free(sit_blk);
+		return -EINVAL;
+	}
+	print_raw_sit_entry_info(sit);
+
+	rewrite_current_sit_page(sbi, segno, sit_blk);
+	/* restore SIT version bitmap */
+	if (is_set)
+		f2fs_set_bit(segno, sit_i->sit_bitmap);
+	else
+		f2fs_clear_bit(segno, sit_i->sit_bitmap);
+
+	free(sit_blk);
+	return 0;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -446,6 +577,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 		ret = inject_cp(sbi, opt);
 	else if (opt->nat >= 0)
 		ret = inject_nat(sbi, opt);
+	else if (opt->sit >= 0)
+		ret = inject_sit(sbi, opt);
 
 	return ret;
 }
