@@ -62,6 +62,18 @@ static void print_sum_footer_info(struct summary_footer *footer)
 	DISP_u32(footer, check_sum);
 }
 
+static void print_node_footer_info(struct node_footer *footer)
+{
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u32(footer, nid);
+	DISP_u32(footer, ino);
+	DISP_u32(footer, flag);
+	DISP_u64(footer, cp_ver);
+	DISP_u32(footer, next_blkaddr);
+}
+
 void inject_usage(void)
 {
 	MSG(0, "\nUsage: inject.f2fs [options] device\n");
@@ -79,6 +91,7 @@ void inject_usage(void)
 	MSG(0, "  --nat <0|1|2> --mb <name> --nid <nid> --val <value> inject nat entry\n");
 	MSG(0, "  --sit <0|1|2> --mb <name> --blk <blk> [--idx <index>] --val <value> inject sit entry\n");
 	MSG(0, "  --ssa --mb <name> --blk <blk> [--idx <index>] --val <value> inject summary entry\n");
+	MSG(0, "  --node --mb <name> --nid <nid> [--idx <index>] --val <value> inject node\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -151,6 +164,28 @@ static void inject_ssa_usage(void)
 	MSG(0, "  ofs_in_node: inject summary entry ofs_in_node selected by --idx <index\n");
 }
 
+static void inject_node_usage(void)
+{
+	MSG(0, "inject.f2fs --node --mb <name> --nid <nid> [--idx <index>] --val <value> inject node\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  nid: inject node footer nid\n");
+	MSG(0, "  ino: inject node footer ino\n");
+	MSG(0, "  flag: inject node footer flag\n");
+	MSG(0, "  cp_ver: inject node footer cp_ver\n");
+	MSG(0, "  next_blkaddr: inject node footer next_blkaddr\n");
+	MSG(0, "  i_mode: inject inode i_mode\n");
+	MSG(0, "  i_advise: inject inode i_advise\n");
+	MSG(0, "  i_inline: inject inode i_inline\n");
+	MSG(0, "  i_links: inject inode i_links\n");
+	MSG(0, "  i_size: inject inode i_size\n");
+	MSG(0, "  i_blocks: inject inode i_blocks\n");
+	MSG(0, "  i_extra_isize: inject inode i_extra_isize\n");
+	MSG(0, "  i_inode_checksum: inject inode i_inode_checksum\n");
+	MSG(0, "  i_addr: inject inode i_addr array selected by --idx <index>\n");
+	MSG(0, "  i_nid: inject inode i_nid array selected by --idx <index>\n");
+	MSG(0, "  addr: inject {in}direct node nid/addr array selected by --idx <index>\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -170,6 +205,7 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"sit", required_argument, 0, 10},
 		{"blk", required_argument, 0, 11},
 		{"ssa", no_argument, 0, 12},
+		{"node", no_argument, 0, 13},
 		{0, 0, 0, 0}
 	};
 
@@ -254,6 +290,10 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 			opt->ssa = true;
 			MSG(0, "Info: inject ssa\n");
 			break;
+		case 13:
+			opt->node = true;
+			MSG(0, "Info: inject node\n");
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -279,6 +319,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				exit(0);
 			} else if (opt->ssa) {
 				inject_ssa_usage();
+				exit(0);
+			} else if (opt->node) {
+				inject_node_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -687,6 +730,174 @@ out:
 	return ret;
 }
 
+static int inject_inode(struct f2fs_sb_info *sbi, struct f2fs_node *node,
+			struct inject_option *opt)
+{
+	struct f2fs_inode *inode = &node->i;
+
+	if (!strcmp(opt->mb, "i_mode")) {
+		MSG(0, "Info: inject inode i_mode of nid %u: 0x%x -> 0x%x\n",
+		    opt->nid, le16_to_cpu(inode->i_mode), (u16)opt->val);
+		inode->i_mode = cpu_to_le16((u16)opt->val);
+	} else if (!strcmp(opt->mb, "i_advise")) {
+		MSG(0, "Info: inject inode i_advise of nid %u: 0x%x -> 0x%x\n",
+		    opt->nid, inode->i_advise, (u8)opt->val);
+		inode->i_advise = (u8)opt->val;
+	} else if (!strcmp(opt->mb, "i_inline")) {
+		MSG(0, "Info: inject inode i_inline of nid %u: 0x%x -> 0x%x\n",
+		    opt->nid, inode->i_inline, (u8)opt->val);
+		inode->i_inline = (u8)opt->val;
+	} else if (!strcmp(opt->mb, "i_links")) {
+		MSG(0, "Info: inject inode i_links of nid %u: %u -> %u\n",
+		    opt->nid, le32_to_cpu(inode->i_links), (u32)opt->val);
+		inode->i_links = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "i_size")) {
+		MSG(0, "Info: inject inode i_size of nid %u: %lu -> %lu\n",
+		    opt->nid, le64_to_cpu(inode->i_size), (u64)opt->val);
+		inode->i_size = cpu_to_le64((u64)opt->val);
+	} else if (!strcmp(opt->mb, "i_blocks")) {
+		MSG(0, "Info: inject inode i_blocks of nid %u: %lu -> %lu\n",
+		    opt->nid, le64_to_cpu(inode->i_blocks), (u64)opt->val);
+		inode->i_blocks = cpu_to_le64((u64)opt->val);
+	} else if (!strcmp(opt->mb, "i_extra_isize")) {
+		/* do not care if F2FS_EXTRA_ATTR is enabled */
+		MSG(0, "Info: inject inode i_extra_isize of nid %u: %d -> %d\n",
+		    opt->nid, le16_to_cpu(inode->i_extra_isize), (u16)opt->val);
+		inode->i_extra_isize = cpu_to_le16((u16)opt->val);
+	} else if (!strcmp(opt->mb, "i_inode_checksum")) {
+		MSG(0, "Info: inject inode i_inode_checksum of nid %u: "
+		    "0x%x -> 0x%x\n", opt->nid,
+		    le32_to_cpu(inode->i_inode_checksum), (u32)opt->val);
+		inode->i_inode_checksum = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "i_addr")) {
+		/* do not care if it is inline data */
+		if (opt->idx >= DEF_ADDRS_PER_INODE) {
+			ERR_MSG("invalid index %u of i_addr[]\n", opt->idx);
+			return -EINVAL;
+		}
+		MSG(0, "Info: inject inode i_addr[%d] of nid %u: "
+		    "0x%x -> 0x%x\n", opt->idx, opt->nid,
+		    le32_to_cpu(inode->i_addr[opt->idx]), (u32)opt->val);
+		inode->i_addr[opt->idx] = cpu_to_le32((block_t)opt->val);
+	} else if (!strcmp(opt->mb, "i_nid")) {
+		if (opt->idx >= 5) {
+			ERR_MSG("invalid index %u of i_nid[]\n", opt->idx);
+			return -EINVAL;
+		}
+		MSG(0, "Info: inject inode i_nid[%d] of nid %u: "
+		    "0x%x -> 0x%x\n", opt->idx, opt->nid,
+		    le32_to_cpu(F2FS_INODE_I_NID(inode, opt->idx)),
+		    (u32)opt->val);
+		F2FS_INODE_I_NID(inode, opt->idx) = cpu_to_le32((nid_t)opt->val);
+	} else {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		return -EINVAL;
+	}
+
+	if (c.dbg_lv > 0)
+		print_node_info(sbi, node, 1);
+
+	return 0;
+}
+
+static int inject_index_node(struct f2fs_sb_info *sbi, struct f2fs_node *node,
+			     struct inject_option *opt)
+{
+	struct direct_node *dn = &node->dn;
+
+	if (strcmp(opt->mb, "addr")) {
+		ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+		return -EINVAL;
+	}
+
+	if (opt->idx >= DEF_ADDRS_PER_BLOCK) {
+		ERR_MSG("invalid index %u of nid/addr[]\n", opt->idx);
+		return -EINVAL;
+	}
+
+	MSG(0, "Info: inject node nid/addr[%d] of nid %u: 0x%x -> 0x%x\n",
+	    opt->idx, opt->nid, le32_to_cpu(dn->addr[opt->idx]),
+	    (block_t)opt->val);
+	dn->addr[opt->idx] = cpu_to_le32((block_t)opt->val);
+
+	if (c.dbg_lv > 0)
+		print_node_info(sbi, node, 1);
+
+	return 0;
+}
+
+static int inject_node(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct f2fs_super_block *sb = sbi->raw_super;
+	struct node_info ni;
+	struct f2fs_node *node_blk;
+	struct node_footer *footer;
+	int ret;
+
+	if (!IS_VALID_NID(sbi, opt->nid)) {
+		ERR_MSG("Invalid nid %u range [%u:%lu]\n", opt->nid, 0,
+			NAT_ENTRY_PER_BLOCK *
+			((get_sb(segment_count_nat) << 1) <<
+			 sbi->log_blocks_per_seg));
+		return -EINVAL;
+	}
+
+	node_blk = calloc(F2FS_BLKSIZE, 1);
+	ASSERT(node_blk);
+
+	get_node_info(sbi, opt->nid, &ni);
+	ret = dev_read_block(node_blk, ni.blk_addr);
+	ASSERT(ret >= 0);
+	footer = F2FS_NODE_FOOTER(node_blk);
+
+	if (!strcmp(opt->mb, "nid")) {
+		MSG(0, "Info: inject node footer nid of nid %u: %u -> %u\n",
+		    opt->nid, le32_to_cpu(footer->nid), (u32)opt->val);
+		footer->nid = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "ino")) {
+		MSG(0, "Info: inject node footer ino of nid %u: %u -> %u\n",
+		    opt->nid, le32_to_cpu(footer->ino), (u32)opt->val);
+		footer->ino = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "flag")) {
+		MSG(0, "Info: inject node footer flag of nid %u: "
+		    "0x%x -> 0x%x\n", opt->nid, le32_to_cpu(footer->flag),
+		    (u32)opt->val);
+		footer->flag = cpu_to_le32((u32)opt->val);
+	} else if (!strcmp(opt->mb, "cp_ver")) {
+		MSG(0, "Info: inject node footer cp_ver of nid %u: "
+		    "0x%lx -> 0x%lx\n", opt->nid, le64_to_cpu(footer->cp_ver),
+		    (u64)opt->val);
+		footer->cp_ver = cpu_to_le64((u64)opt->val);
+	} else if (!strcmp(opt->mb, "next_blkaddr")) {
+		MSG(0, "Info: inject node footer next_blkaddr of nid %u: "
+		    "0x%x -> 0x%x\n", opt->nid,
+		    le32_to_cpu(footer->next_blkaddr), (u32)opt->val);
+		footer->next_blkaddr = cpu_to_le32((u32)opt->val);
+	} else if (ni.nid == ni.ino) {
+		ret = inject_inode(sbi, node_blk, opt);
+	} else {
+		ret = inject_index_node(sbi, node_blk, opt);
+	}
+	if (ret)
+		goto out;
+
+	print_node_footer_info(footer);
+
+	/*
+	 * if i_inode_checksum is injected, should call update_block() to
+	 * avoid recalculate inode checksum
+	 */
+	if (ni.nid == ni.ino && strcmp(opt->mb, "i_inode_checksum"))
+		ret = update_inode(sbi, node_blk, &ni.blk_addr);
+	else
+		ret = update_block(sbi, node_blk, &ni.blk_addr, NULL);
+	ASSERT(ret >= 0);
+
+out:
+	free(node_blk);
+	return ret;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -702,6 +913,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 		ret = inject_sit(sbi, opt);
 	else if (opt->ssa)
 		ret = inject_ssa(sbi, opt);
+	else if (opt->node)
+		ret = inject_node(sbi, opt);
 
 	return ret;
 }

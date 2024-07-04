@@ -31,6 +31,7 @@ struct inject_option {
 	int nat;		/* which nat pack */
 	int sit;		/* which sit pack */
 	bool ssa;
+	bool node;
 };
 
 void inject_usage(void);
