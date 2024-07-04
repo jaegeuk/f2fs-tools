@@ -43,6 +43,25 @@ static void print_raw_sit_entry_info(struct f2fs_sit_entry *se)
 	DISP_u64(se, mtime);
 }
 
+static void print_raw_sum_entry_info(struct f2fs_summary *sum)
+{
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u32(sum, nid);
+	DISP_u8(sum, version);
+	DISP_u16(sum, ofs_in_node);
+}
+
+static void print_sum_footer_info(struct summary_footer *footer)
+{
+	if (!c.dbg_lv)
+		return;
+
+	DISP_u8(footer, entry_type);
+	DISP_u32(footer, check_sum);
+}
+
 void inject_usage(void)
 {
 	MSG(0, "\nUsage: inject.f2fs [options] device\n");
@@ -59,6 +78,7 @@ void inject_usage(void)
 	MSG(0, "  --cp <0|1|2> --mb <name> [--idx <index>] --val <value> inject checkpoint\n");
 	MSG(0, "  --nat <0|1|2> --mb <name> --nid <nid> --val <value> inject nat entry\n");
 	MSG(0, "  --sit <0|1|2> --mb <name> --blk <blk> [--idx <index>] --val <value> inject sit entry\n");
+	MSG(0, "  --ssa --mb <name> --blk <blk> [--idx <index>] --val <value> inject summary entry\n");
 	MSG(0, "  --dry-run do not really inject\n");
 
 	exit(1);
@@ -120,6 +140,17 @@ static void inject_sit_usage(void)
 	MSG(0, "  mtime: inject sit entry mtime\n");
 }
 
+static void inject_ssa_usage(void)
+{
+	MSG(0, "inject.f2fs --ssa --mb <name> --blk <blk> [--idx <index>] --val <value> inject summary entry\n");
+	MSG(0, "[mb]:\n");
+	MSG(0, "  entry_type: inject summary block footer entry_type\n");
+	MSG(0, "  check_sum: inject summary block footer check_sum\n");
+	MSG(0, "  nid: inject summary entry nid selected by --idx <index\n");
+	MSG(0, "  version: inject summary entry version selected by --idx <index\n");
+	MSG(0, "  ofs_in_node: inject summary entry ofs_in_node selected by --idx <index\n");
+}
+
 int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 {
 	int o = 0;
@@ -138,6 +169,7 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 		{"nid", required_argument, 0, 9},
 		{"sit", required_argument, 0, 10},
 		{"blk", required_argument, 0, 11},
+		{"ssa", no_argument, 0, 12},
 		{0, 0, 0, 0}
 	};
 
@@ -218,6 +250,10 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				return -ERANGE;
 			MSG(0, "Info: inject blkaddr %u : 0x%x\n", opt->blk, opt->blk);
 			break;
+		case 12:
+			opt->ssa = true;
+			MSG(0, "Info: inject ssa\n");
+			break;
 		case 'd':
 			if (optarg[0] == '-' || !is_digits(optarg))
 				return EWRONG_OPT;
@@ -240,6 +276,9 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 				exit(0);
 			} else if (opt->sit >= 0) {
 				inject_sit_usage();
+				exit(0);
+			} else if (opt->ssa) {
+				inject_ssa_usage();
 				exit(0);
 			}
 			return EUNKNOWN_OPT;
@@ -566,6 +605,88 @@ static int inject_sit(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	return 0;
 }
 
+static int inject_ssa(struct f2fs_sb_info *sbi, struct inject_option *opt)
+{
+	struct f2fs_summary_block *sum_blk;
+	struct summary_footer *footer;
+	struct f2fs_summary *sum;
+	u32 segno, offset;
+	block_t ssa_blkaddr;
+	int type;
+	int ret;
+
+	if (!f2fs_is_valid_blkaddr(sbi, opt->blk, DATA_GENERIC)) {
+		ERR_MSG("Invalid blkaddr %#x (valid range [%#x:%#lx])\n",
+			opt->blk, SM_I(sbi)->main_blkaddr,
+			(unsigned long)le64_to_cpu(F2FS_RAW_SUPER(sbi)->block_count));
+		return -ERANGE;
+	}
+
+	segno = GET_SEGNO(sbi, opt->blk);
+	offset = OFFSET_IN_SEG(sbi, opt->blk);
+
+	sum_blk = get_sum_block(sbi, segno, &type);
+	sum = &sum_blk->entries[offset];
+	footer = F2FS_SUMMARY_BLOCK_FOOTER(sum_blk);
+
+	if (!strcmp(opt->mb, "entry_type")) {
+		MSG(0, "Info: inject summary block footer entry_type of "
+		    "block 0x%x: %d -> %d\n", opt->blk, footer->entry_type,
+		    (unsigned char)opt->val);
+		footer->entry_type = (unsigned char)opt->val;
+	} else 	if (!strcmp(opt->mb, "check_sum")) {
+		MSG(0, "Info: inject summary block footer check_sum of "
+		    "block 0x%x: 0x%x -> 0x%x\n", opt->blk,
+		    le32_to_cpu(footer->check_sum), (u32)opt->val);
+		footer->check_sum = cpu_to_le32((u32)opt->val);
+	} else {
+		if (opt->idx == -1) {
+			MSG(0, "Info: auto idx = %u\n", offset);
+			opt->idx = offset;
+		}
+		if (opt->idx >= ENTRIES_IN_SUM) {
+			ERR_MSG("invalid idx %u of entries[]\n", opt->idx);
+			ret = -EINVAL;
+			goto out;
+		}
+		sum = &sum_blk->entries[opt->idx];
+		if (!strcmp(opt->mb, "nid")) {
+			MSG(0, "Info: inject summary entry nid of "
+			    "block 0x%x: 0x%x -> 0x%x\n", opt->blk,
+			    le32_to_cpu(sum->nid), (u32)opt->val);
+			sum->nid = cpu_to_le32((u32)opt->val);
+		} else if (!strcmp(opt->mb, "version")) {
+			MSG(0, "Info: inject summary entry version of "
+			    "block 0x%x: %d -> %d\n", opt->blk,
+			    sum->version, (u8)opt->val);
+			sum->version = (u8)opt->val;
+		} else if (!strcmp(opt->mb, "ofs_in_node")) {
+			MSG(0, "Info: inject summary entry ofs_in_node of "
+			    "block 0x%x: %d -> %d\n", opt->blk,
+			    sum->ofs_in_node, (u16)opt->val);
+			sum->ofs_in_node = cpu_to_le16((u16)opt->val);
+		} else {
+			ERR_MSG("unknown or unsupported member \"%s\"\n", opt->mb);
+			ret = -EINVAL;
+			goto out;
+		}
+
+		print_raw_sum_entry_info(sum);
+	}
+
+	print_sum_footer_info(footer);
+
+	ssa_blkaddr = GET_SUM_BLKADDR(sbi, segno);
+	ret = dev_write_block(sum_blk, ssa_blkaddr);
+	ASSERT(ret >= 0);
+
+out:
+	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
+	    type == SEG_TYPE_MAX)
+		free(sum_blk);
+	return ret;
+}
+
 int do_inject(struct f2fs_sb_info *sbi)
 {
 	struct inject_option *opt = (struct inject_option *)c.private;
@@ -579,6 +700,8 @@ int do_inject(struct f2fs_sb_info *sbi)
 		ret = inject_nat(sbi, opt);
 	else if (opt->sit >= 0)
 		ret = inject_sit(sbi, opt);
+	else if (opt->ssa)
+		ret = inject_ssa(sbi, opt);
 
 	return ret;
 }
