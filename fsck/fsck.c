@@ -1094,10 +1094,7 @@ check_next:
 			}
 		}
 		if (!(node_blk->i.i_inline & F2FS_DATA_EXIST)) {
-			char buf[MAX_INLINE_DATA(node_blk)];
-			memset(buf, 0, MAX_INLINE_DATA(node_blk));
-
-			if (memcmp(buf, inline_data_addr(node_blk),
+			if (!is_zeroed(inline_data_addr(node_blk),
 						MAX_INLINE_DATA(node_blk))) {
 				ASSERT_MSG("[0x%x] junk inline data", nid);
 				if (c.fix_on) {
