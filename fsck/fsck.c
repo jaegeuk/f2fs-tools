@@ -3367,7 +3367,7 @@ static void fix_wp_sit_alignment(struct f2fs_sb_info *sbi)
 		if (!c.devices[i].path)
 			break;
 		if (c.devices[i].zoned_model != F2FS_ZONED_HM)
-			break;
+			continue;
 
 		wpd.dev_index = i;
 		if (f2fs_report_zones(i, chk_and_fix_wp_with_sit, &wpd)) {
