@@ -469,6 +469,7 @@ void print_raw_sb_info(struct f2fs_super_block *sb)
 	char uuid[40];
 	char encrypt_pw_salt[40];
 #endif
+	int i;
 
 	if (c.layout)
 		goto printout;
@@ -536,6 +537,13 @@ printout:
 	uuid_unparse(sb->encrypt_pw_salt, encrypt_pw_salt);
 	DISP_raw_str("%-.36s", encrypt_pw_salt);
 #endif
+
+	for (i = 0; i < MAX_DEVICES; i++) {
+		if (!sb->devs[i].path[0])
+			break;
+		DISP_str("%s", sb, devs[i].path);
+		DISP_u32(sb, devs[i].total_segments);
+	}
 
 	DISP_u32(sb, qf_ino[USRQUOTA]);
 	DISP_u32(sb, qf_ino[GRPQUOTA]);
