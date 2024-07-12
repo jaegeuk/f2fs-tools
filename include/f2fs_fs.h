@@ -1439,6 +1439,13 @@ enum {
 	SSR
 };
 
+/* invalid sb types */
+#define SB_FORCE_STOP		0x1	/* s_stop_reason is set */
+#define SB_ABNORMAL_STOP	0x2	/* s_stop_reason is set except shutdown */
+#define SB_FS_ERRORS		0x4	/* s_erros is set */
+#define SB_INVALID		0x8	/* sb is invalid */
+#define SB_NEED_FIX (SB_ABNORMAL_STOP | SB_FS_ERRORS | SB_INVALID)
+
 #define MAX_CACHE_SUMS			8
 
 struct f2fs_configuration {
@@ -1492,9 +1499,7 @@ struct f2fs_configuration {
 	int force;
 	int defset;
 	int bug_on;
-	int force_stop;
-	int abnormal_stop;
-	int fs_errors;
+	unsigned int invalid_sb;
 	int bug_nat_bits;
 	bool quota_fixed;
 	int alloc_failed;

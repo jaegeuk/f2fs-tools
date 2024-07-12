@@ -3677,13 +3677,13 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 			write_checkpoints(sbi);
 		}
 
-		if (c.abnormal_stop)
+		if (c.invalid_sb & SB_ABNORMAL_STOP)
 			memset(sb->s_stop_reason, 0, MAX_STOP_REASON);
 
-		if (c.fs_errors)
+		if (c.invalid_sb & SB_FS_ERRORS)
 			memset(sb->s_errors, 0, MAX_F2FS_ERRORS);
 
-		if (c.abnormal_stop || c.fs_errors)
+		if (c.invalid_sb & SB_NEED_FIX)
 			update_superblock(sb, SB_MASK_ALL);
 
 		/* to return FSCK_ERROR_CORRECTED */

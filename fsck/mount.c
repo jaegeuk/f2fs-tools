@@ -693,7 +693,7 @@ void print_sb_stop_reason(struct f2fs_super_block *sb)
 	u8 *reason = sb->s_stop_reason;
 	int i;
 
-	if (!c.force_stop)
+	if (!(c.invalid_sb & SB_FORCE_STOP))
 		return;
 
 	MSG(0, "Info: checkpoint stop reason: ");
@@ -731,7 +731,7 @@ void print_sb_errors(struct f2fs_super_block *sb)
 	u8 *errors = sb->s_errors;
 	int i;
 
-	if (!c.fs_errors)
+	if (!(c.invalid_sb & SB_FS_ERRORS))
 		return;
 
 	MSG(0, "Info: fs errors: ");
@@ -1163,9 +1163,12 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 				VERSION_NAME_LEN);
 		get_kernel_version(c.init_version);
 
-		c.force_stop = is_checkpoint_stop(sbi->raw_super, false);
-		c.abnormal_stop = is_checkpoint_stop(sbi->raw_super, true);
-		c.fs_errors = is_inconsistent_error(sbi->raw_super);
+		if (is_checkpoint_stop(sbi->raw_super, false))
+			c.invalid_sb |= SB_FORCE_STOP;
+		if (is_checkpoint_stop(sbi->raw_super, true))
+			c.invalid_sb |= SB_ABNORMAL_STOP;
+		if (is_inconsistent_error(sbi->raw_super))
+			c.invalid_sb |= SB_FS_ERRORS;
 
 		MSG(0, "Info: MKFS version\n  \"%s\"\n", c.init_version);
 		MSG(0, "Info: FSCK version\n  from \"%s\"\n    to \"%s\"\n",
@@ -1178,6 +1181,7 @@ int validate_super_block(struct f2fs_sb_info *sbi, enum SB_ADDR sb_addr)
 
 	free(sbi->raw_super);
 	sbi->raw_super = NULL;
+	c.invalid_sb |= SB_INVALID;
 	MSG(0, "\tCan't find a valid F2FS superblock at 0x%x\n", sb_addr);
 
 	return -EINVAL;
@@ -1448,7 +1452,7 @@ static int f2fs_should_proceed(struct f2fs_super_block *sb, u32 flag)
 		if (flag & CP_FSCK_FLAG ||
 			flag & CP_DISABLED_FLAG ||
 			flag & CP_QUOTA_NEED_FSCK_FLAG ||
-			c.abnormal_stop || c.fs_errors ||
+			c.invalid_sb & SB_NEED_FIX ||
 			(exist_qf_ino(sb) && (flag & CP_ERROR_FLAG))) {
 			c.fix_on = 1;
 		} else if (!c.preen_mode) {
