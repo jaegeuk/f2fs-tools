@@ -633,18 +633,6 @@ err:
 	return -EINVAL;
 }
 
-static bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr)
-{
-	struct seg_entry *se;
-	u32 offset;
-
-	se = get_seg_entry(sbi, GET_SEGNO(sbi, blk_addr));
-	offset = OFFSET_IN_SEG(sbi, blk_addr);
-
-	return f2fs_test_bit(offset,
-			(const char *)se->cur_valid_map) != 0;
-}
-
 int fsck_chk_root_inode(struct f2fs_sb_info *sbi)
 {
 	struct f2fs_node *node_blk;

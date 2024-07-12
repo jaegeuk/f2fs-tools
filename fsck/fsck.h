@@ -281,7 +281,7 @@ extern int dump_node(struct f2fs_sb_info *, nid_t, int, char *, int, int, char *
 extern int dump_info_from_blkaddr(struct f2fs_sb_info *, u32);
 extern unsigned int start_bidx_of_node(unsigned int, struct f2fs_node *);
 extern void dump_node_scan_disk(struct f2fs_sb_info *sbi, nid_t nid);
-
+extern bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr);
 
 /* defrag.c */
 int f2fs_defragment(struct f2fs_sb_info *, u64, u64, u64, int);

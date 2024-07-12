@@ -723,7 +723,7 @@ dump:
 	return 0;
 }
 
-static bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr)
+bool is_sit_bitmap_set(struct f2fs_sb_info *sbi, u32 blk_addr)
 {
 	struct seg_entry *se;
 	u32 offset;
