@@ -653,6 +653,10 @@ static int dump_filesystem(struct f2fs_sb_info *sbi, struct node_info *ni,
 		MSG(force, "Wrong name info\n\n");
 		return -1;
 	}
+	if (le32_to_cpu(inode->i_flags) & F2FS_NODUMP_FL) {
+		MSG(force, "File has nodump flag\n\n");
+		return -1;
+	}
 	base_path = base_path ?: "./lost_found";
 	if (force)
 		goto dump;
