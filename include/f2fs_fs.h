@@ -659,9 +659,11 @@ enum {
 /*
  * On-disk inode flags (f2fs_inode::i_flags)
  */
+#define F2FS_COMPR_FL			0x00000004 /* Compress file */
+#define F2FS_NODUMP_FL			0x00000040 /* do not dump file */
 #define F2FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
 #define F2FS_NOATIME_FL			0x00000080 /* do not update atime */
-
+#define F2FS_CASEFOLD_FL		0x40000000 /* Casefolded file */
 
 #define F2FS_ENC_UTF8_12_1	1
 #define F2FS_ENC_STRICT_MODE_FL	(1 << 0)
@@ -984,9 +986,7 @@ static_assert(sizeof(struct node_footer) == 24, "");
 
 #define file_is_encrypt(fi)      ((fi)->i_advise & FADVISE_ENCRYPT_BIT)
 #define file_enc_name(fi)        ((fi)->i_advise & FADVISE_ENC_NAME_BIT)
-
-#define F2FS_CASEFOLD_FL	0x40000000 /* Casefolded file */
-#define IS_CASEFOLDED(dir)     ((dir)->i_flags & F2FS_CASEFOLD_FL)
+#define IS_CASEFOLDED(dir)     ((dir)->i_flags & cpu_to_le32(F2FS_CASEFOLD_FL))
 
 /*
  * fsck i_compr_blocks counting helper
@@ -1003,10 +1003,6 @@ struct f2fs_compr_blk_cnt {
 };
 #define CHEADER_PGOFS_NONE ((u32)-(1 << MAX_COMPRESS_LOG_SIZE))
 
-/*
- * inode flags
- */
-#define F2FS_COMPR_FL		0x00000004 /* Compress file */
 /*
  * On disk layout is
  * struct f2fs_inode

@@ -924,14 +924,14 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 		 * the node tree.  Thus, it must be fixed unconditionally
 		 * in the memory (node_blk).
 		 */
-		node_blk->i.i_flags &= ~cpu_to_le32(F2FS_COMPR_FL);
+		i_flags &= ~F2FS_COMPR_FL;
 		compressed = false;
 		if (c.fix_on) {
 			need_fix = 1;
 			FIX_MSG("[0x%x] i_flags=0x%x -> 0x%x",
-					nid, i_flags, node_blk->i.i_flags);
+					nid, node_blk->i.i_flags, i_flags);
 		}
-		i_flags &= ~F2FS_COMPR_FL;
+		node_blk->i.i_flags = cpu_to_le32(i_flags);
 	}
 check_next:
 	memset(&child, 0, sizeof(child));
@@ -1057,7 +1057,8 @@ check_next:
 		ASSERT_MSG("[0x%x] unexpected casefold flag", nid);
 		if (c.fix_on) {
 			FIX_MSG("ino[0x%x] clear casefold flag", nid);
-			node_blk->i.i_flags &= ~cpu_to_le32(F2FS_CASEFOLD_FL);
+			i_flags &= ~F2FS_CASEFOLD_FL;
+			node_blk->i.i_flags = cpu_to_le32(i_flags);
 			need_fix = 1;
 		}
 	}
