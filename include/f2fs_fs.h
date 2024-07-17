@@ -927,10 +927,10 @@ static_assert(sizeof(struct node_footer) == 24, "");
 				- sizeof(struct node_footer)) / sizeof(__le32))
 #define CUR_ADDRS_PER_INODE(inode)	(DEF_ADDRS_PER_INODE - \
 					__get_extra_isize(inode))
-#define ADDRS_PER_INODE(i)	addrs_per_inode(i)
+#define ADDRS_PER_INODE(i)	addrs_per_page(i, true)
 /* Address Pointers in a Direct Block */
 #define DEF_ADDRS_PER_BLOCK ((F2FS_BLKSIZE - sizeof(struct node_footer)) / sizeof(__le32))
-#define ADDRS_PER_BLOCK(i)	addrs_per_block(i)
+#define ADDRS_PER_BLOCK(i)	addrs_per_page(i, false)
 /* Node IDs in an Indirect Block */
 #define NIDS_PER_BLOCK    ((F2FS_BLKSIZE - sizeof(struct node_footer)) / sizeof(__le32))
 
@@ -1570,8 +1570,7 @@ struct f2fs_configuration {
 extern int utf8_to_utf16(char *, const char *, size_t, size_t);
 extern int utf16_to_utf8(char *, const char *, size_t, size_t);
 extern int log_base_2(uint32_t);
-extern unsigned int addrs_per_inode(struct f2fs_inode *);
-extern unsigned int addrs_per_block(struct f2fs_inode *);
+extern unsigned int addrs_per_page(struct f2fs_inode *, bool);
 extern unsigned int f2fs_max_file_offset(struct f2fs_inode *);
 extern __u32 f2fs_inode_chksum(struct f2fs_node *);
 extern __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *);
