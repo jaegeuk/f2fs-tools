@@ -1478,6 +1478,8 @@ struct f2fs_configuration {
 	uint16_t s_encoding_flags;
 	int32_t kd;
 	int32_t dump_fd;
+	char *dump_symlink;
+	int dump_sym_target_len;
 	struct device_info devices[MAX_DEVICES];
 	int ndevs;
 	char *extension_list[2];
@@ -1540,7 +1542,10 @@ struct f2fs_configuration {
 	struct selinux_opt seopt_file[8];
 	int nr_opt;
 #endif
+
+	/* dump parameters */
 	int preserve_perms;
+	int preserve_symlinks;
 
 	/* resize parameters */
 	int safe_resize;
@@ -1614,6 +1619,9 @@ extern int dev_readahead(__u64, size_t UNUSED(len));
 extern int dev_write(void *, __u64, size_t);
 extern int dev_write_block(void *, __u64);
 extern int dev_write_dump(void *, __u64, size_t);
+#if !defined(__MINGW32__)
+extern int dev_write_symlink(char *, size_t);
+#endif
 /* All bytes in the buffer must be 0 use dev_fill(). */
 extern int dev_fill(void *, __u64, size_t);
 extern int dev_fill_block(void *, __u64);

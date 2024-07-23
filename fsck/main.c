@@ -102,6 +102,7 @@ void dump_usage()
 	MSG(0, "  -y alias for -f\n");
 	MSG(0, "  -o dump inodes to the given path\n");
 	MSG(0, "  -P preserve mode/owner/group for dumped inode\n");
+	MSG(0, "  -L Preserves symlinks. Otherwise symlinks are dumped as regular files.\n");
 	MSG(0, "  -V print the version number and exit\n");
 
 	exit(1);
@@ -389,7 +390,7 @@ void f2fs_parse_options(int argc, char *argv[])
 		}
 	} else if (!strcmp("dump.f2fs", prog)) {
 #ifdef WITH_DUMP
-		const char *option_string = "d:fi:I:n:Mo:Prs:Sa:b:Vy";
+		const char *option_string = "d:fi:I:n:LMo:Prs:Sa:b:Vy";
 		static struct dump_option dump_opt = {
 			.nid = 0,	/* default root ino */
 			.start_nat = -1,
@@ -479,6 +480,14 @@ void f2fs_parse_options(int argc, char *argv[])
 				err = EWRONG_OPT;
 #else
 				c.preserve_perms = 1;
+#endif
+				break;
+			case 'L':
+#if defined(__MINGW32__)
+				MSG(0, "-L not supported for Windows\n");
+				err = EWRONG_OPT;
+#else
+				c.preserve_symlinks = 1;
 #endif
 				break;
 			case 'V':
@@ -957,7 +966,7 @@ static void do_dump(struct f2fs_sb_info *sbi)
 	if (opt->blk_addr != -1)
 		dump_info_from_blkaddr(sbi, opt->blk_addr);
 	if (opt->nid)
-		dump_node(sbi, opt->nid, c.force, opt->base_path, 1, 1);
+		dump_node(sbi, opt->nid, c.force, opt->base_path, 1, 1, NULL);
 	if (opt->scan_nid)
 		dump_node_scan_disk(sbi, opt->scan_nid);
 

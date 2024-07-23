@@ -598,6 +598,16 @@ int dev_write_dump(void *buf, __u64 offset, size_t len)
 	return 0;
 }
 
+#if !defined(__MINGW32__)
+int dev_write_symlink(char *buf, size_t len)
+{
+	buf[len] = 0;
+	if (symlink(buf, c.dump_symlink))
+		return -1;
+	return 0;
+}
+#endif
+
 int dev_fill(void *buf, __u64 offset, size_t len)
 {
 	int fd;
