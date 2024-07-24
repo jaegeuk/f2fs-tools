@@ -27,6 +27,9 @@
 #include <libgen.h>
 
 #ifdef HAVE_LINUX_BLKZONED_H
+#ifndef BLKFINISHZONE
+#define BLKFINISHZONE   _IOW(0x12, 136, struct blk_zone_range)
+#endif
 
 int get_sysfs_path(struct device_info *dev, const char *attr,
 		   char *buf, size_t buflen)
