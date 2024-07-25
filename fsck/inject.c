@@ -211,6 +211,8 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 
 	while ((o = getopt_long(argc, argv, option_string,
 				long_opt, NULL)) != EOF) {
+		long nid, blk;
+
 		switch (o) {
 		case 1:
 			c.dry_run = 1;
@@ -265,10 +267,11 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 			MSG(0, "Info: inject nat pack %s\n", pack[opt->nat]);
 			break;
 		case 9:
-			opt->nid = strtol(optarg, &endptr, 0);
-			if (opt->nid == LONG_MAX || opt->nid == LONG_MIN ||
+			nid = strtol(optarg, &endptr, 0);
+			if (nid >= UINT_MAX || nid < 0 ||
 			    *endptr != '\0')
 				return -ERANGE;
+			opt->nid = nid;
 			MSG(0, "Info: inject nid %u : 0x%x\n", opt->nid, opt->nid);
 			break;
 		case 10:
@@ -280,10 +283,11 @@ int inject_parse_options(int argc, char *argv[], struct inject_option *opt)
 			MSG(0, "Info: inject sit pack %s\n", pack[opt->sit]);
 			break;
 		case 11:
-			opt->blk = strtol(optarg, &endptr, 0);
-			if (opt->blk == LONG_MAX || opt->blk == LONG_MIN ||
+			blk = strtol(optarg, &endptr, 0);
+			if (blk >= UINT_MAX || blk < 0 ||
 			    *endptr != '\0')
 				return -ERANGE;
+			opt->blk = blk;
 			MSG(0, "Info: inject blkaddr %u : 0x%x\n", opt->blk, opt->blk);
 			break;
 		case 12:
@@ -432,7 +436,7 @@ static int inject_cp(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	}
 
 	if (!strcmp(opt->mb, "checkpoint_ver")) {
-		MSG(0, "Info: inject checkpoint_ver of cp %d: 0x%llx -> 0x%lx\n",
+		MSG(0, "Info: inject checkpoint_ver of cp %d: 0x%llx -> 0x%"PRIx64"\n",
 		    opt->cp, get_cp(checkpoint_ver), (u64)opt->val);
 		set_cp(checkpoint_ver, (u64)opt->val);
 	} else if (!strcmp(opt->mb, "ckpt_flags")) {
@@ -510,7 +514,7 @@ static int inject_nat(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	int ret;
 
 	if (!IS_VALID_NID(sbi, opt->nid)) {
-		ERR_MSG("Invalid nid %u range [%u:%lu]\n", opt->nid, 0,
+		ERR_MSG("Invalid nid %u range [%u:%"PRIu64"]\n", opt->nid, 0,
 			NAT_ENTRY_PER_BLOCK *
 			((get_sb(segment_count_nat) << 1) <<
 			 sbi->log_blocks_per_seg));
@@ -627,7 +631,7 @@ static int inject_sit(struct f2fs_sb_info *sbi, struct inject_option *opt)
 		sit->valid_map[opt->idx] = (u8)opt->val;
 	} else if (!strcmp(opt->mb, "mtime")) {
 		MSG(0, "Info: inject sit entry mtime of block 0x%x "
-		    "in pack %d: %lu -> %lu\n", opt->blk, opt->sit,
+		    "in pack %d: %"PRIu64" -> %"PRIu64"\n", opt->blk, opt->sit,
 		    le64_to_cpu(sit->mtime), (u64)opt->val);
 		sit->mtime = cpu_to_le64((u64)opt->val);
 	} else {
@@ -752,11 +756,11 @@ static int inject_inode(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 		    opt->nid, le32_to_cpu(inode->i_links), (u32)opt->val);
 		inode->i_links = cpu_to_le32((u32)opt->val);
 	} else if (!strcmp(opt->mb, "i_size")) {
-		MSG(0, "Info: inject inode i_size of nid %u: %lu -> %lu\n",
+		MSG(0, "Info: inject inode i_size of nid %u: %"PRIu64" -> %"PRIu64"\n",
 		    opt->nid, le64_to_cpu(inode->i_size), (u64)opt->val);
 		inode->i_size = cpu_to_le64((u64)opt->val);
 	} else if (!strcmp(opt->mb, "i_blocks")) {
-		MSG(0, "Info: inject inode i_blocks of nid %u: %lu -> %lu\n",
+		MSG(0, "Info: inject inode i_blocks of nid %u: %"PRIu64" -> %"PRIu64"\n",
 		    opt->nid, le64_to_cpu(inode->i_blocks), (u64)opt->val);
 		inode->i_blocks = cpu_to_le64((u64)opt->val);
 	} else if (!strcmp(opt->mb, "i_extra_isize")) {
@@ -835,7 +839,7 @@ static int inject_node(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	int ret;
 
 	if (!IS_VALID_NID(sbi, opt->nid)) {
-		ERR_MSG("Invalid nid %u range [%u:%lu]\n", opt->nid, 0,
+		ERR_MSG("Invalid nid %u range [%u:%"PRIu64"]\n", opt->nid, 0,
 			NAT_ENTRY_PER_BLOCK *
 			((get_sb(segment_count_nat) << 1) <<
 			 sbi->log_blocks_per_seg));
@@ -865,7 +869,7 @@ static int inject_node(struct f2fs_sb_info *sbi, struct inject_option *opt)
 		footer->flag = cpu_to_le32((u32)opt->val);
 	} else if (!strcmp(opt->mb, "cp_ver")) {
 		MSG(0, "Info: inject node footer cp_ver of nid %u: "
-		    "0x%lx -> 0x%lx\n", opt->nid, le64_to_cpu(footer->cp_ver),
+		    "0x%"PRIx64" -> 0x%"PRIx64"\n", opt->nid, le64_to_cpu(footer->cp_ver),
 		    (u64)opt->val);
 		footer->cp_ver = cpu_to_le64((u64)opt->val);
 	} else if (!strcmp(opt->mb, "next_blkaddr")) {
