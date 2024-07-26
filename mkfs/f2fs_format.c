@@ -316,7 +316,7 @@ static int f2fs_prepare_super_block(void)
 					c.blks_per_seg - 1;
 		}
 		if (c.ndevs > 1) {
-			memcpy(sb->devs[i].path, c.devices[i].path, MAX_PATH_LEN);
+			strncpy((char *)sb->devs[i].path, c.devices[i].path, MAX_PATH_LEN);
 			sb->devs[i].total_segments =
 					cpu_to_le32(c.devices[i].total_segments);
 		}
