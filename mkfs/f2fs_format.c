@@ -765,10 +765,6 @@ static int f2fs_write_check_point_pack(void)
 			get_cp(rsvd_segment_count)) *
 			c.overprovision / 100);
 
-	if (!(c.conf_reserved_sections) &&
-	    get_cp(overprov_segment_count) < get_cp(rsvd_segment_count))
-		set_cp(overprov_segment_count, get_cp(rsvd_segment_count));
-
 	/*
 	 * If conf_reserved_sections has a non zero value, overprov_segment_count
 	 * is set to overprov_segment_count + rsvd_segment_count.
@@ -788,8 +784,11 @@ static int f2fs_write_check_point_pack(void)
 		set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
 				get_cp(rsvd_segment_count));
 	 } else {
-		set_cp(overprov_segment_count, get_cp(overprov_segment_count) +
-				overprovision_segment_buffer(sb));
+		/*
+		 * overprov_segment_count must bigger than rsvd_segment_count.
+		 */
+		set_cp(overprov_segment_count, max(get_cp(rsvd_segment_count),
+			get_cp(overprov_segment_count)) + overprovision_segment_buffer(sb));
 	 }
 
 	if (f2fs_get_usable_segments(sb) <= get_cp(overprov_segment_count)) {
