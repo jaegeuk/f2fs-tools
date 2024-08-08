@@ -513,7 +513,7 @@ int f2fs_finish_zone(int i, void *blkzone)
 	struct blk_zone_range range;
 	int ret;
 
-	if (!blk_zone_seq(blkz) || blk_zone_empty(blkz))
+	if (!blk_zone_seq(blkz) || !blk_zone_open(blkz))
 		return 0;
 
 	/* Non empty sequential zone: finish */
@@ -522,7 +522,8 @@ int f2fs_finish_zone(int i, void *blkzone)
 	ret = ioctl(dev->fd, BLKFINISHZONE, &range);
 	if (ret != 0) {
 		ret = -errno;
-		ERR_MSG("ioctl BLKFINISHZONE failed: errno=%d\n", errno);
+		ERR_MSG("ioctl BLKFINISHZONE failed: errno=%d, status=%s\n",
+			errno, blk_zone_cond_str(blkz));
 	}
 
 	return ret;

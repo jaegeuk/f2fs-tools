@@ -1742,6 +1742,8 @@ blk_zone_cond_str(struct blk_zone *blkz)
  * Handle kernel zone capacity support
  */
 #define blk_zone_empty(z)	(blk_zone_cond(z) == BLK_ZONE_COND_EMPTY)
+#define blk_zone_open(z)	(blk_zone_cond(z) == BLK_ZONE_COND_IMP_OPEN ||	\
+				 blk_zone_cond(z) == BLK_ZONE_COND_EXP_OPEN)
 #define blk_zone_sector(z)	(z)->start
 #define blk_zone_length(z)	(z)->len
 #define blk_zone_wp_sector(z)	(z)->wp
