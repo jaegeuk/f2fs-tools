@@ -1546,8 +1546,8 @@ static int f2fs_write_lpf_inode(void)
 
 	f2fs_init_inode(sb, raw_node, c.lpf_ino, mkfs_time, 0x41c0);
 
-	raw_node->i.i_pino = le32_to_cpu(sb->root_ino);
-	raw_node->i.i_namelen = le32_to_cpu(strlen(LPF));
+	raw_node->i.i_pino = sb->root_ino;
+	raw_node->i.i_namelen = cpu_to_le32(strlen(LPF));
 	memcpy(raw_node->i.i_name, LPF, strlen(LPF));
 
 	node_blkaddr = alloc_next_free_block(CURSEG_HOT_NODE);
