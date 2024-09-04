@@ -70,7 +70,8 @@ struct child_info {
 	u32 links;
 	u32 files;
 	u32 pgofs;
-	u8 dots;
+	u8 dot;
+	u8 dotdot;
 	u8 dir_level;
 	u32 p_ino;		/* parent ino */
 	char p_name[F2FS_NAME_LEN + 1]; /* parent name */

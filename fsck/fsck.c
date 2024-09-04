@@ -1307,10 +1307,10 @@ skip_blkcnt_fix:
 						nid, i_links, child.links);
 			}
 		}
-		if (child.dots < 2 &&
+		if ((child.dot == 0 || child.dotdot == 0) &&
 				!(node_blk->i.i_inline & F2FS_INLINE_DOTS)) {
-			ASSERT_MSG("ino: 0x%x dots: %u",
-					nid, child.dots);
+			ASSERT_MSG("ino: 0x%x dot: %u, dotdot: %u",
+					nid, child.dot, child.dotdot);
 			if (c.fix_on) {
 				node_blk->i.i_inline |= F2FS_INLINE_DOTS;
 				need_fix = 1;
@@ -1862,26 +1862,45 @@ static int __chk_dentries(struct f2fs_sb_info *sbi, int casefolded,
 
 		/* Becareful. 'dentry.file_type' is not imode. */
 		if (ftype == F2FS_FT_DIR) {
-			if ((name[0] == '.' && name_len == 1) ||
-				(name[0] == '.' && name[1] == '.' &&
-							name_len == 2)) {
-				ret = __chk_dots_dentries(sbi, casefolded, &dentry[i],
-					child, name, name_len, &filenames[i],
-					enc_name);
-				switch (ret) {
-				case 1:
+			enum dot_type dot_type = NON_DOT;
+
+			if (name[0] == '.' && name_len == 1)
+				dot_type = TYPE_DOT;
+			else if (name[0] == '.' && name[1] == '.' &&
+						name_len == 2)
+				dot_type = TYPE_DOTDOT;
+
+			if (dot_type != NON_DOT) {
+				bool need_del = false;
+
+				DBG(3, "i:%u, dot_type:%u, ino:%u, p:%u, pp:%u\n",
+					i, dot_type, dentry[i].ino,
+					child->p_ino, child->pp_ino);
+
+				ret = __chk_dots_dentries(sbi, casefolded,
+					&dentry[i], child, name, name_len,
+					&filenames[i], enc_name);
+				if (ret)
 					fixed = 1;
-					fallthrough;
-				case 0:
-					child->dots++;
-					break;
+
+				if (dot_type == TYPE_DOT) {
+					if (child->dot == 0)
+						child->dot++;
+					else
+						need_del = true;
+				} else if (dot_type == TYPE_DOTDOT) {
+					if (child->dotdot == 0)
+						child->dotdot++;
+					else
+						need_del = true;
 				}
 
-				if (child->dots > 2) {
-					ASSERT_MSG("More than one '.' or '..', should delete the extra one\n");
+				if (need_del) {
+					ASSERT_MSG("More than one '%s', should delete the extra one, i: %u, ino:%u",
+						dot_type == TYPE_DOT ? "." : "..",
+						i, dentry[i].ino);
 					nullify_dentry(&dentry[i], i,
 						       &filenames[i], &bitmap);
-					child->dots--;
 					fixed = 1;
 				}
 
