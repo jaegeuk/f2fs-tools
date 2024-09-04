@@ -139,6 +139,8 @@ AC_CHECK_HEADERS(m4_flatten([
 	fcntl.h
 	kernel/uapi/linux/blkzoned.h
 	linux/blkzoned.h
+	linux/rw_hint.h
+	linux/fcntl.h
 	linux/falloc.h
 	linux/fiemap.h
 	linux/fs.h

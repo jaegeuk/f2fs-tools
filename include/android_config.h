@@ -1,9 +1,11 @@
 #if defined(__linux__)
+#define HAVE_ARCH_STRUCT_FLOCK 1
 #define HAVE_BLK_ZONE_REP_V2 1
 #define HAVE_BYTESWAP_H 1
 #define HAVE_FCNTL_H 1
 #define HAVE_FALLOC_H 1
 #define HAVE_FSYNC 1
+#define HAVE_LINUX_FCNTL_H 1
 #define HAVE_LINUX_HDREG_H 1
 #define HAVE_LINUX_LIMITS_H 1
 #define HAVE_LINUX_LOOP_H 1

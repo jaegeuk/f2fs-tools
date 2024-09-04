@@ -31,6 +31,9 @@ mkfs.f2fs \- create an F2FS file system
 .I default-options
 ]
 [
+.B \-H
+]
+[
 .B \-i
 ]
 [
@@ -151,6 +154,9 @@ The following values are supported:
 .B android
 Use default options for Android having "-d1 -f -w 4096 -R 0:0 -O encrypt -O project_quota,extra_attr,{quota} -O verity".
 .RE
+.TP
+.BI \-H
+Specify support write hint.
 .TP
 .BI \-i
 Enable extended node bitmap.

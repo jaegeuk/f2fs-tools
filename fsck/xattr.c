@@ -95,6 +95,7 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 	u64 inline_size = inline_xattr_size(&inode->i);
 	int ret;
 	bool xattrblk_alloced = false;
+	struct seg_entry *se;
 
 	memcpy(inline_xattr_addr(&inode->i), txattr_addr, inline_size);
 
@@ -126,8 +127,9 @@ void write_all_xattrs(struct f2fs_sb_info *sbi,
 	xattr_addr = (void *)xattr_node;
 	memcpy(xattr_addr, txattr_addr + inline_size,
 			F2FS_BLKSIZE - sizeof(struct node_footer));
-
-	ret = xattrblk_alloced ? dev_write_block(xattr_node, blkaddr) :
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, blkaddr));
+	ret = xattrblk_alloced ? dev_write_block(xattr_node, blkaddr,
+					f2fs_io_type_to_rw_hint(se->type)) :
 		update_block(sbi, xattr_node, &blkaddr, NULL);
 
 free_xattr_node:

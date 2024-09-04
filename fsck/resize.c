@@ -189,7 +189,8 @@ static void migrate_main(struct f2fs_sb_info *sbi, unsigned int offset)
 			ASSERT(ret >= 0);
 
 			to = from + offset;
-			ret = dev_write_block(raw, to);
+			ret = dev_write_block(raw, to,
+					      f2fs_io_type_to_rw_hint(se->type));
 			ASSERT(ret >= 0);
 
 			get_sum_entry(sbi, from, &sum);
@@ -218,7 +219,8 @@ static void move_ssa(struct f2fs_sb_info *sbi, unsigned int segno,
 	if (type < SEG_TYPE_MAX) {
 		int ret;
 
-		ret = dev_write_block(sum_blk, new_sum_blk_addr);
+		ret = dev_write_block(sum_blk, new_sum_blk_addr,
+				      WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 		DBG(1, "Write summary block: (%d) segno=%x/%x --> (%d) %x\n",
 				type, segno, GET_SUM_BLKADDR(sbi, segno),
@@ -252,7 +254,8 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 			if (blkaddr < expand_sum_blkaddr) {
 				move_ssa(sbi, offset++, blkaddr++);
 			} else {
-				ret = dev_write_block(zero_block, blkaddr++);
+				ret = dev_write_block(zero_block, blkaddr++,
+						      WRITE_LIFE_NONE);
 				ASSERT(ret >=0);
 			}
 		}
@@ -261,7 +264,8 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 		offset = MAIN_SEGS(sbi) - 1;
 		while (blkaddr >= new_sum_blkaddr) {
 			if (blkaddr >= expand_sum_blkaddr) {
-				ret = dev_write_block(zero_block, blkaddr--);
+				ret = dev_write_block(zero_block, blkaddr--,
+						      WRITE_LIFE_NONE);
 				ASSERT(ret >=0);
 			} else {
 				move_ssa(sbi, offset--, blkaddr--);
@@ -360,7 +364,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
 
 		/* new bitmap should be zeros */
-		ret = dev_write_block(nat_block, block_addr);
+		ret = dev_write_block(nat_block, block_addr, WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 	/* zero out newly assigned nids */
@@ -381,7 +385,7 @@ static void migrate_nat(struct f2fs_sb_info *sbi,
 		block_addr = (pgoff_t)(new_nat_blkaddr +
 				(seg_off << sbi->log_blocks_per_seg << 1) +
 				(block_off & ((1 << sbi->log_blocks_per_seg) - 1)));
-		ret = dev_write_block(nat_block, block_addr);
+		ret = dev_write_block(nat_block, block_addr, WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 		DBG(3, "Write NAT: %lx\n", block_addr);
 	}
@@ -407,7 +411,8 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 
 	/* initialize with zeros */
 	for (index = 0; index < sit_blks; index++) {
-		ret = dev_write_block(sit_blk, get_newsb(sit_blkaddr) + index);
+		ret = dev_write_block(sit_blk, get_newsb(sit_blkaddr) + index,
+				      WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 		DBG(3, "Write zero sit: %x\n", get_newsb(sit_blkaddr) + index);
 	}
@@ -425,7 +430,8 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 
 		if (ofs != pre_ofs) {
 			blk_addr = get_newsb(sit_blkaddr) + pre_ofs;
-			ret = dev_write_block(sit_blk, blk_addr);
+			ret = dev_write_block(sit_blk, blk_addr,
+					      WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
 			DBG(1, "Write valid sit: %x\n", blk_addr);
 
@@ -439,7 +445,7 @@ static void migrate_sit(struct f2fs_sb_info *sbi,
 							se->valid_blocks);
 	}
 	blk_addr = get_newsb(sit_blkaddr) + ofs;
-	ret = dev_write_block(sit_blk, blk_addr);
+	ret = dev_write_block(sit_blk, blk_addr, WRITE_LIFE_NONE);
 	DBG(1, "Write valid sit: %x\n", blk_addr);
 	ASSERT(ret >= 0);
 
@@ -558,12 +564,12 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 		new_cp_blk_no += 1 << get_sb(log_blocks_per_seg);
 
 	/* write first cp */
-	ret = dev_write_block(new_cp, new_cp_blk_no++);
+	ret = dev_write_block(new_cp, new_cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	memset(buf, 0, F2FS_BLKSIZE);
 	for (i = 0; i < get_newsb(cp_payload); i++) {
-		ret = dev_write_block(buf, new_cp_blk_no++);
+		ret = dev_write_block(buf, new_cp_blk_no++, WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 
@@ -573,7 +579,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 		ret = dev_read_block(buf, orphan_blk_no++);
 		ASSERT(ret >= 0);
 
-		ret = dev_write_block(buf, new_cp_blk_no++);
+		ret = dev_write_block(buf, new_cp_blk_no++, WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 
@@ -581,12 +587,13 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 	for (i = 0; i < NO_CHECK_TYPE; i++) {
 		struct curseg_info *curseg = CURSEG_I(sbi, i);
 
-		ret = dev_write_block(curseg->sum_blk, new_cp_blk_no++);
+		ret = dev_write_block(curseg->sum_blk, new_cp_blk_no++,
+				      WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 
 	/* write the last cp */
-	ret = dev_write_block(new_cp, new_cp_blk_no++);
+	ret = dev_write_block(new_cp, new_cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	/* Write nat bits */
@@ -595,7 +602,7 @@ static void rebuild_checkpoint(struct f2fs_sb_info *sbi,
 
 	/* disable old checkpoint */
 	memset(buf, 0, F2FS_BLKSIZE);
-	ret = dev_write_block(buf, old_cp_blk_no);
+	ret = dev_write_block(buf, old_cp_blk_no, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	free(buf);

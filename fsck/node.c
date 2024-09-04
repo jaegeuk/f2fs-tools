@@ -78,7 +78,7 @@ int f2fs_rebuild_qf_inode(struct f2fs_sb_info *sbi, int qtype)
 		goto err_out;
 	}
 
-	ret = write_inode(raw_node, blkaddr);
+	ret = write_inode(raw_node, blkaddr, f2fs_io_type_to_rw_hint(CURSEG_HOT_NODE));
 	if (ret < 0) {
 		MSG(1, "\tError: While rebuilding the quota inode to disk!\n");
 		goto err_out;
@@ -282,8 +282,13 @@ int get_dnode_of_data(struct f2fs_sb_info *sbi, struct dnode_of_data *dn,
 			/* Parent node has changed */
 			if (!parent_alloced)
 				ret = update_block(sbi, parent, &nblk[i - 1], NULL);
-			else
-				ret = dev_write_block(parent, nblk[i - 1]);
+			else {
+				struct seg_entry *se;
+
+				se = get_seg_entry(sbi, GET_SEGNO(sbi, nblk[i - 1]));
+				ret = dev_write_block(parent, nblk[i - 1],
+						f2fs_io_type_to_rw_hint(se->type));
+			}
 			ASSERT(ret >= 0);
 
 			/* Function new_node_blk get a new f2fs_node blk and update*/

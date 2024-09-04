@@ -77,6 +77,7 @@ void fsck_usage()
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -f check/fix entire partition\n");
 	MSG(0, "  -g add default options\n");
+	MSG(0, "  -H support write hint\n");
 	MSG(0, "  -l show superblock/checkpoint\n");
 	MSG(0, "  -M show a file map\n");
 	MSG(0, "  -O feature1[feature2,feature3,...] e.g. \"encrypt\"\n");
@@ -108,6 +109,7 @@ void dump_usage()
 	MSG(0, "  -b blk_addr (in 4KB)\n");
 	MSG(0, "  -r dump out from the root inode\n");
 	MSG(0, "  -f do not prompt before dumping\n");
+	MSG(0, "  -H support write hint\n");
 	MSG(0, "  -y alias for -f\n");
 	MSG(0, "  -o dump inodes to the given path\n");
 	MSG(0, "  -P preserve mode/owner/group for dumped inode\n");
@@ -122,6 +124,7 @@ void defrag_usage()
 	MSG(0, "\nUsage: defrag.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -H support write hint\n");
 	MSG(0, "  -s start block address [default: main_blkaddr]\n");
 	MSG(0, "  -S sparse_mode\n");
 	MSG(0, "  -l length [default:512 (2MB)]\n");
@@ -136,6 +139,7 @@ void resize_usage()
 	MSG(0, "\nUsage: resize.f2fs [options] device\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -d debug level [default:0]\n");
+	MSG(0, "  -H support write hint\n");
 	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -o overprovision percentage [default:auto]\n");
 	MSG(0, "  -s safe resize (Does not resize metadata)\n");
@@ -246,7 +250,7 @@ void f2fs_parse_options(int argc, char *argv[])
 	}
 
 	if (!strcmp("fsck.f2fs", prog)) {
-		const char *option_string = ":aC:c:m:Md:fg:lO:p:q:StyV";
+		const char *option_string = ":aC:c:m:Md:fg:HlO:p:q:StyV";
 		int opt = 0, val;
 		char *token;
 		struct option long_opt[] = {
@@ -294,6 +298,10 @@ void f2fs_parse_options(int argc, char *argv[])
 					c.defset = CONF_ANDROID;
 					MSG(0, "Info: Set conf for android\n");
 				}
+				break;
+			case 'H':
+				c.need_whint = true;
+				c.whint = WRITE_LIFE_NOT_SET;
 				break;
 			case 'l':
 				c.layout = 1;
@@ -517,7 +525,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif
 	} else if (!strcmp("defrag.f2fs", prog)) {
 #ifdef WITH_DEFRAG
-		const char *option_string = "d:s:Sl:t:iV";
+		const char *option_string = "d:Hs:Sl:t:iV";
 
 		c.func = DEFRAG;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -532,6 +540,10 @@ void f2fs_parse_options(int argc, char *argv[])
 				c.dbg_lv = atoi(optarg);
 				MSG(0, "Info: Debug level = %d\n",
 							c.dbg_lv);
+				break;
+			case 'H':
+				c.need_whint = true;
+				c.whint = WRITE_LIFE_NOT_SET;
 				break;
 			case 's':
 				if (strncmp(optarg, "0x", 2))
@@ -577,7 +589,7 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif
 	} else if (!strcmp("resize.f2fs", prog)) {
 #ifdef WITH_RESIZE
-		const char *option_string = "d:fst:io:V";
+		const char *option_string = "d:fHst:io:V";
 
 		c.func = RESIZE;
 		while ((option = getopt(argc, argv, option_string)) != EOF) {
@@ -596,6 +608,10 @@ void f2fs_parse_options(int argc, char *argv[])
 			case 'f':
 				c.force = 1;
 				MSG(0, "Info: Force to resize\n");
+				break;
+			case 'H':
+				c.need_whint = true;
+				c.whint = WRITE_LIFE_NOT_SET;
 				break;
 			case 's':
 				c.safe_resize = 1;
@@ -850,6 +866,12 @@ void f2fs_parse_options(int argc, char *argv[])
 #endif /* WITH_INJECT */
 	}
 
+#if defined(__MINGW32__)
+	if (c.need_whint) {
+		MSG(0, "-H not supported for Windows\n");
+		err = EWRONG_OPT;
+	}
+#endif
 	if (err == NOERROR) {
 		add_default_options();
 

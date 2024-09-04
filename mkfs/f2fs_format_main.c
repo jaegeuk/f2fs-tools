@@ -56,6 +56,7 @@ static void mkfs_usage()
 	MSG(0, "  -E [hot file ext list] e.g. \"db\"\n");
 	MSG(0, "  -f force overwrite of the existing filesystem\n");
 	MSG(0, "  -g add default options\n");
+	MSG(0, "  -H support write hint\n");
 	MSG(0, "  -i extended node bitmap, node ratio is 20%% by default\n");
 	MSG(0, "  -l label\n");
 	MSG(0, "  -U uuid\n");
@@ -173,7 +174,7 @@ static void add_default_options(void)
 
 static void f2fs_parse_options(int argc, char *argv[])
 {
-	static const char *option_string = "qa:b:c:C:d:e:E:g:hil:mo:O:rR:s:S:z:t:T:U:Vfw:Z:";
+	static const char *option_string = "qa:b:c:C:d:e:E:g:hHil:mo:O:rR:s:S:z:t:T:U:Vfw:Z:";
 	static const struct option long_opts[] = {
 		{ .name = "help", .has_arg = 0, .flag = NULL, .val = 'h' },
 		{ .name = NULL, .has_arg = 0, .flag = NULL, .val = 0 }
@@ -227,6 +228,10 @@ static void f2fs_parse_options(int argc, char *argv[])
 			break;
 		case 'h':
 			mkfs_usage();
+			break;
+		case 'H':
+			c.need_whint = true;
+			c.whint = WRITE_LIFE_NOT_SET;
 			break;
 		case 'i':
 			c.large_nat_bitmap = 1;
@@ -475,7 +480,7 @@ int main(int argc, char *argv[])
 		}
 		/* wipe out other FS magics mostly first 4MB space */
 		for (i = 0; i < 1024; i++)
-			if (dev_fill_block(zero_buf, i))
+			if (dev_fill_block(zero_buf, i, WRITE_LIFE_NONE))
 				break;
 		free(zero_buf);
 		if (i != 1024) {

@@ -889,7 +889,7 @@ void update_superblock(struct f2fs_super_block *sb, int sb_mask)
 	memcpy(buf + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
 	for (addr = SB0_ADDR; addr < SB_MAX_ADDR; addr++) {
 		if (SB_MASK(addr) & sb_mask) {
-			ret = dev_write_block(buf, addr);
+			ret = dev_write_block(buf, addr, WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
 		}
 	}
@@ -1783,7 +1783,8 @@ void write_nat_bits(struct f2fs_sb_info *sbi,
 	DBG(1, "\tWriting NAT bits pages, at offset 0x%08x\n", blkaddr);
 
 	for (i = 0; i < nat_bits_blocks; i++) {
-		if (dev_write_block(nat_bits + i * F2FS_BLKSIZE, blkaddr + i))
+		if (dev_write_block(nat_bits + i * F2FS_BLKSIZE, blkaddr + i,
+				    WRITE_LIFE_NONE))
 			ASSERT_MSG("\tError: write NAT bits to disk!!!\n");
 	}
 	MSG(0, "Info: Write valid nat_bits in checkpoint\n");
@@ -2155,7 +2156,8 @@ void update_sum_entry(struct f2fs_sb_info *sbi, block_t blk_addr,
 							SUM_TYPE_DATA;
 
 	/* write SSA all the time */
-	ret = dev_write_block(sum_blk, GET_SUM_BLKADDR(sbi, segno));
+	ret = dev_write_block(sum_blk, GET_SUM_BLKADDR(sbi, segno),
+			      WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	if (type == SEG_TYPE_NODE || type == SEG_TYPE_DATA ||
@@ -2262,7 +2264,7 @@ void rewrite_current_sit_page(struct f2fs_sb_info *sbi,
 {
 	block_t blk_addr = current_sit_addr(sbi, segno);
 
-	ASSERT(dev_write_block(sit_blk, blk_addr) >= 0);
+	ASSERT(dev_write_block(sit_blk, blk_addr, WRITE_LIFE_NONE) >= 0);
 }
 
 void check_block_count(struct f2fs_sb_info *sbi,
@@ -2552,7 +2554,7 @@ void update_nat_blkaddr(struct f2fs_sb_info *sbi, nid_t ino,
 		entry->ino = cpu_to_le32(ino);
 	entry->block_addr = cpu_to_le32(newaddr);
 
-	ret = dev_write_block(nat_block, block_addr);
+	ret = dev_write_block(nat_block, block_addr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 update_cache:
 	if (c.func == FSCK)
@@ -2848,7 +2850,7 @@ next:
 	memcpy(&nat_block->entries[entry_off], &nat_in_journal(journal, i),
 					sizeof(struct f2fs_nat_entry));
 
-	ret = dev_write_block(nat_block, block_addr);
+	ret = dev_write_block(nat_block, block_addr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 	i++;
 	goto next;
@@ -3028,7 +3030,8 @@ int find_next_free_block(struct f2fs_sb_info *sbi, u64 *to, int left,
 			}
 
 			ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
-			ret = dev_write_block(curseg->sum_blk, ssa_blk);
+			ret = dev_write_block(curseg->sum_blk, ssa_blk,
+					      WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
 
 			curseg->segno = segno;
@@ -3133,7 +3136,7 @@ void move_one_curseg_info(struct f2fs_sb_info *sbi, u64 from, int left,
 
 	/* update original SSA too */
 	ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
-	ret = dev_write_block(curseg->sum_blk, ssa_blk);
+	ret = dev_write_block(curseg->sum_blk, ssa_blk, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 bypass_ssa:
 	to = from;
@@ -3286,7 +3289,7 @@ void nullify_nat_entry(struct f2fs_sb_info *sbi, u32 nid)
 		FIX_MSG("Remove nid [0x%x] in NAT", nid);
 	}
 
-	ret = dev_write_block(nat_block, block_addr);
+	ret = dev_write_block(nat_block, block_addr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 	free(nat_block);
 }
@@ -3318,7 +3321,7 @@ void duplicate_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 
 	ret = dev_write(buf, dst << F2FS_BLKSIZE_BITS,
-				seg_size << F2FS_BLKSIZE_BITS);
+				seg_size << F2FS_BLKSIZE_BITS, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	free(buf);
@@ -3383,7 +3386,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 		cp_blk_no += 1 << get_sb(log_blocks_per_seg);
 
 	/* write the first cp */
-	ret = dev_write_block(cp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	/* skip payload */
@@ -3399,13 +3402,15 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 		if (!(flags & CP_UMOUNT_FLAG) && IS_NODESEG(i))
 			continue;
 
-		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
+		ret = dev_write_block(curseg->sum_blk, cp_blk_no++,
+				      WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 
 		if (!(get_sb(feature) & F2FS_FEATURE_RO)) {
 			/* update original SSA too */
 			ssa_blk = GET_SUM_BLKADDR(sbi, curseg->segno);
-			ret = dev_write_block(curseg->sum_blk, ssa_blk);
+			ret = dev_write_block(curseg->sum_blk, ssa_blk,
+					      WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
 		}
 	}
@@ -3419,7 +3424,7 @@ void write_checkpoint(struct f2fs_sb_info *sbi)
 	ASSERT(ret >= 0);
 
 	/* write the last cp */
-	ret = dev_write_block(cp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	ret = f2fs_fsync_device();
@@ -3455,12 +3460,12 @@ void write_raw_cp_blocks(struct f2fs_sb_info *sbi,
 		cp_blkaddr += 1 << get_sb(log_blocks_per_seg);
 
 	/* write the first cp block in this CP pack */
-	ret = dev_write_block(cp, cp_blkaddr);
+	ret = dev_write_block(cp, cp_blkaddr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	/* write the second cp block in this CP pack */
 	cp_blkaddr += get_cp(cp_pack_total_block_count) - 1;
-	ret = dev_write_block(cp, cp_blkaddr);
+	ret = dev_write_block(cp, cp_blkaddr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 }
 
@@ -3695,6 +3700,7 @@ static int loop_node_chain_fix(block_t blkaddr_fast,
 		block_t blkaddr, struct f2fs_node *node_blk)
 {
 	block_t blkaddr_entry, blkaddr_tmp;
+	enum rw_hint whint;
 	int err;
 
 	/* find the entry point of the looped node chain */
@@ -3722,10 +3728,11 @@ static int loop_node_chain_fix(block_t blkaddr_fast,
 
 	/* fix the blkaddr of last node with NULL_ADDR. */
 	F2FS_NODE_FOOTER(node_blk)->next_blkaddr = NULL_ADDR;
+	whint = f2fs_io_type_to_rw_hint(CURSEG_WARM_NODE);
 	if (IS_INODE(node_blk))
-		err = write_inode(node_blk, blkaddr_tmp);
+		err = write_inode(node_blk, blkaddr_tmp, whint);
 	else
-		err = dev_write_block(node_blk, blkaddr_tmp);
+		err = dev_write_block(node_blk, blkaddr_tmp, whint);
 	if (!err)
 		FIX_MSG("Fix looped node chain on blkaddr %u\n",
 				blkaddr_tmp);
@@ -4215,7 +4222,7 @@ int f2fs_sparse_initialize_meta(struct f2fs_sb_info *sbi)
 	DBG(1, "\tSparse: filling sit area at block offset: 0x%08"PRIx64" len: %u\n",
 							sit_seg_addr, sit_size);
 	ret = dev_fill(NULL, sit_seg_addr * F2FS_BLKSIZE,
-					sit_size * F2FS_BLKSIZE);
+			sit_size * F2FS_BLKSIZE, WRITE_LIFE_NONE);
 	if (ret) {
 		MSG(1, "\tError: While zeroing out the sit area "
 				"on disk!!!\n");
@@ -4229,7 +4236,7 @@ int f2fs_sparse_initialize_meta(struct f2fs_sb_info *sbi)
 	DBG(1, "\tSparse: filling nat area at block offset 0x%08"PRIx64" len: %u\n",
 							nat_seg_addr, nat_size);
 	ret = dev_fill(NULL, nat_seg_addr * F2FS_BLKSIZE,
-					nat_size * F2FS_BLKSIZE);
+			nat_size * F2FS_BLKSIZE, WRITE_LIFE_NONE);
 	if (ret) {
 		MSG(1, "\tError: While zeroing out the nat area "
 				"on disk!!!\n");
@@ -4241,7 +4248,7 @@ int f2fs_sparse_initialize_meta(struct f2fs_sb_info *sbi)
 	DBG(1, "\tSparse: filling bitmap area at block offset 0x%08"PRIx64" len: %u\n",
 					payload_addr, get_sb(cp_payload));
 	ret = dev_fill(NULL, payload_addr * F2FS_BLKSIZE,
-					get_sb(cp_payload) * F2FS_BLKSIZE);
+			get_sb(cp_payload) * F2FS_BLKSIZE, WRITE_LIFE_NONE);
 	if (ret) {
 		MSG(1, "\tError: While zeroing out the nat/sit bitmap area "
 				"on disk!!!\n");
@@ -4253,7 +4260,7 @@ int f2fs_sparse_initialize_meta(struct f2fs_sb_info *sbi)
 	DBG(1, "\tSparse: filling bitmap area at block offset 0x%08"PRIx64" len: %u\n",
 					payload_addr, get_sb(cp_payload));
 	ret = dev_fill(NULL, payload_addr * F2FS_BLKSIZE,
-					get_sb(cp_payload) * F2FS_BLKSIZE);
+			get_sb(cp_payload) * F2FS_BLKSIZE, WRITE_LIFE_NONE);
 	if (ret) {
 		MSG(1, "\tError: While zeroing out the nat/sit bitmap area "
 				"on disk!!!\n");

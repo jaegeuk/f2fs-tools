@@ -216,7 +216,7 @@ static int is_valid_ssa_node_blk(struct f2fs_sb_info *sbi, u32 nid,
 		int ret2;
 
 		ssa_blk = GET_SUM_BLKADDR(sbi, segno);
-		ret2 = dev_write_block(sum_blk, ssa_blk);
+		ret2 = dev_write_block(sum_blk, ssa_blk, WRITE_LIFE_NONE);
 		ASSERT(ret2 >= 0);
 	}
 out:
@@ -350,7 +350,7 @@ static int is_valid_ssa_data_blk(struct f2fs_sb_info *sbi, u32 blk_addr,
 		int ret2;
 
 		ssa_blk = GET_SUM_BLKADDR(sbi, segno);
-		ret2 = dev_write_block(sum_blk, ssa_blk);
+		ret2 = dev_write_block(sum_blk, ssa_blk, WRITE_LIFE_NONE);
 		ASSERT(ret2 >= 0);
 	}
 out:
@@ -2205,7 +2205,8 @@ int fsck_chk_orphan_node(struct f2fs_sb_info *sbi)
 		if (f2fs_dev_is_writable() && c.fix_on &&
 				entry_count != new_entry_count) {
 			F2FS_ORPHAN_BLOCK_FOOTER(new_blk)->entry_count = cpu_to_le32(new_entry_count);
-			ret = dev_write_block(new_blk, start_blk + i);
+			ret = dev_write_block(new_blk, start_blk + i,
+					      WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
 		}
 		memset(orphan_blk, 0, F2FS_BLKSIZE);
@@ -2621,12 +2622,13 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	if (sbi->cur_cp == 2)
 		cp_blk_no += 1 << get_sb(log_blocks_per_seg);
 
-	ret = dev_write_block(cp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
 		ret = dev_write_block(((unsigned char *)cp) +
-					(i + 1) * F2FS_BLKSIZE, cp_blk_no++);
+					(i + 1) * F2FS_BLKSIZE, cp_blk_no++,
+					WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 
@@ -2638,7 +2640,8 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 		if (!(flags & CP_UMOUNT_FLAG) && IS_NODESEG(i))
 			continue;
 
-		ret = dev_write_block(curseg->sum_blk, cp_blk_no++);
+		ret = dev_write_block(curseg->sum_blk, cp_blk_no++,
+				      WRITE_LIFE_NONE);
 		ASSERT(ret >= 0);
 	}
 
@@ -2649,7 +2652,7 @@ static void fix_checkpoint(struct f2fs_sb_info *sbi)
 	ret = f2fs_fsync_device();
 	ASSERT(ret >= 0);
 
-	ret = dev_write_block(cp, cp_blk_no++);
+	ret = dev_write_block(cp, cp_blk_no++, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 	ret = f2fs_fsync_device();
@@ -3380,9 +3383,11 @@ static int chk_and_fix_wp_with_sit(int UNUSED(i), void *blkzone, void *opaque)
 	if (ret) {
 		u64 fill_sects = blk_zone_length(blkz) -
 			(blk_zone_wp_sector(blkz) - blk_zone_sector(blkz));
+		struct seg_entry *se = get_seg_entry(sbi, wp_segno);
 		printf("[FSCK] Finishing zone failed: %s\n", dev->path);
 		ret = dev_fill(NULL, wp_block * F2FS_BLKSIZE,
-			(fill_sects >> log_sectors_per_block) * F2FS_BLKSIZE);
+			(fill_sects >> log_sectors_per_block) * F2FS_BLKSIZE,
+			f2fs_io_type_to_rw_hint(se->type));
 		if (ret)
 			printf("[FSCK] Fill up zone failed: %s\n", dev->path);
 	}
@@ -3698,7 +3703,8 @@ int fsck_verify(struct f2fs_sb_info *sbi)
 					ssa_blk = GET_SUM_BLKADDR(sbi,
 							curseg->segno);
 					ret = dev_write_block(curseg->sum_blk,
-							ssa_blk);
+							ssa_blk,
+							WRITE_LIFE_NONE);
 					ASSERT(ret >= 0);
 				}
 				if (c.roll_forward)

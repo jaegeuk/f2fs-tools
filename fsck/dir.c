@@ -299,7 +299,9 @@ add_dentry:
 
 	if (c.zoned_model == F2FS_ZONED_HM) {
 		if (datablk_alloced) {
-			ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+			/* dentry uses hot data segment */
+			ret = dev_write_block(dentry_blk, dn.data_blkaddr,
+				f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA));
 		} else {
 			ret = update_block(sbi, dentry_blk, &dn.data_blkaddr,
 					dn.node_blk);
@@ -309,7 +311,9 @@ add_dentry:
 				dn.ndirty = 1;
 		}
 	} else {
-		ret = dev_write_block(dentry_blk, dn.data_blkaddr);
+		/* dentry uses hot data segment */
+		ret = dev_write_block(dentry_blk, dn.data_blkaddr,
+				f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA));
 	}
 	ASSERT(ret >= 0);
 
@@ -336,8 +340,13 @@ add_dentry:
 	}
 
 	if (dn.ndirty) {
+		struct seg_entry *se;
+
+		/* get segment type for rw hint */
+		se = get_seg_entry(sbi, GET_SEGNO(sbi, dn.node_blkaddr));
 		ret = dn.alloced ?
-			dev_write_block(dn.node_blk, dn.node_blkaddr) :
+			dev_write_block(dn.node_blk, dn.node_blkaddr,
+					f2fs_io_type_to_rw_hint(se->type)) :
 			update_block(sbi, dn.node_blk, &dn.node_blkaddr, NULL);
 		ASSERT(ret >= 0);
 	}
@@ -388,7 +397,8 @@ static void make_empty_dir(struct f2fs_sb_info *sbi, struct f2fs_node *inode)
 	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_HOT_DATA, 0);
 	ASSERT(!ret);
 
-	ret = dev_write_block(dent_blk, blkaddr);
+	ret = dev_write_block(dent_blk, blkaddr,
+			      f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA));
 	ASSERT(ret >= 0);
 
 	inode->i.i_addr[get_extra_isize(inode)] = cpu_to_le32(blkaddr);
@@ -424,7 +434,8 @@ static void page_symlink(struct f2fs_sb_info *sbi, struct f2fs_node *inode,
 	ret = reserve_new_block(sbi, &blkaddr, &sum, CURSEG_WARM_DATA, 0);
 	ASSERT(!ret);
 
-	ret = dev_write_block(data_blk, blkaddr);
+	ret = dev_write_block(data_blk, blkaddr,
+			      f2fs_io_type_to_rw_hint(CURSEG_WARM_DATA));
 	ASSERT(ret >= 0);
 
 	inode->i.i_addr[get_extra_isize(inode)] = cpu_to_le32(blkaddr);
@@ -618,7 +629,8 @@ int convert_inline_dentry(struct f2fs_sb_info *sbi, struct f2fs_node *node,
 		memcpy(dst.filename, src.filename, src.max * F2FS_SLOT_LEN);
 
 		ret = datablk_alloced ?
-			dev_write_block(dentry_blk, dn.data_blkaddr) :
+			dev_write_block(dentry_blk, dn.data_blkaddr,
+					f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA)) :
 			update_block(sbi, dentry_blk, &dn.data_blkaddr, NULL);
 		ASSERT(ret >= 0);
 
@@ -818,7 +830,8 @@ int f2fs_create(struct f2fs_sb_info *sbi, struct dentry *de)
 	update_nat_blkaddr(sbi, de->ino, de->ino, blkaddr);
 
 write_child_dir:
-	ret = nodeblk_alloced ? dev_write_block(child, blkaddr) :
+	ret = nodeblk_alloced ? dev_write_block(child, blkaddr,
+			f2fs_io_type_to_rw_hint(CURSEG_HOT_NODE)) :
 		update_block(sbi, child, &blkaddr, NULL);
 	ASSERT(ret >= 0);
 

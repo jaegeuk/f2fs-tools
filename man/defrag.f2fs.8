@@ -18,6 +18,9 @@ defrag.f2fs \- relocate blocks in a given area to the specified region
 .I target block address
 ]
 [
+.B \-H
+]
+[
 .B \-i
 .I direction
 ]
@@ -52,6 +55,9 @@ Specify the number of blocks to move.
 .TP
 .BI \-t " target block address"
 Specify the destination block address.
+.TP
+.BI \-H
+Specify support write hint.
 .TP
 .BI \-i " direction"
 Set the direction to left. If it is not set, the direction becomes right

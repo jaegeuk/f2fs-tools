@@ -14,6 +14,9 @@ fsck.f2fs \- check a Linux F2FS file system
 .I enable force fix
 ]
 [
+.B \-H
+]
+[
 .B \-M
 .I show file map
 ]
@@ -47,6 +50,9 @@ module. It is disabled by default.
 .TP
 .BI \-f " enable force fix"
 Enable to fix all the inconsistency in the partition.
+.TP
+.BI \-H
+Specify support write hint.
 .TP
 .BI \-M " show files map"
 Enable to show all the filenames and inode numbers stored in the image

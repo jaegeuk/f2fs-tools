@@ -640,7 +640,7 @@ static int f2fs_init_sit_area(void)
 
 	DBG(1, "\tFilling sit area at offset 0x%08"PRIx64"\n", sit_seg_addr);
 	for (index = 0; index < (get_sb(segment_count_sit) / 2); index++) {
-		if (dev_fill(zero_buf, sit_seg_addr, seg_size)) {
+		if (dev_fill(zero_buf, sit_seg_addr, seg_size, WRITE_LIFE_NONE)) {
 			MSG(1, "\tError: While zeroing out the sit area "
 					"on disk!!!\n");
 			free(zero_buf);
@@ -674,7 +674,7 @@ static int f2fs_init_nat_area(void)
 
 	DBG(1, "\tFilling nat area at offset 0x%08"PRIx64"\n", nat_seg_addr);
 	for (index = 0; index < get_sb(segment_count_nat) / 2; index++) {
-		if (dev_fill(nat_buf, nat_seg_addr, seg_size)) {
+		if (dev_fill(nat_buf, nat_seg_addr, seg_size, WRITE_LIFE_NONE)) {
 			MSG(1, "\tError: While zeroing out the nat area "
 					"on disk!!!\n");
 			free(nat_buf);
@@ -855,14 +855,14 @@ static int f2fs_write_check_point_pack(void)
 
 	DBG(1, "\tWriting main segments, cp at offset 0x%08"PRIx64"\n",
 						cp_seg_blk);
-	if (dev_write_block(cp, cp_seg_blk)) {
+	if (dev_write_block(cp, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
 		goto free_cp_payload;
 	}
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
 		cp_seg_blk++;
-		if (dev_fill_block(cp_payload, cp_seg_blk)) {
+		if (dev_fill_block(cp_payload, cp_seg_blk, WRITE_LIFE_NONE)) {
 			MSG(1, "\tError: While zeroing out the sit bitmap area "
 					"on disk!!!\n");
 			goto free_cp_payload;
@@ -943,7 +943,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for HOT/WARM/COLD_DATA, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
-	if (dev_write_block(sum_compact, cp_seg_blk)) {
+	if (dev_write_block(sum_compact, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -957,7 +957,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for HOT_NODE, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
-	if (dev_write_block(sum, cp_seg_blk)) {
+	if (dev_write_block(sum, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -969,7 +969,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for WARM_NODE, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
-	if (dev_write_block(sum, cp_seg_blk)) {
+	if (dev_write_block(sum, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -980,7 +980,7 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for COLD_NODE, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
-	if (dev_write_block(sum, cp_seg_blk)) {
+	if (dev_write_block(sum, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the sum_blk to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -988,7 +988,7 @@ static int f2fs_write_check_point_pack(void)
 	/* cp page2 */
 	cp_seg_blk++;
 	DBG(1, "\tWriting cp page2, at offset 0x%08"PRIx64"\n", cp_seg_blk);
-	if (dev_write_block(cp, cp_seg_blk)) {
+	if (dev_write_block(cp, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -1011,7 +1011,8 @@ static int f2fs_write_check_point_pack(void)
 
 		for (i = 0; i < nat_bits_blocks; i++) {
 			if (dev_write_block(nat_bits + i *
-						F2FS_BLKSIZE, cp_seg_blk + i)) {
+						F2FS_BLKSIZE, cp_seg_blk + i,
+						WRITE_LIFE_NONE)) {
 				MSG(1, "\tError: write NAT bits to disk!!!\n");
 				goto free_cp_payload;
 			}
@@ -1029,14 +1030,14 @@ static int f2fs_write_check_point_pack(void)
 	cp_seg_blk = get_sb(segment0_blkaddr) + c.blks_per_seg;
 	DBG(1, "\tWriting cp page 1 of checkpoint pack 2, at offset 0x%08"PRIx64"\n",
 				cp_seg_blk);
-	if (dev_write_block(cp, cp_seg_blk)) {
+	if (dev_write_block(cp, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
 		goto free_cp_payload;
 	}
 
 	for (i = 0; i < get_sb(cp_payload); i++) {
 		cp_seg_blk++;
-		if (dev_fill_block(cp_payload, cp_seg_blk)) {
+		if (dev_fill_block(cp_payload, cp_seg_blk, WRITE_LIFE_NONE)) {
 			MSG(1, "\tError: While zeroing out the sit bitmap area "
 					"on disk!!!\n");
 			goto free_cp_payload;
@@ -1048,7 +1049,7 @@ static int f2fs_write_check_point_pack(void)
 					get_sb(cp_payload) - 1);
 	DBG(1, "\tWriting cp page 2 of checkpoint pack 2, at offset 0x%08"PRIx64"\n",
 				cp_seg_blk);
-	if (dev_write_block(cp, cp_seg_blk)) {
+	if (dev_write_block(cp, cp_seg_blk, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the cp to disk!!!\n");
 		goto free_cp_payload;
 	}
@@ -1082,7 +1083,7 @@ static int f2fs_write_super_block(void)
 	memcpy(zero_buff + F2FS_SUPER_OFFSET, sb, sizeof(*sb));
 	DBG(1, "\tWriting super block, at offset 0x%08x\n", 0);
 	for (index = 0; index < 2; index++) {
-		if (dev_write_block(zero_buff, index)) {
+		if (dev_write_block(zero_buff, index, WRITE_LIFE_NONE)) {
 			MSG(1, "\tError: While while writing super_blk "
 					"on disk!!! index : %d\n", index);
 			free(zero_buff);
@@ -1135,7 +1136,8 @@ static int f2fs_discard_obsolete_dnode(void)
 		memset(raw_node, 0, F2FS_BLKSIZE);
 
 		DBG(1, "\tDiscard dnode, at offset 0x%08"PRIx64"\n", offset);
-		if (dev_write_block(raw_node, offset)) {
+		if (dev_write_block(raw_node, offset,
+				    f2fs_io_type_to_rw_hint(CURSEG_WARM_NODE))) {
 			MSG(1, "\tError: While discarding direct node!!!\n");
 			free(raw_node);
 			return -1;
@@ -1256,7 +1258,8 @@ static block_t f2fs_add_default_dentry_root(void)
 	data_blkaddr = alloc_next_free_block(CURSEG_HOT_DATA);
 
 	DBG(1, "\tWriting default dentry root, at offset 0x%x\n", data_blkaddr);
-	if (dev_write_block(dent_blk, data_blkaddr)) {
+	if (dev_write_block(dent_blk, data_blkaddr,
+			    f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA))) {
 		MSG(1, "\tError: While writing the dentry_blk to disk!!!\n");
 		free(dent_blk);
 		return 0;
@@ -1301,7 +1304,8 @@ static int f2fs_write_root_inode(void)
 	F2FS_NODE_FOOTER(raw_node)->next_blkaddr = cpu_to_le32(node_blkaddr + 1);
 
 	DBG(1, "\tWriting root inode (hot node), offset 0x%x\n", node_blkaddr);
-	if (write_inode(raw_node, node_blkaddr) < 0) {
+	if (write_inode(raw_node, node_blkaddr,
+			f2fs_io_type_to_rw_hint(CURSEG_HOT_NODE)) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1377,7 +1381,8 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 	for (i = 0; i < QUOTA_DATA; i++) {
 		blkaddr = alloc_next_free_block(CURSEG_HOT_DATA);
 
-		if (dev_write_block(filebuf + i * F2FS_BLKSIZE, blkaddr)) {
+		if (dev_write_block(filebuf + i * F2FS_BLKSIZE, blkaddr,
+				    f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA))) {
 			MSG(1, "\tError: While writing the quota_blk to disk!!!\n");
 			free(filebuf);
 			return 0;
@@ -1439,7 +1444,8 @@ static int f2fs_write_qf_inode(int qtype)
 					cpu_to_le32(data_blkaddr + i);
 
 	DBG(1, "\tWriting quota inode (hot node), offset 0x%x\n", node_blkaddr);
-	if (write_inode(raw_node, node_blkaddr) < 0) {
+	if (write_inode(raw_node, node_blkaddr,
+			f2fs_io_type_to_rw_hint(CURSEG_HOT_NODE)) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		free(raw_node);
 		return -1;
@@ -1476,7 +1482,7 @@ static int f2fs_update_nat_default(void)
 
 	DBG(1, "\tWriting nat root, at offset 0x%08"PRIx64"\n",
 					nat_seg_blk_offset);
-	if (dev_write_block(nat_blk, nat_seg_blk_offset)) {
+	if (dev_write_block(nat_blk, nat_seg_blk_offset, WRITE_LIFE_NONE)) {
 		MSG(1, "\tError: While writing the nat_blk set0 to disk!\n");
 		free(nat_blk);
 		return -1;
@@ -1516,7 +1522,8 @@ static block_t f2fs_add_default_dentry_lpf(void)
 
 	DBG(1, "\tWriting default dentry lost+found, at offset 0x%x\n",
 							data_blkaddr);
-	if (dev_write_block(dent_blk, data_blkaddr)) {
+	if (dev_write_block(dent_blk, data_blkaddr,
+			    f2fs_io_type_to_rw_hint(CURSEG_HOT_DATA))) {
 		MSG(1, "\tError While writing the dentry_blk to disk!!!\n");
 		free(dent_blk);
 		return 0;
@@ -1563,7 +1570,8 @@ static int f2fs_write_lpf_inode(void)
 
 	DBG(1, "\tWriting lost+found inode (hot node), offset 0x%x\n",
 								node_blkaddr);
-	if (write_inode(raw_node, node_blkaddr) < 0) {
+	if (write_inode(raw_node, node_blkaddr,
+			f2fs_io_type_to_rw_hint(CURSEG_HOT_NODE)) < 0) {
 		MSG(1, "\tError: While writing the raw_node to disk!!!\n");
 		err = -1;
 		goto exit;

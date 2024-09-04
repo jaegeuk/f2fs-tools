@@ -60,6 +60,19 @@
 #include <linux/blkzoned.h>
 #endif
 
+#ifdef HAVE_LINUX_RW_HINT_H
+#include <linux/rw_hint.h>
+#else
+enum rw_hint {
+	WRITE_LIFE_NOT_SET	= 0,
+	WRITE_LIFE_NONE,
+	WRITE_LIFE_SHORT,
+	WRITE_LIFE_MEDIUM,
+	WRITE_LIFE_LONG,
+	WRITE_LIFE_EXTREME
+};
+#endif
+
 #ifdef HAVE_LIBSELINUX
 #include <selinux/selinux.h>
 #include <selinux/label.h>
@@ -1526,6 +1539,8 @@ struct f2fs_configuration {
 	time_t fixed_time;
 	int roll_forward;
 	bool need_fsync;
+	bool need_whint;
+	int whint;
 
 	/* mkfs parameters */
 	int fake_seed;
@@ -1587,7 +1602,7 @@ extern unsigned int addrs_per_page(struct f2fs_inode *, bool);
 extern unsigned int f2fs_max_file_offset(struct f2fs_inode *);
 extern __u32 f2fs_inode_chksum(struct f2fs_node *);
 extern __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *);
-extern int write_inode(struct f2fs_node *, u64);
+extern int write_inode(struct f2fs_node *, u64, enum rw_hint);
 
 extern int get_bits_in_byte(unsigned char n);
 extern int test_and_set_bit_le(u32, u8 *);
@@ -1624,15 +1639,16 @@ extern int dev_readahead(__u64, size_t);
 #else
 extern int dev_readahead(__u64, size_t UNUSED(len));
 #endif
-extern int dev_write(void *, __u64, size_t);
-extern int dev_write_block(void *, __u64);
+extern enum rw_hint f2fs_io_type_to_rw_hint(int);
+extern int dev_write(void *, __u64, size_t, enum rw_hint);
+extern int dev_write_block(void *, __u64, enum rw_hint);
 extern int dev_write_dump(void *, __u64, size_t);
 #if !defined(__MINGW32__)
 extern int dev_write_symlink(char *, size_t);
 #endif
 /* All bytes in the buffer must be 0 use dev_fill(). */
-extern int dev_fill(void *, __u64, size_t);
-extern int dev_fill_block(void *, __u64);
+extern int dev_fill(void *, __u64, size_t, enum rw_hint);
+extern int dev_fill_block(void *, __u64, enum rw_hint);
 
 extern int dev_read_block(void *, __u64);
 extern int dev_reada_block(__u64);

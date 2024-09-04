@@ -322,12 +322,16 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 		ASSERT(remained_blkentries > 0);
 
 		if (!has_data) {
+			struct seg_entry *se;
+
+			se = get_seg_entry(sbi, GET_SEGNO(sbi, dn.node_blkaddr));
 			dn.data_blkaddr = addr_type;
 			set_data_blkaddr(&dn);
 			idirty |= dn.idirty;
 			if (dn.ndirty) {
 				ret = dn.alloced ? dev_write_block(dn.node_blk,
-					dn.node_blkaddr) :
+					dn.node_blkaddr,
+					f2fs_io_type_to_rw_hint(se->type)) :
 					update_block(sbi, dn.node_blk,
 					&dn.node_blkaddr, NULL);
 				ASSERT(ret >= 0);
@@ -365,7 +369,8 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 
 		if (c.zoned_model == F2FS_ZONED_HM) {
 			if (datablk_alloced) {
-				ret = dev_write_block(wbuf, blkaddr);
+				ret = dev_write_block(wbuf, blkaddr,
+					f2fs_io_type_to_rw_hint(CURSEG_WARM_DATA));
 			} else {
 				ret = update_block(sbi, wbuf, &blkaddr,
 						dn.node_blk);
@@ -375,7 +380,8 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 					dn.ndirty = 1;
 			}
 		} else {
-			ret = dev_write_block(wbuf, blkaddr);
+			ret = dev_write_block(wbuf, blkaddr,
+					f2fs_io_type_to_rw_hint(CURSEG_WARM_DATA));
 		}
 		ASSERT(ret >= 0);
 
@@ -386,8 +392,11 @@ static u64 f2fs_write_ex(struct f2fs_sb_info *sbi, nid_t ino, u8 *buffer,
 
 		dn.ofs_in_node++;
 		if ((--remained_blkentries == 0 || count == 0) && (dn.ndirty)) {
+			struct seg_entry *se;
+			se = get_seg_entry(sbi, GET_SEGNO(sbi, dn.node_blkaddr));
 			ret = dn.alloced ?
-				dev_write_block(dn.node_blk, dn.node_blkaddr) :
+				dev_write_block(dn.node_blk, dn.node_blkaddr,
+						f2fs_io_type_to_rw_hint(se->type)) :
 				update_block(sbi, dn.node_blk, &dn.node_blkaddr, NULL);
 			ASSERT(ret >= 0);
 		}
@@ -764,7 +773,7 @@ int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
 	int ret, type;
 
 	if (c.zoned_model != F2FS_ZONED_HM)
-		return dev_write_block(buf, old_blkaddr);
+		return dev_write_block(buf, old_blkaddr, WRITE_LIFE_NONE);
 
 	/* update sit bitmap & valid_blocks && se->type for old block*/
 	se = get_seg_entry(sbi, GET_SEGNO(sbi, old_blkaddr));
@@ -784,7 +793,7 @@ int update_block(struct f2fs_sb_info *sbi, void *buf, u32 *blkaddr,
 		ASSERT(0);
 	}
 
-	ret = dev_write_block(buf, new_blkaddr);
+	ret = dev_write_block(buf, new_blkaddr, f2fs_io_type_to_rw_hint(type));
 	ASSERT(ret >= 0);
 
 	*blkaddr = new_blkaddr;

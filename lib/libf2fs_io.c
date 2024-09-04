@@ -39,6 +39,11 @@
 #include <inttypes.h>
 #include "f2fs_fs.h"
 
+#ifdef HAVE_LINUX_FCNTL_H
+#define HAVE_ARCH_STRUCT_FLOCK
+#include <linux/fcntl.h>
+#endif
+
 struct f2fs_configuration c;
 
 #ifdef HAVE_SPARSE_SPARSE_H
@@ -553,11 +558,87 @@ int dev_readahead(__u64 offset, size_t UNUSED(len))
 	return 0;
 #endif
 }
+/*
+ * Copied from fs/f2fs/segment.c
+ */
+/*
+ * This returns write hints for each segment type. This hints will be
+ * passed down to block layer as below by default.
+ *
+ * User                  F2FS                     Block
+ * ----                  ----                     -----
+ *                       META                     WRITE_LIFE_NONE|REQ_META
+ *                       HOT_NODE                 WRITE_LIFE_NONE
+ *                       WARM_NODE                WRITE_LIFE_MEDIUM
+ *                       COLD_NODE                WRITE_LIFE_LONG
+ * ioctl(COLD)           COLD_DATA                WRITE_LIFE_EXTREME
+ * extension list        "                        "
+ *
+ * -- buffered io
+ *                       COLD_DATA                WRITE_LIFE_EXTREME
+ *                       HOT_DATA                 WRITE_LIFE_SHORT
+ *                       WARM_DATA                WRITE_LIFE_NOT_SET
+ *
+ * -- direct io
+ * WRITE_LIFE_EXTREME    COLD_DATA                WRITE_LIFE_EXTREME
+ * WRITE_LIFE_SHORT      HOT_DATA                 WRITE_LIFE_SHORT
+ * WRITE_LIFE_NOT_SET    WARM_DATA                WRITE_LIFE_NOT_SET
+ * WRITE_LIFE_NONE       "                        WRITE_LIFE_NONE
+ * WRITE_LIFE_MEDIUM     "                        WRITE_LIFE_MEDIUM
+ * WRITE_LIFE_LONG       "                        WRITE_LIFE_LONG
+ */
+enum rw_hint f2fs_io_type_to_rw_hint(int seg_type)
+{
+	switch (seg_type) {
+	case CURSEG_WARM_DATA:
+		return WRITE_LIFE_NOT_SET;
+	case CURSEG_HOT_DATA:
+		return WRITE_LIFE_SHORT;
+	case CURSEG_COLD_DATA:
+		return WRITE_LIFE_EXTREME;
+	case CURSEG_WARM_NODE:
+		return WRITE_LIFE_MEDIUM;
+	case CURSEG_HOT_NODE:
+		return WRITE_LIFE_NONE;
+	case CURSEG_COLD_NODE:
+		return WRITE_LIFE_LONG;
+	default:
+		return WRITE_LIFE_NONE;
+	}
+}
 
-int dev_write(void *buf, __u64 offset, size_t len)
+static int __dev_write(void *buf, __u64 offset, size_t len, enum rw_hint whint)
 {
 	int fd;
 
+	fd = __get_device_fd(&offset);
+	if (fd < 0)
+		return fd;
+
+	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
+		return -1;
+
+#if ! defined(__MINGW32__)
+	if (c.need_whint && (c.whint != whint)) {
+		u64 hint = whint;
+		int ret;
+
+		ret = fcntl(fd, F_SET_RW_HINT, &hint);
+		if (ret != -1)
+			c.whint = whint;
+	}
+#endif
+
+	if (write(fd, buf, len) < 0)
+		return -1;
+
+	c.need_fsync = true;
+
+	return 0;
+}
+
+int dev_write(void *buf, __u64 offset, size_t len, enum rw_hint whint)
+{
 	if (c.dry_run)
 		return 0;
 
@@ -572,21 +653,12 @@ int dev_write(void *buf, __u64 offset, size_t len)
 	if (dcache_update_cache(buf, offset, len) < 0)
 		return -1;
 
-	fd = __get_device_fd(&offset);
-	if (fd < 0)
-		return fd;
-
-	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
-		return -1;
-	if (write(fd, buf, len) < 0)
-		return -1;
-	c.need_fsync = true;
-	return 0;
+	return __dev_write(buf, offset, len, whint);
 }
 
-int dev_write_block(void *buf, __u64 blk_addr)
+int dev_write_block(void *buf, __u64 blk_addr, enum rw_hint whint)
 {
-	return dev_write(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
+	return dev_write(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE, whint);
 }
 
 int dev_write_dump(void *buf, __u64 offset, size_t len)
@@ -608,32 +680,22 @@ int dev_write_symlink(char *buf, size_t len)
 }
 #endif
 
-int dev_fill(void *buf, __u64 offset, size_t len)
+int dev_fill(void *buf, __u64 offset, size_t len, enum rw_hint whint)
 {
-	int fd;
-
 	if (c.sparse_mode)
 		return sparse_write_zeroed_blk(offset / F2FS_BLKSIZE,
 						len / F2FS_BLKSIZE);
 
-	fd = __get_device_fd(&offset);
-	if (fd < 0)
-		return fd;
-
 	/* Only allow fill to zero */
 	if (*((__u8*)buf))
 		return -1;
-	if (lseek(fd, (off_t)offset, SEEK_SET) < 0)
-		return -1;
-	if (write(fd, buf, len) < 0)
-		return -1;
-	c.need_fsync = true;
-	return 0;
+
+	return __dev_write(buf, offset, len, whint);
 }
 
-int dev_fill_block(void *buf, __u64 blk_addr)
+int dev_fill_block(void *buf, __u64 blk_addr, enum rw_hint whint)
 {
-	return dev_fill(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE);
+	return dev_fill(buf, blk_addr << F2FS_BLKSIZE_BITS, F2FS_BLKSIZE, whint);
 }
 
 int dev_read_block(void *buf, __u64 blk_addr)

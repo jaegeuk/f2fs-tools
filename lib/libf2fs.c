@@ -603,12 +603,12 @@ __u32 f2fs_checkpoint_chksum(struct f2fs_checkpoint *cp)
 	return chksum;
 }
 
-int write_inode(struct f2fs_node *inode, u64 blkaddr)
+int write_inode(struct f2fs_node *inode, u64 blkaddr, enum rw_hint whint)
 {
 	if (c.feature & F2FS_FEATURE_INODE_CHKSUM)
 		inode->i.i_inode_checksum =
 			cpu_to_le32(f2fs_inode_chksum(inode));
-	return dev_write_block(inode, blkaddr);
+	return dev_write_block(inode, blkaddr, whint);
 }
 
 /*
@@ -1005,7 +1005,7 @@ int get_device_info(int i)
 #endif
 
 	if (!c.sparse_mode) {
-		if (dev->zoned_model == F2FS_ZONED_HM && c.func == FSCK)
+		if (dev->zoned_model == F2FS_ZONED_HM)
 			flags |= O_DSYNC;
 
 		if (S_ISBLK(stat_buf->st_mode) &&

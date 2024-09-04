@@ -596,7 +596,7 @@ static int inject_nat(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	}
 	print_raw_nat_entry_info(ne);
 
-	ret = dev_write_block(nat_blk, blk_addr);
+	ret = dev_write_block(nat_blk, blk_addr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 	/* restore NAT version bitmap */
 	if (is_set)
@@ -755,7 +755,7 @@ static int inject_ssa(struct f2fs_sb_info *sbi, struct inject_option *opt)
 	print_sum_footer_info(footer);
 
 	ssa_blkaddr = GET_SUM_BLKADDR(sbi, segno);
-	ret = dev_write_block(sum_blk, ssa_blkaddr);
+	ret = dev_write_block(sum_blk, ssa_blkaddr, WRITE_LIFE_NONE);
 	ASSERT(ret >= 0);
 
 out:

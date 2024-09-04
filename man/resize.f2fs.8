@@ -18,6 +18,9 @@ resize.f2fs \- resize filesystem size
 .I overprovision-ratio-percentage
 ]
 [
+.B \-H
+]
+[
 .B \-i
 ]
 [
@@ -52,6 +55,9 @@ The default number is 0, which shows basic debugging messages.
 Specify the percentage of the volume that will be used as overprovision area.
 This area is hidden to users, and utilized by F2FS cleaner. If not specified, the
 best number will be assigned automatically according to the partition size.
+.TP
+.BI \-H
+Specify support write hint.
 .TP
 .BI \-i
 Enable extended node bitmap.

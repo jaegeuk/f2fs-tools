@@ -23,12 +23,13 @@ static int migrate_block(struct f2fs_sb_info *sbi, u64 from, u64 to)
 	ret = dev_read_block(raw, from);
 	ASSERT(ret >= 0);
 
+	/* get segment type */
+	se = get_seg_entry(sbi, GET_SEGNO(sbi, from));
 	/* write to */
-	ret = dev_write_block(raw, to);
+	ret = dev_write_block(raw, to, f2fs_io_type_to_rw_hint(se->type));
 	ASSERT(ret >= 0);
 
 	/* update sit bitmap & valid_blocks && se->type */
-	se = get_seg_entry(sbi, GET_SEGNO(sbi, from));
 	offset = OFFSET_IN_SEG(sbi, from);
 	type = se->type;
 	se->valid_blocks--;
