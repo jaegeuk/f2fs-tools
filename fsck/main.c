@@ -892,6 +892,7 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 	u32 flag = le32_to_cpu(ckpt->ckpt_flags);
 	u32 blk_cnt;
 	struct f2fs_compr_blk_cnt cbc;
+	struct child_info child = { 0 };
 	errcode_t ret;
 
 	fsck_init(sbi);
@@ -957,8 +958,9 @@ static int do_fsck(struct f2fs_sb_info *sbi)
 	if (fsck_sanity_check_nat(sbi, sbi->root_ino_num))
 		fsck_chk_root_inode(sbi);
 
+	child.p_ino = sbi->root_ino_num;
 	fsck_chk_node_blk(sbi, NULL, sbi->root_ino_num,
-			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, &cbc, NULL);
+			F2FS_FT_DIR, TYPE_INODE, &blk_cnt, &cbc, &child);
 	fsck_chk_quota_files(sbi);
 
 	ret = fsck_verify(sbi);

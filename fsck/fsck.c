@@ -1307,17 +1307,52 @@ skip_blkcnt_fix:
 						nid, i_links, child.links);
 			}
 		}
-		if ((child.dot == 0 || child.dotdot == 0) &&
-				!(node_blk->i.i_inline & F2FS_INLINE_DOTS)) {
-			ASSERT_MSG("ino: 0x%x dot: %u, dotdot: %u",
+		if (child.dot == 0 || child.dotdot == 0) {
+			ASSERT_MSG("ino: 0x%x has no '.' and/or '..' dirents, dot: %u, dotdot: %u",
 					nid, child.dot, child.dotdot);
 			if (c.fix_on) {
-				node_blk->i.i_inline |= F2FS_INLINE_DOTS;
+				umode_t mode = le16_to_cpu(node_blk->i.i_mode);
+				block_t blkaddr;
+
+				ret = convert_inline_dentry(sbi, node_blk,
+								&ni->blk_addr);
+				FIX_MSG("convert inline dentry ino: %u, pino: %u, ret: %d",
+						nid, child_d->p_ino, ret);
+				if (ret)
+					goto skip_dot_fix;
+
+				if (child.dot == 0) {
+					char *name = ".";
+
+					ret = f2fs_add_link(sbi, node_blk,
+						(const unsigned char *)name,
+						1, nid, map_de_type(mode),
+						&blkaddr, 0);
+					FIX_MSG("add missing '%s' dirent in ino: %u, pino: %u, ret:%d",
+						name, nid, child_d->p_ino, ret);
+					if (ret)
+						goto skip_dot_fix;
+				}
+
+				if (child.dotdot == 0) {
+					char *name = "..";
+
+					ret = f2fs_add_link(sbi, node_blk,
+						(const unsigned char *)name,
+						2, child_d->p_ino,
+						map_de_type(mode),
+						&blkaddr, 0);
+					FIX_MSG("add missing '%s' dirent in ino: %u, pino: %u, ret:%d",
+						name, nid, child_d->p_ino, ret);
+					if (ret)
+						goto skip_dot_fix;
+				}
+
 				need_fix = 1;
-				FIX_MSG("Dir: 0x%x set inline_dots", nid);
 			}
 		}
 	}
+skip_dot_fix:
 
 	i_gc_failures = le16_to_cpu(node_blk->i.i_gc_failures);
 
