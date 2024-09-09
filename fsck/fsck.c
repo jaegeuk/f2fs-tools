@@ -1421,8 +1421,6 @@ skip_dot_fix:
 	}
 
 	if (need_fix && f2fs_dev_is_writable()) {
-		if (c.zoned_model == F2FS_ZONED_HM)
-			node_blk->i.i_ext.len = 0;
 		ret = update_block(sbi, node_blk, &ni->blk_addr, NULL);
 		ASSERT(ret >= 0);
 	}
