@@ -902,6 +902,7 @@ void fsck_chk_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	int need_fix = 0;
 	int ret;
 	u32 cluster_size = 1 << node_blk->i.i_log_cluster_size;
+	bool is_aliasing = IS_DEVICE_ALIASING(&node_blk->i);
 
 	if (!compressed)
 		goto check_next;
@@ -1132,6 +1133,33 @@ check_next:
 				addrs_per_blk * NIDS_PER_BLOCK *
 				NIDS_PER_BLOCK) * F2FS_BLKSIZE;
 	}
+
+	if (is_aliasing) {
+		struct extent_info ei;
+
+		get_extent_info(&ei, &node_blk->i.i_ext);
+		for (idx = 0; idx < ei.len; idx++, child.pgofs++) {
+			block_t blkaddr = ei.blk + idx;
+
+			/* check extent info */
+			check_extent_info(&child, blkaddr, 0);
+			ret = fsck_chk_data_blk(sbi, &node_blk->i, blkaddr,
+				&child, (i_blocks == *blk_cnt),	ftype, nid,
+				idx, ni->version, node_blk);
+			if (!ret) {
+				*blk_cnt = *blk_cnt + 1;
+				if (cur_qtype != -1)
+					qf_last_blkofs[cur_qtype] = child.pgofs;
+			} else if (c.fix_on) {
+				node_blk->i.i_ext.len = cpu_to_le32(idx);
+				need_fix = 1;
+				break;
+			}
+		}
+
+		goto check;
+	}
+
 	for (idx = 0; idx < addrs; idx++, child.pgofs++) {
 		block_t blkaddr = le32_to_cpu(node_blk->i.i_addr[ofs + idx]);
 
@@ -1164,11 +1192,11 @@ check_next:
 				child.pgofs - cbc->cheader_pgofs < cluster_size)
 			cbc->cnt++;
 		ret = fsck_chk_data_blk(sbi,
-				IS_CASEFOLDED(&node_blk->i),
+				&node_blk->i,
 				blkaddr,
 				&child, (i_blocks == *blk_cnt),
 				ftype, nid, idx, ni->version,
-				file_is_encrypt(&node_blk->i), node_blk);
+				node_blk);
 		if (blkaddr != le32_to_cpu(node_blk->i.i_addr[ofs + idx]))
 			need_fix = 1;
 		if (!ret) {
@@ -1397,7 +1425,7 @@ skip_dot_fix:
 	}
 
 	/* drop extent information to avoid potential wrong access */
-	if (need_fix && f2fs_dev_is_writable())
+	if (need_fix && f2fs_dev_is_writable() && !is_aliasing)
 		node_blk->i.i_ext.len = 0;
 
 	if ((c.feature & F2FS_FEATURE_INODE_CHKSUM) &&
@@ -1469,11 +1497,9 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		if (!compr_rel && blkaddr == NEW_ADDR && child->pgofs -
 				cbc->cheader_pgofs < cluster_size)
 			cbc->cnt++;
-		ret = fsck_chk_data_blk(sbi, IS_CASEFOLDED(inode),
-			blkaddr, child,
+		ret = fsck_chk_data_blk(sbi, inode, blkaddr, child,
 			le64_to_cpu(inode->i_blocks) == *blk_cnt, ftype,
-			nid, idx, ni->version,
-			file_is_encrypt(inode), node_blk);
+			nid, idx, ni->version, node_blk);
 		if (blkaddr != le32_to_cpu(node_blk->dn.addr[idx]))
 			need_fix = 1;
 		if (!ret) {
@@ -2096,12 +2122,15 @@ int fsck_chk_dentry_blk(struct f2fs_sb_info *sbi, int casefolded, u32 blk_addr,
 	return 0;
 }
 
-int fsck_chk_data_blk(struct f2fs_sb_info *sbi, int casefolded,
+int fsck_chk_data_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 		u32 blk_addr, struct child_info *child, int last_blk,
 		enum FILE_TYPE ftype, u32 parent_nid, u16 idx_in_node, u8 ver,
-		int enc_name, struct f2fs_node *node_blk)
+		struct f2fs_node *node_blk)
 {
 	struct f2fs_fsck *fsck = F2FS_FSCK(sbi);
+	int casefolded = IS_CASEFOLDED(inode);
+	int enc_name = file_is_encrypt(inode);
+	int aliasing = IS_DEVICE_ALIASING(inode);
 
 	/* Is it reserved block? */
 	if (blk_addr == NEW_ADDR) {
@@ -2114,7 +2143,7 @@ int fsck_chk_data_blk(struct f2fs_sb_info *sbi, int casefolded,
 		return -EINVAL;
 	}
 
-	if (is_valid_ssa_data_blk(sbi, blk_addr, parent_nid,
+	if (!aliasing && is_valid_ssa_data_blk(sbi, blk_addr, parent_nid,
 						idx_in_node, ver)) {
 		ASSERT_MSG("summary data block is not valid. [0x%x]",
 						parent_nid);

@@ -50,7 +50,7 @@ static void mkfs_usage()
 	MSG(0, "\nUsage: mkfs.f2fs [options] device [sectors]\n");
 	MSG(0, "[options]:\n");
 	MSG(0, "  -b filesystem block size [default:4096]\n");
-	MSG(0, "  -c [device_name] up to 7 additional devices, except meta device\n");
+	MSG(0, "  -c [device_name[@alias_filename]] up to 7 additional devices, except meta device\n");
 	MSG(0, "  -d debug level [default:0]\n");
 	MSG(0, "  -e [cold file ext list] e.g. \"mp3,gif,mov\"\n");
 	MSG(0, "  -E [hot file ext list] e.g. \"db\"\n");
@@ -106,6 +106,9 @@ static void f2fs_show_info()
 
 	if (c.feature & F2FS_FEATURE_COMPRESSION)
 		MSG(0, "Info: Enable Compression\n");
+
+	if (c.feature & F2FS_FEATURE_DEVICE_ALIAS)
+		MSG(0, "Info: Enable device aliasing\n");
 }
 
 #if defined(ANDROID_TARGET) && defined(HAVE_SYS_UTSNAME_H)
@@ -182,6 +185,7 @@ static void f2fs_parse_options(int argc, char *argv[])
 	int32_t option=0;
 	int val;
 	char *token;
+	int dev_num;
 
 	while ((option = getopt_long(argc,argv,option_string,long_opts,NULL)) != EOF) {
 		switch (option) {
@@ -201,17 +205,41 @@ static void f2fs_parse_options(int argc, char *argv[])
 			}
 			break;
 		case 'c':
-			if (c.ndevs >= MAX_DEVICES) {
+			dev_num = c.ndevs;
+
+			if (dev_num >= MAX_DEVICES) {
 				MSG(0, "Error: Too many devices\n");
 				mkfs_usage();
 			}
 
-			if (strlen(optarg) > MAX_PATH_LEN) {
-				MSG(0, "Error: device path should be less than "
-					"%d characters\n", MAX_PATH_LEN);
+			token = strtok(optarg, "@");
+			if (strlen(token) > MAX_PATH_LEN) {
+				MSG(0, "Error: device path should be equal or "
+					"less than %d characters\n",
+					MAX_PATH_LEN);
 				mkfs_usage();
 			}
-			c.devices[c.ndevs++].path = strdup(optarg);
+			c.devices[dev_num].path = strdup(token);
+			token = strtok(NULL, "");
+			if (token) {
+				if (strlen(token) > MAX_PATH_LEN) {
+					MSG(0, "Error: alias_filename should "
+						"be equal or less than %d "
+						"characters\n", MAX_PATH_LEN);
+					mkfs_usage();
+				}
+				if (strchr(token, '/')) {
+					MSG(0, "Error: alias_filename has "
+						"invalid '/' character\n");
+					mkfs_usage();
+				}
+				c.devices[dev_num].alias_filename =
+					strdup(token);
+				if (!c.aliased_devices)
+					c.feature |= F2FS_FEATURE_DEVICE_ALIAS;
+				c.aliased_devices++;
+			}
+			c.ndevs++;
 			break;
 		case 'd':
 			c.dbg_lv = atoi(optarg);

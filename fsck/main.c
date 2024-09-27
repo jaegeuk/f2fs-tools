@@ -1039,6 +1039,11 @@ static int do_defrag(struct f2fs_sb_info *sbi)
 		return -1;
 	}
 
+	if (get_sb(feature) & F2FS_FEATURE_DEVICE_ALIAS) {
+		MSG(0, "Not support on image with device aliasing feature.\n");
+		return -1;
+	}
+
 	if (c.defrag_start > get_sb(block_count))
 		goto out_range;
 	if (c.defrag_start < SM_I(sbi)->main_blkaddr)

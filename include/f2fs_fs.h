@@ -457,6 +457,7 @@ struct device_info {
 	uint64_t start_blkaddr;
 	uint64_t end_blkaddr;
 	uint32_t total_segments;
+	char *alias_filename;
 
 	/* to handle zone block devices */
 	int zoned_model;
@@ -679,6 +680,8 @@ enum {
 #define F2FS_IMMUTABLE_FL		0x00000010 /* Immutable file */
 #define F2FS_NOATIME_FL			0x00000080 /* do not update atime */
 #define F2FS_CASEFOLD_FL		0x40000000 /* Casefolded file */
+#define F2FS_DEVICE_ALIAS_FL		0x80000000 /* File for aliasing a device */
+#define IS_DEVICE_ALIASING(fi)	((fi)->i_flags & cpu_to_le32(F2FS_DEVICE_ALIAS_FL))
 
 #define F2FS_ENC_UTF8_12_1	1
 #define F2FS_ENC_STRICT_MODE_FL	(1 << 0)
@@ -711,6 +714,7 @@ enum {
 #define F2FS_FEATURE_CASEFOLD		0x1000
 #define F2FS_FEATURE_COMPRESSION	0x2000
 #define F2FS_FEATURE_RO			0x4000
+#define F2FS_FEATURE_DEVICE_ALIAS	0x8000
 
 #define MAX_NR_FEATURE			32
 
@@ -1541,11 +1545,14 @@ struct f2fs_configuration {
 	bool need_fsync;
 	bool need_whint;
 	int whint;
+	int aliased_devices;
+	uint32_t aliased_segments;
 
 	/* mkfs parameters */
 	int fake_seed;
 	uint32_t next_free_nid;
 	uint32_t lpf_ino;
+	uint32_t first_alias_ino;
 	uint32_t root_uid;
 	uint32_t root_gid;
 	uint32_t blksize;

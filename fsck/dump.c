@@ -527,6 +527,19 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	c.show_file_map_max_offset = f2fs_max_file_offset(&node_blk->i);
+
+	if (IS_DEVICE_ALIASING(&node_blk->i)) {
+		u32 blkaddr = le32_to_cpu(node_blk->i.i_ext.blk_addr);
+		u32 len = le32_to_cpu(node_blk->i.i_ext.len);
+		u32 idx;
+
+		for (idx = 0; idx < len; idx++)
+			dump_data_blk(sbi, idx * F2FS_BLKSIZE, blkaddr++, type);
+		print_extent(true);
+
+		goto dump_xattr;
+	}
+
 	addr_per_block = ADDRS_PER_BLOCK(&node_blk->i);
 
 	/* check data blocks in inode */

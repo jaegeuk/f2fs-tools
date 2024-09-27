@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <f2fs_fs.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -39,10 +40,62 @@ struct f2fs_super_block raw_sb;
 struct f2fs_super_block *sb = &raw_sb;
 struct f2fs_checkpoint *cp;
 
+static inline bool device_is_aliased(unsigned int dev_num)
+{
+	if (dev_num >= c.ndevs)
+		return false;
+	return c.devices[dev_num].alias_filename != NULL;
+}
+
+static inline unsigned int target_device_index(uint64_t blkaddr)
+{
+	int i;
+
+	for (i = 0; i < c.ndevs; i++)
+		if (c.devices[i].start_blkaddr <= blkaddr &&
+				c.devices[i].end_blkaddr >= blkaddr)
+			return i;
+	return 0;
+}
+
+#define GET_SEGNO(blk_addr) ((blk_addr - get_sb(main_blkaddr)) / \
+				c.blks_per_seg)
+#define START_BLOCK(segno) (segno * c.blks_per_seg + get_sb(main_blkaddr))
+
 /* Return first segment number of each area */
-#define prev_zone(cur)		(c.cur_seg[cur] - c.segs_per_zone)
-#define next_zone(cur)		(c.cur_seg[cur] + c.segs_per_zone)
-#define last_zone(cur)		((cur - 1) * c.segs_per_zone)
+static inline uint32_t next_zone(int seg_type)
+{
+	uint32_t next_seg = c.cur_seg[seg_type] + c.segs_per_zone;
+	uint64_t next_blkaddr = START_BLOCK(next_seg);
+	int dev_num;
+
+	dev_num = target_device_index(next_blkaddr);
+	if (!device_is_aliased(dev_num))
+		return GET_SEGNO(next_blkaddr);
+
+	while (dev_num < c.ndevs && device_is_aliased(dev_num))
+		dev_num++;
+
+	return GET_SEGNO(c.devices[dev_num - 1].end_blkaddr + 1);
+}
+
+static inline uint32_t last_zone(uint32_t total_zone)
+{
+	uint32_t last_seg = (total_zone - 1) * c.segs_per_zone;
+	uint64_t last_blkaddr = START_BLOCK(last_seg);
+	int dev_num;
+
+	dev_num = target_device_index(last_blkaddr);
+	if (!device_is_aliased(dev_num))
+		return GET_SEGNO(last_blkaddr);
+
+	while (dev_num > 0 && device_is_aliased(dev_num))
+		dev_num--;
+
+	return GET_SEGNO(c.devices[dev_num + 1].start_blkaddr) -
+		c.segs_per_zone;
+}
+
 #define last_section(cur)	(cur + (c.secs_per_zone - 1) * c.segs_per_sec)
 
 /* Return time fixed by the user or current time by default */
@@ -220,7 +273,7 @@ static int f2fs_prepare_super_block(void)
 	uint64_t total_meta_zones, total_meta_segments;
 	uint32_t sit_bitmap_size, max_sit_bitmap_size;
 	uint32_t max_nat_bitmap_size, max_nat_segments;
-	uint32_t total_zones, avail_zones;
+	uint32_t total_zones, avail_zones = 0;
 	enum quota_type qtype;
 	int i;
 
@@ -314,6 +367,16 @@ static int f2fs_prepare_super_block(void)
 			c.devices[i].end_blkaddr = c.devices[i].start_blkaddr +
 					c.devices[i].total_segments *
 					c.blks_per_seg - 1;
+			if (device_is_aliased(i)) {
+				if (c.devices[i].zoned_model ==
+						F2FS_ZONED_HM) {
+					MSG(1, "\tError: do not support "
+					"device aliasing for device[%d]\n", i);
+					return -1;
+				}
+				c.aliased_segments +=
+					c.devices[i].total_segments;
+			}
 		}
 		if (c.ndevs > 1) {
 			strncpy((char *)sb->devs[i].path, c.devices[i].path, MAX_PATH_LEN);
@@ -531,10 +594,16 @@ static int f2fs_prepare_super_block(void)
 	if (c.feature & F2FS_FEATURE_LOST_FOUND)
 		c.lpf_ino = c.next_free_nid++;
 
+	if (c.aliased_devices) {
+		c.first_alias_ino = c.next_free_nid;
+		c.next_free_nid += c.aliased_devices;
+		avail_zones += c.aliased_segments / c.segs_per_zone;
+	}
+
 	if (c.feature & F2FS_FEATURE_RO)
-		avail_zones = 2;
+		avail_zones += 2;
 	else
-		avail_zones = 6;
+		avail_zones += 6;
 
 	if (total_zones <= avail_zones) {
 		MSG(1, "\tError: %d zones: Need more zones "
@@ -701,6 +770,7 @@ static int f2fs_write_check_point_pack(void)
 	char *sum_compact, *sum_compact_p;
 	struct f2fs_summary *sum_entry;
 	unsigned short vblocks;
+	uint32_t used_segments = c.aliased_segments;
 	int ret = -1;
 
 	cp = calloc(F2FS_BLKSIZE, 1);
@@ -752,9 +822,14 @@ static int f2fs_write_check_point_pack(void)
 	}
 
 	set_cp(cur_node_blkoff[0], c.curseg_offset[CURSEG_HOT_NODE]);
+	set_cp(cur_node_blkoff[2], c.curseg_offset[CURSEG_COLD_NODE]);
 	set_cp(cur_data_blkoff[0], c.curseg_offset[CURSEG_HOT_DATA]);
+	set_cp(cur_data_blkoff[2], c.curseg_offset[CURSEG_COLD_DATA]);
 	set_cp(valid_block_count, c.curseg_offset[CURSEG_HOT_NODE] +
-					c.curseg_offset[CURSEG_HOT_DATA]);
+			c.curseg_offset[CURSEG_HOT_DATA] +
+			c.curseg_offset[CURSEG_COLD_NODE] +
+			c.curseg_offset[CURSEG_COLD_DATA] +
+			c.aliased_segments * c.blks_per_seg);
 	set_cp(rsvd_segment_count, c.reserved_segments);
 
 	/*
@@ -801,15 +876,16 @@ static int f2fs_write_check_point_pack(void)
 					c.reserved_segments);
 
 	/* main segments - reserved segments - (node + data segments) */
-	if (c.feature & F2FS_FEATURE_RO) {
-		set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 2);
-		set_cp(user_block_count, ((get_cp(free_segment_count) + 2 -
-			get_cp(overprov_segment_count)) * c.blks_per_seg));
-	} else {
-		set_cp(free_segment_count, f2fs_get_usable_segments(sb) - 6);
-		set_cp(user_block_count, ((get_cp(free_segment_count) + 6 -
-			get_cp(overprov_segment_count)) * c.blks_per_seg));
-	}
+	if (c.feature & F2FS_FEATURE_RO)
+		used_segments += 2;
+	else
+		used_segments += 6;
+
+	set_cp(user_block_count, (f2fs_get_usable_segments(sb) -
+			get_cp(overprov_segment_count)) * c.blks_per_seg);
+	set_cp(free_segment_count, f2fs_get_usable_segments(sb) -
+			used_segments);
+
 	/* cp page (2), data summaries (1), node summaries (3) */
 	set_cp(cp_pack_total_block_count, 6 + get_sb(cp_payload));
 	flags = CP_UMOUNT_FLAG | CP_COMPACT_SUM_FLAG;
@@ -825,8 +901,10 @@ static int f2fs_write_check_point_pack(void)
 
 	set_cp(ckpt_flags, flags);
 	set_cp(cp_pack_start_sum, 1 + get_sb(cp_payload));
-	set_cp(valid_node_count, c.curseg_offset[CURSEG_HOT_NODE]);
-	set_cp(valid_inode_count, c.curseg_offset[CURSEG_HOT_NODE]);
+	set_cp(valid_node_count, c.curseg_offset[CURSEG_HOT_NODE] +
+			c.curseg_offset[CURSEG_COLD_NODE]);
+	set_cp(valid_inode_count, c.curseg_offset[CURSEG_HOT_NODE] +
+			c.curseg_offset[CURSEG_COLD_NODE]);
 	set_cp(next_free_nid, c.next_free_nid);
 	set_cp(sit_ver_bitmap_bytesize, ((get_sb(segment_count_sit) / 2) <<
 			get_sb(log_blocks_per_seg)) / 8);
@@ -974,9 +1052,12 @@ static int f2fs_write_check_point_pack(void)
 		goto free_cp_payload;
 	}
 
-	/* Fill segment summary for COLD_NODE to zero. */
+	/* Prepare and write Segment summary for COLD_NODE */
 	memset(sum, 0, F2FS_BLKSIZE);
 	SET_SUM_TYPE(sum, SUM_TYPE_NODE);
+	memcpy(sum->entries, c.sum[CURSEG_COLD_NODE],
+			sizeof(struct f2fs_summary) * MAX_CACHE_SUMS);
+
 	cp_seg_blk++;
 	DBG(1, "\tWriting Segment summary for COLD_NODE, at offset 0x%08"PRIx64"\n",
 			cp_seg_blk);
@@ -1211,10 +1292,40 @@ void update_summary_entry(int curseg_type, nid_t nid,
 	sum->ofs_in_node = cpu_to_le16(ofs_in_node);
 }
 
+static void add_dentry(struct f2fs_dentry_block *dent_blk, unsigned int *didx,
+		const char *name, uint32_t ino, u8 type)
+{
+	int len = strlen(name);
+	f2fs_hash_t hash;
+
+	if (name[0] == '.' && (len == 1 || (len == 2 && name[1] == '.')))
+		hash = 0;
+	else
+		hash = f2fs_dentry_hash(0, 0, (unsigned char *)name, len);
+
+	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, *didx).hash_code = cpu_to_le32(hash);
+	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, *didx).ino = cpu_to_le32(ino);
+	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, *didx).name_len = cpu_to_le16(len);
+	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, *didx).file_type = type;
+
+	while (len > F2FS_SLOT_LEN) {
+		memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, *didx), name,
+				F2FS_SLOT_LEN);
+		test_and_set_bit_le(*didx, dent_blk->dentry_bitmap);
+		len -= (int)F2FS_SLOT_LEN;
+		name += F2FS_SLOT_LEN;
+		(*didx)++;
+	}
+	memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, *didx), name, len);
+	test_and_set_bit_le(*didx, dent_blk->dentry_bitmap);
+	(*didx)++;
+}
+
 static block_t f2fs_add_default_dentry_root(void)
 {
 	struct f2fs_dentry_block *dent_blk = NULL;
 	block_t data_blkaddr;
+	unsigned int didx = 0;
 
 	dent_blk = calloc(F2FS_BLKSIZE, 1);
 	if(dent_blk == NULL) {
@@ -1222,37 +1333,26 @@ static block_t f2fs_add_default_dentry_root(void)
 		return 0;
 	}
 
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).hash_code = 0;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).ino = sb->root_ino;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).name_len = cpu_to_le16(1);
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).file_type = F2FS_FT_DIR;
-	memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 0), ".", 1);
+	add_dentry(dent_blk, &didx, ".",
+			le32_to_cpu(sb->root_ino), F2FS_FT_DIR);
+	add_dentry(dent_blk, &didx, "..",
+			le32_to_cpu(sb->root_ino), F2FS_FT_DIR);
 
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).hash_code = 0;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).ino = sb->root_ino;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).name_len = cpu_to_le16(2);
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).file_type = F2FS_FT_DIR;
-	memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 1), "..", 2);
+	if (c.lpf_ino)
+		add_dentry(dent_blk, &didx, LPF, c.lpf_ino, F2FS_FT_DIR);
 
-	/* bitmap for . and .. */
-	test_and_set_bit_le(0, dent_blk->dentry_bitmap);
-	test_and_set_bit_le(1, dent_blk->dentry_bitmap);
+	if (c.aliased_devices) {
+		int i, dev_off = 0;
 
-	if (c.lpf_ino) {
-		int len = strlen(LPF);
-		f2fs_hash_t hash = f2fs_dentry_hash(0, 0, (unsigned char *)LPF, len);
+		for (i = 1; i < c.ndevs; i++) {
+			if (!device_is_aliased(i))
+				continue;
 
-		F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 2).hash_code = cpu_to_le32(hash);
-		F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 2).ino = cpu_to_le32(c.lpf_ino);
-		F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 2).name_len = cpu_to_le16(len);
-		F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 2).file_type = F2FS_FT_DIR;
-		memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 2), LPF, F2FS_SLOT_LEN);
-
-		memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 3), &LPF[F2FS_SLOT_LEN],
-				len - F2FS_SLOT_LEN);
-
-		test_and_set_bit_le(2, dent_blk->dentry_bitmap);
-		test_and_set_bit_le(3, dent_blk->dentry_bitmap);
+			add_dentry(dent_blk, &didx, c.devices[i].alias_filename,
+					c.first_alias_ino + dev_off,
+					F2FS_FT_REG_FILE);
+			dev_off++;
+		}
 	}
 
 	data_blkaddr = alloc_next_free_block(CURSEG_HOT_DATA);
@@ -1327,6 +1427,7 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 	struct v2_disk_dqinfo ddqinfo;
 	struct v2r1_disk_dqblk dqblk;
 	block_t blkaddr;
+	uint64_t icnt = 1, bcnt = 1;
 	int i;
 
 	if (filebuf == NULL) {
@@ -1362,16 +1463,18 @@ static int f2fs_write_default_quota(int qtype, __le32 raw_id)
 	dqblk.dqb_pad = cpu_to_le32(0);
 	dqblk.dqb_ihardlimit = cpu_to_le64(0);
 	dqblk.dqb_isoftlimit = cpu_to_le64(0);
-	if (c.lpf_ino)
-		dqblk.dqb_curinodes = cpu_to_le64(2);
-	else
-		dqblk.dqb_curinodes = cpu_to_le64(1);
+	if (c.lpf_ino) {
+		icnt++;
+		bcnt++;
+	}
+	if (c.aliased_devices) {
+		icnt += c.aliased_devices;
+		bcnt += c.aliased_segments * c.blks_per_seg;
+	}
+	dqblk.dqb_curinodes = cpu_to_le64(icnt);
 	dqblk.dqb_bhardlimit = cpu_to_le64(0);
 	dqblk.dqb_bsoftlimit = cpu_to_le64(0);
-	if (c.lpf_ino)
-		dqblk.dqb_curspace = cpu_to_le64(F2FS_BLKSIZE * 2);
-	else
-		dqblk.dqb_curspace = cpu_to_le64(F2FS_BLKSIZE);
+	dqblk.dqb_curspace = cpu_to_le64(F2FS_BLKSIZE * bcnt);
 	dqblk.dqb_btime = cpu_to_le64(0);
 	dqblk.dqb_itime = cpu_to_le64(0);
 
@@ -1496,6 +1599,7 @@ static block_t f2fs_add_default_dentry_lpf(void)
 {
 	struct f2fs_dentry_block *dent_blk;
 	block_t data_blkaddr;
+	unsigned int didx = 0;
 
 	dent_blk = calloc(F2FS_BLKSIZE, 1);
 	if (dent_blk == NULL) {
@@ -1503,20 +1607,8 @@ static block_t f2fs_add_default_dentry_lpf(void)
 		return 0;
 	}
 
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).hash_code = 0;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).ino = cpu_to_le32(c.lpf_ino);
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).name_len = cpu_to_le16(1);
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 0).file_type = F2FS_FT_DIR;
-	memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 0), ".", 1);
-
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).hash_code = 0;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).ino = sb->root_ino;
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).name_len = cpu_to_le16(2);
-	F2FS_DENTRY_BLOCK_DENTRY(dent_blk, 1).file_type = F2FS_FT_DIR;
-	memcpy(F2FS_DENTRY_BLOCK_FILENAME(dent_blk, 1), "..", 2);
-
-	test_and_set_bit_le(0, dent_blk->dentry_bitmap);
-	test_and_set_bit_le(1, dent_blk->dentry_bitmap);
+	add_dentry(dent_blk, &didx, ".", c.lpf_ino, F2FS_FT_DIR);
+	add_dentry(dent_blk, &didx, "..", c.lpf_ino, F2FS_FT_DIR);
 
 	data_blkaddr = alloc_next_free_block(CURSEG_HOT_DATA);
 
@@ -1586,6 +1678,106 @@ exit:
 	return err;
 }
 
+static void allocate_blocks_for_aliased_device(struct f2fs_node *raw_node,
+		unsigned int dev_num)
+{
+	uint32_t start_segno = (c.devices[dev_num].start_blkaddr -
+			get_sb(main_blkaddr)) / c.blks_per_seg;
+	uint32_t end_segno = (c.devices[dev_num].end_blkaddr -
+			get_sb(main_blkaddr) + 1) / c.blks_per_seg;
+	uint32_t segno;
+	uint64_t blkcnt;
+	struct f2fs_sit_block *sit_blk = calloc(F2FS_BLKSIZE, 1);
+
+	ASSERT(sit_blk);
+
+	for (segno = start_segno; segno < end_segno; segno++) {
+		struct f2fs_sit_entry *sit;
+		uint64_t sit_blk_addr = get_sb(sit_blkaddr) +
+			(segno / SIT_ENTRY_PER_BLOCK);
+
+		ASSERT(dev_read_block(sit_blk, sit_blk_addr) >= 0);
+		sit = &sit_blk->entries[segno % SIT_ENTRY_PER_BLOCK];
+		memset(&sit->valid_map, 0xFF, SIT_VBLOCK_MAP_SIZE);
+		sit->vblocks = cpu_to_le16((CURSEG_COLD_DATA <<
+					SIT_VBLOCKS_SHIFT) | c.blks_per_seg);
+		sit->mtime = cpu_to_le64(mkfs_time);
+		ASSERT(dev_write_block(sit_blk, sit_blk_addr,
+			f2fs_io_type_to_rw_hint(CURSEG_COLD_DATA)) >= 0);
+	}
+
+	blkcnt = (end_segno - start_segno) * c.blks_per_seg;
+	raw_node->i.i_size = cpu_to_le64(blkcnt << get_sb(log_blocksize));
+	raw_node->i.i_blocks = cpu_to_le64(blkcnt + 1);
+
+	raw_node->i.i_ext.fofs = cpu_to_le32(0);
+	raw_node->i.i_ext.blk_addr =
+		cpu_to_le32(c.devices[dev_num].start_blkaddr);
+	raw_node->i.i_ext.len = cpu_to_le32(blkcnt);
+
+	free(sit_blk);
+}
+
+static int f2fs_write_alias_inodes(void)
+{
+	struct f2fs_node *raw_node;
+	block_t node_blkaddr;
+	int err = 0;
+	unsigned int i, dev_off = 0;
+
+	ASSERT(c.aliased_devices);
+
+	raw_node = calloc(F2FS_BLKSIZE, 1);
+	if (raw_node == NULL) {
+		MSG(1, "\tError: Calloc Failed for raw_node!!!\n");
+		return -1;
+	}
+
+	for (i = 1; i < c.ndevs; i++) {
+		const char *filename;
+		nid_t ino;
+
+		if (!device_is_aliased(i))
+			continue;
+
+		ino = c.first_alias_ino + dev_off;
+		dev_off++;
+		f2fs_init_inode(sb, raw_node, ino, mkfs_time, 0x81c0);
+
+		raw_node->i.i_flags = cpu_to_le32(F2FS_IMMUTABLE_FL |
+				F2FS_DEVICE_ALIAS_FL);
+		raw_node->i.i_inline = F2FS_PIN_FILE;
+		raw_node->i.i_pino = sb->root_ino;
+		filename = c.devices[i].alias_filename;
+		raw_node->i.i_namelen = cpu_to_le32(strlen(filename));
+		memcpy(raw_node->i.i_name, filename, strlen(filename));
+
+		node_blkaddr = alloc_next_free_block(CURSEG_COLD_NODE);
+		F2FS_NODE_FOOTER(raw_node)->next_blkaddr =
+			cpu_to_le32(node_blkaddr + 1);
+
+		allocate_blocks_for_aliased_device(raw_node, i);
+
+		DBG(1, "\tWriting aliased device inode (cold node), "
+				"offset 0x%x\n", node_blkaddr);
+		if (write_inode(raw_node, node_blkaddr,
+			    f2fs_io_type_to_rw_hint(CURSEG_COLD_NODE)) < 0) {
+			MSG(1, "\tError: While writing the raw_node to "
+					"disk!!!\n");
+			err = -1;
+			goto exit;
+		}
+
+		update_nat_journal(ino, node_blkaddr);
+		update_sit_journal(CURSEG_COLD_NODE);
+		update_summary_entry(CURSEG_COLD_NODE, ino, 0);
+	}
+
+exit:
+	free(raw_node);
+	return err;
+}
+
 static int f2fs_create_root_dir(void)
 {
 	enum quota_type qtype;
@@ -1611,6 +1803,15 @@ static int f2fs_create_root_dir(void)
 		err = f2fs_write_lpf_inode();
 		if (err < 0) {
 			MSG(1, "\tError: Failed to write lost+found inode!!!\n");
+			goto exit;
+		}
+	}
+
+	if (c.aliased_devices) {
+		err = f2fs_write_alias_inodes();
+		if (err < 0) {
+			MSG(1, "\tError: Failed to write aliased device "
+				"inodes!!!\n");
 			goto exit;
 		}
 	}

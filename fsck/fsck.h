@@ -180,9 +180,9 @@ extern int fsck_chk_idnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 extern int fsck_chk_didnode_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		enum FILE_TYPE, struct f2fs_node *, u32 *,
 		struct f2fs_compr_blk_cnt *, struct child_info *);
-extern int fsck_chk_data_blk(struct f2fs_sb_info *, int,
+extern int fsck_chk_data_blk(struct f2fs_sb_info *, struct f2fs_inode *,
 		u32, struct child_info *, int, enum FILE_TYPE, u32, u16, u8,
-		int, struct f2fs_node *);
+		struct f2fs_node *);
 extern int fsck_chk_dentry_blk(struct f2fs_sb_info *, int,
 		u32, struct child_info *, int, int, struct f2fs_node *);
 int fsck_chk_inline_dentries(struct f2fs_sb_info *, struct f2fs_node *,
