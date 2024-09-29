@@ -174,6 +174,30 @@ static void do_fsync(int argc, char **argv, const struct cmd_desc *cmd)
 	exit(0);
 }
 
+#define fdatasync_desc "fdatasync"
+#define fdatasync_help						\
+"f2fs_io fdatasync [file]\n\n"					\
+"fdatasync given the file\n"					\
+
+static void do_fdatasync(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int fd;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	fd = xopen(argv[1], O_WRONLY, 0);
+
+	if (fdatasync(fd) != 0)
+		die_errno("fdatasync failed");
+
+	printf("fdatasync a file\n");
+	exit(0);
+}
+
 #define set_verity_desc "Set fs-verity"
 #define set_verity_help					\
 "f2fs_io set_verity [file]\n\n"				\
@@ -1808,6 +1832,7 @@ static void do_help(int argc, char **argv, const struct cmd_desc *cmd);
 const struct cmd_desc cmd_list[] = {
 	_CMD(help),
 	CMD(fsync),
+	CMD(fdatasync),
 	CMD(set_verity),
 	CMD(getflags),
 	CMD(setflags),
