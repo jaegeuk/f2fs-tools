@@ -833,12 +833,15 @@ static void do_write_advice(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define read_desc "read data from file"
 #define read_help					\
-"f2fs_io read [chunk_size in 4kb] [offset in chunk_size] [count] [IO] [print_nbytes] [file_path]\n\n"	\
+"f2fs_io read [chunk_size in 4kb] [offset in chunk_size] [count] [IO] [advice] [print_nbytes] [file_path]\n\n"	\
 "Read data in file_path and print nbytes\n"		\
 "IO can be\n"						\
 "  buffered : buffered IO\n"				\
 "  dio      : direct IO\n"				\
 "  mmap     : mmap IO\n"				\
+"advice can be\n"					\
+" 1 : set sequential|willneed\n"			\
+" 0 : none\n"						\
 
 static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -851,9 +854,9 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	u64 total_time = 0;
 	int flags = 0;
 	int do_mmap = 0;
-	int fd;
+	int fd, advice;
 
-	if (argc != 7) {
+	if (argc != 8) {
 		fputs("Excess arguments\n\n", stderr);
 		fputs(cmd->cmd_help, stderr);
 		exit(1);
@@ -876,13 +879,22 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	else if (strcmp(argv[4], "buffered"))
 		die("Wrong IO type");
 
-	print_bytes = atoi(argv[5]);
+	print_bytes = atoi(argv[6]);
 	if (print_bytes > buf_size)
 		die("Print_nbytes should be less then chunk_size in kb");
 
 	print_buf = xmalloc(print_bytes);
 
-	fd = xopen(argv[6], O_RDONLY | flags, 0);
+	fd = xopen(argv[7], O_RDONLY | flags, 0);
+
+	advice = atoi(argv[5]);
+	if (advice) {
+		if (posix_fadvise(fd, 0, 4096, POSIX_FADV_SEQUENTIAL) != 0)
+			die_errno("fadvise failed");
+		if (posix_fadvise(fd, 0, 4096, POSIX_FADV_WILLNEED) != 0)
+			die_errno("fadvise failed");
+		printf("fadvise SEQUENTIAL|WILLNEED to a file: %s\n", argv[7]);
+	}
 
 	total_time = get_current_us();
 	if (do_mmap) {
@@ -912,8 +924,9 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 		read_cnt = count * buf_size;
 		memcpy(print_buf, data, print_bytes);
 	}
-	printf("Read %"PRIu64" bytes total_time = %"PRIu64" us, print %u bytes:\n",
-		read_cnt, get_current_us() - total_time, print_bytes);
+	printf("Read %"PRIu64" bytes total_time = %"PRIu64" us, BW = %.Lf MB/s print %u bytes:\n",
+		read_cnt, get_current_us() - total_time,
+		((long double)read_cnt / (get_current_us() - total_time) * 1000/1024 * 1000/1024 ), print_bytes);
 	printf("%08"PRIx64" : ", offset);
 	for (i = 1; i <= print_bytes; i++) {
 		printf("%02x", print_buf[i - 1]);
