@@ -926,7 +926,7 @@ static void do_read(int argc, char **argv, const struct cmd_desc *cmd)
 	}
 	printf("Read %"PRIu64" bytes total_time = %"PRIu64" us, BW = %.Lf MB/s print %u bytes:\n",
 		read_cnt, get_current_us() - total_time,
-		((long double)read_cnt / (get_current_us() - total_time) * 1000/1024 * 1000/1024 ), print_bytes);
+		((long double)read_cnt / (get_current_us() - total_time)), print_bytes);
 	printf("%08"PRIx64" : ", offset);
 	for (i = 1; i <= print_bytes; i++) {
 		printf("%02x", print_buf[i - 1]);
