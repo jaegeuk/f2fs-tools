@@ -48,6 +48,11 @@ static int trim_device(int i)
 	uint64_t bytes = dev->total_sectors * dev->sector_size;
 	int fd = dev->fd;
 
+	if (dev->alias_filename) {
+		MSG(0, "Info: [%s] Skip Discarding as aliased\n", dev->path);
+		return 0;
+	}
+
 	stat_buf = malloc(sizeof(struct stat));
 	if (stat_buf == NULL) {
 		MSG(1, "\tError: Malloc Failed for trim_stat_buf!!!\n");
