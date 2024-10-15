@@ -34,15 +34,15 @@
 #include <linux/hdreg.h>
 #endif
 
+#ifndef F_SET_RW_HINT
+#define F_LINUX_SPECIFIC_BASE 	1024
+#define F_SET_RW_HINT		(F_LINUX_SPECIFIC_BASE + 12)
+#endif
+
 #include <stdbool.h>
 #include <assert.h>
 #include <inttypes.h>
 #include "f2fs_fs.h"
-
-#ifdef HAVE_LINUX_FCNTL_H
-#define HAVE_ARCH_STRUCT_FLOCK
-#include <linux/fcntl.h>
-#endif
 
 struct f2fs_configuration c;
 
