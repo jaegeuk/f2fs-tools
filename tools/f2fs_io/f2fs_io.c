@@ -318,7 +318,7 @@ static void do_getflags(int argc, char **argv, const struct cmd_desc *cmd)
 "  casefold\n"							\
 "  compression\n"						\
 "  nocompression\n"						\
-"  noimmutable\n"
+"  immutable\n"
 
 static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -344,8 +344,8 @@ static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 		flag |= FS_COMPR_FL;
 	else if (!strcmp(argv[1], "nocompression"))
 		flag |= FS_NOCOMP_FL;
-	else if (!strcmp(argv[1], "noimmutable"))
-		flag &= ~FS_IMMUTABLE_FL;
+	else if (!strcmp(argv[1], "immutable"))
+		flag |= FS_IMMUTABLE_FL;
 
 	ret = ioctl(fd, F2FS_IOC_SETFLAGS, &flag);
 	printf("set a flag on %s ret=%d, flags=%s\n", argv[2], ret, argv[1]);
@@ -359,6 +359,7 @@ static void do_setflags(int argc, char **argv, const struct cmd_desc *cmd)
 "flag can be\n"							\
 "  compression\n"						\
 "  nocompression\n"						\
+"  immutable\n"
 
 static void do_clearflags(int argc, char **argv, const struct cmd_desc *cmd)
 {
@@ -382,6 +383,8 @@ static void do_clearflags(int argc, char **argv, const struct cmd_desc *cmd)
 		flag &= ~FS_COMPR_FL;
 	else if (!strcmp(argv[1], "nocompression"))
 		flag &= ~FS_NOCOMP_FL;
+	else if (!strcmp(argv[1], "immutable"))
+		flag &= ~FS_IMMUTABLE_FL;
 
 	ret = ioctl(fd, F2FS_IOC_SETFLAGS, &flag);
 	printf("clear a flag on %s ret=%d, flags=%s\n", argv[2], ret, argv[1]);
