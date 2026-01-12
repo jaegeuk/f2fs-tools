@@ -1516,8 +1516,9 @@ int fsck_chk_dnode_blk(struct f2fs_sb_info *sbi, struct f2fs_inode *inode,
 	bool compressed = i_flags & F2FS_COMPR_FL;
 	bool compr_rel = inode->i_inline & F2FS_COMPRESS_RELEASED;
 	u32 cluster_size = 1 << inode->i_log_cluster_size;
+	u32 addrs = ADDRS_PER_BLOCK(inode);
 
-	for (idx = 0; idx < ADDRS_PER_BLOCK(inode); idx++, child->pgofs++) {
+	for (idx = 0; idx < addrs; idx++, child->pgofs++) {
 		block_t blkaddr = le32_to_cpu(node_blk->dn.addr[idx]);
 
 		check_extent_info(child, blkaddr, 0);
@@ -3173,7 +3174,7 @@ static void fsck_disconnect_file_dnode(struct f2fs_sb_info *sbi,
 {
 	struct f2fs_node *node;
 	struct node_info ni;
-	u32 addr;
+	u32 addr, addr_per_block;
 	int i, err;
 
 	node = calloc(F2FS_BLKSIZE, 1);
@@ -3187,7 +3188,8 @@ static void fsck_disconnect_file_dnode(struct f2fs_sb_info *sbi,
 	release_block_cnt(sbi, dealloc);
 	release_block(sbi, ni.blk_addr, dealloc);
 
-	for (i = 0; i < ADDRS_PER_BLOCK(inode); i++) {
+	addr_per_block = ADDRS_PER_BLOCK(inode);
+	for (i = 0; i < addr_per_block; i++) {
 		addr = le32_to_cpu(node->dn.addr[i]);
 		if (!addr)
 			continue;
@@ -3302,8 +3304,10 @@ static void fsck_disconnect_file(struct f2fs_sb_info *sbi, nid_t ino,
 
 	/* clear data counters */
 	if (!(node->i.i_inline & (F2FS_INLINE_DATA | F2FS_INLINE_DENTRY))) {
+		u32 addrs = ADDRS_PER_INODE(&node->i);
+
 		ofs = get_extra_isize(node);
-		for (i = 0; i < ADDRS_PER_INODE(&node->i); i++) {
+		for (i = 0; i < addrs; i++) {
 			block_t addr = le32_to_cpu(node->i.i_addr[ofs + i]);
 			if (!addr)
 				continue;

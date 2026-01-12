@@ -495,7 +495,7 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 {
 	u32 i = 0;
 	u64 ofs = 0;
-	u32 addr_per_block;
+	u32 addr_per_block, addr_per_inode;
 	u16 type = le16_to_cpu(node_blk->i.i_mode);
 	int ret = 0;
 
@@ -543,9 +543,10 @@ static int dump_inode_blk(struct f2fs_sb_info *sbi, u32 nid,
 	}
 
 	addr_per_block = ADDRS_PER_BLOCK(&node_blk->i);
+	addr_per_inode = ADDRS_PER_INODE(&node_blk->i);
 
 	/* check data blocks in inode */
-	for (i = 0; i < ADDRS_PER_INODE(&node_blk->i); i++, ofs++)
+	for (i = 0; i < addr_per_inode; i++, ofs++)
 		dump_data_blk(sbi, ofs * F2FS_BLKSIZE, le32_to_cpu(
 			node_blk->i.i_addr[get_extra_isize(node_blk) + i]), type);
 

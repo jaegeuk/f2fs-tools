@@ -281,6 +281,7 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 	u32 namelen = le32_to_cpu(inode->i_namelen);
 	int enc_name = file_enc_name(inode);
 	int ofs = get_extra_isize(node);
+	u32 addrs;
 
 	pretty_print_filename(inode->i_name, namelen, en, enc_name);
 	if (name && en[0]) {
@@ -350,7 +351,8 @@ void print_inode_info(struct f2fs_sb_info *sbi,
 		}
 	}
 
-	for (i = 0; i < ADDRS_PER_INODE(inode); i++) {
+	addrs = ADDRS_PER_INODE(inode);
+	for (i = 0; i < addrs; i++) {
 		block_t blkaddr;
 		char *flag = "";
 
