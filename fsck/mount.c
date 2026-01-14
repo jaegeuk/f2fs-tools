@@ -3878,6 +3878,7 @@ int f2fs_find_fsync_inode(struct f2fs_sb_info *sbi, struct list_head *head)
 
 	while (1) {
 		struct fsync_inode_entry *entry;
+		struct f2fs_nat_entry nat_entry;
 
 		if (!f2fs_is_valid_blkaddr(sbi, blkaddr, META_POR))
 			break;
@@ -3902,8 +3903,24 @@ int f2fs_find_fsync_inode(struct f2fs_sb_info *sbi, struct list_head *head)
 		}
 		entry->blkaddr = blkaddr;
 
-		if (IS_INODE(node_blk) && is_dent_dnode(node_blk))
+		if (IS_INODE(node_blk) && is_dent_dnode(node_blk)) {
+			get_nat_entry(sbi, ino_of_node(node_blk), &nat_entry);
+			if (is_valid_data_blkaddr(nat_entry.block_addr)) {
+				ASSERT_MSG("Invalid dent flag: blkaddr: 0x%x, "
+					"ino: %u, is_dent: %d, nat entry blkaddr: 0x%x\n",
+					blkaddr, ino_of_node(node_blk), is_dent_dnode(node_blk),
+					nat_entry.block_addr);
+				if (c.fix_on && f2fs_dev_is_writable()) {
+					FIX_MSG("Clear dent flag: blkaddr: 0x%x, ino: %u\n",
+						blkaddr, ino_of_node(node_blk));
+					set_dentry_mark(node_blk, 0);
+					err = update_inode(sbi, node_blk, &blkaddr);
+					ASSERT(err >= 0);
+					goto next;
+				}
+			}
 			entry->last_dentry = blkaddr;
+		}
 next:
 		blkaddr = next_blkaddr_of_node(node_blk);
 

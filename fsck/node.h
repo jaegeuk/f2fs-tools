@@ -173,6 +173,19 @@ static inline void set_cold_node(struct f2fs_node *rn, bool is_dir)
 	F2FS_NODE_FOOTER(rn)->flag = cpu_to_le32(flag);
 }
 
+static inline void set_mark(struct f2fs_node *rn, int mark, int type)
+{
+	unsigned int flag = le32_to_cpu(F2FS_NODE_FOOTER(rn)->flag);
+
+	if (mark)
+		flag |= (1 << type);
+	else
+		flag &= ~(1 << type);
+	F2FS_NODE_FOOTER(rn)->flag = cpu_to_le32(flag);
+}
+
+#define set_dentry_mark(page, mark)	set_mark(page, mark, DENT_BIT_SHIFT)
+
 #define is_fsync_dnode(node_blk)	is_node(node_blk, FSYNC_BIT_SHIFT)
 #define is_dent_dnode(node_blk)		is_node(node_blk, DENT_BIT_SHIFT)
 
