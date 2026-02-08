@@ -268,6 +268,7 @@ static int f2fs_prepare_super_block(void)
 	uint32_t segment_size_bytes, zone_size_bytes;
 	uint32_t alignment_bytes;
 	uint32_t sit_segments, nat_segments;
+	uint32_t segment_count_meta;
 	uint32_t blocks_for_sit, blocks_for_nat, blocks_for_ssa;
 	uint32_t total_valid_blks_available;
 	uint64_t zone_align_start_offset, diff;
@@ -426,9 +427,14 @@ static int f2fs_prepare_super_block(void)
 	set_sb(nat_blkaddr, get_sb(sit_blkaddr) + get_sb(segment_count_sit) *
 			c.blks_per_seg);
 
+	segment_count_meta = get_sb(segment_count_ckpt) + get_sb(segment_count_sit);
+	if (get_sb(segment_count) <= segment_count_meta) {
+		MSG(0, "\tError: segment_count: %u too small, segment_count_meta: %u\n",
+				get_sb(segment_count), segment_count_meta);
+		goto too_small;
+	}
 	total_valid_blks_available = (get_sb(segment_count) -
-			(get_sb(segment_count_ckpt) +
-			get_sb(segment_count_sit))) * c.blks_per_seg;
+			segment_count_meta) * c.blks_per_seg;
 
 	blocks_for_nat = SIZE_ALIGN(total_valid_blks_available,
 			NAT_ENTRY_PER_BLOCK);
@@ -494,11 +500,16 @@ static int f2fs_prepare_super_block(void)
 	set_sb(ssa_blkaddr, get_sb(nat_blkaddr) + get_sb(segment_count_nat) *
 			c.blks_per_seg);
 
-	total_valid_blks_available = (get_sb(segment_count) -
-			(get_sb(segment_count_ckpt) +
+	segment_count_meta = get_sb(segment_count_ckpt) +
 			get_sb(segment_count_sit) +
-			get_sb(segment_count_nat))) *
-			c.blks_per_seg;
+			get_sb(segment_count_nat);
+	if (get_sb(segment_count) <= segment_count_meta) {
+		MSG(0, "\tError: segment_count: %u too small, segment_count_meta(with nat): %u\n",
+				get_sb(segment_count), segment_count_meta);
+		goto too_small;
+	}
+	total_valid_blks_available = (get_sb(segment_count) -
+			segment_count_meta) * c.blks_per_seg;
 
 	if (c.feature & F2FS_FEATURE_RO) {
 		blocks_for_ssa = 0;
@@ -563,10 +574,13 @@ static int f2fs_prepare_super_block(void)
 		}
 	}
 
-	total_zones = get_sb(segment_count) / (c.segs_per_zone) -
-							total_meta_zones;
-	if (total_zones == 0)
+	total_zones = get_sb(segment_count) / (c.segs_per_zone);
+	if (total_zones <= total_meta_zones) {
+		MSG(0, "\tError: total_zones:%u too small, total_meta_zones: %"PRIu64"\n",
+				total_zones, total_meta_zones);
 		goto too_small;
+	}
+	total_zones -= total_meta_zones;
 	set_sb(section_count, total_zones * c.secs_per_zone);
 
 	set_sb(segment_count_main, get_sb(section_count) * c.segs_per_sec);
