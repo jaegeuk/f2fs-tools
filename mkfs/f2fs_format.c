@@ -341,6 +341,9 @@ static int f2fs_prepare_super_block(void)
 
 	for (i = 0; i < c.ndevs; i++) {
 		if (i == 0) {
+			if (c.devices[i].total_sectors * c.sector_size <
+						zone_align_start_offset)
+				goto too_small;
 			c.devices[i].total_segments =
 				((c.devices[i].total_sectors *
 				c.sector_size - zone_align_start_offset) /
