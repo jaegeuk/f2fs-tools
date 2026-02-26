@@ -1463,33 +1463,47 @@ static void do_gc_urgent(int argc, char **argv, const struct cmd_desc *cmd)
 
 #define defrag_file_desc "do defragment on file"
 #define defrag_file_help						\
+"f2fs_io defrag_file [file_path] - defrag whole file automatically\n"	\
 "f2fs_io defrag_file [start] [length] [file_path]\n\n"		\
 "  start     : start offset of defragment region, unit: bytes\n"	\
 "  length    : bytes number of defragment region\n"			\
 
 static void do_defrag_file(int argc, char **argv, const struct cmd_desc *cmd)
 {
+	struct stat st;
 	struct f2fs_defragment df;
-	u64 len;
 	int ret, fd;
+	u64 len;
 
-	if (argc != 4) {
+	if (argc != 2 && argc != 4) {
 		fputs("Excess arguments\n\n", stderr);
 		fputs(cmd->cmd_help, stderr);
 		exit(1);
 	}
 
-	df.start = atoll(argv[1]);
-	df.len = len = atoll(argv[2]);
+	if (argc == 2) {
+		fd = xopen(argv[1], O_RDWR, 0);
+		if (fstat(fd, &st) != 0)
+			die_errno("fstat failed");
 
-	fd = xopen(argv[3], O_RDWR, 0);
+		df.start = 0;
+		df.len = ((u64)st.st_size + F2FS_DEFAULT_BLKSIZE - 1)
+				& ~(F2FS_DEFAULT_BLKSIZE - 1);
+	} else {
+		fd = xopen(argv[3], O_RDWR, 0);
+		df.start = atoll(argv[1]);
+		df.len = atoll(argv[2]);
+	}
+
+	len = df.len;
 
 	ret = ioctl(fd, F2FS_IOC_DEFRAGMENT, &df);
 	if (ret < 0)
 		die_errno("F2FS_IOC_DEFRAGMENT failed");
 
 	printf("defrag %s in region[%"PRIu64", %"PRIu64"]\n",
-			argv[3], df.start, df.start + len);
+			(argc == 2) ? argv[1] : argv[3],
+			df.start, df.start + len);
 	exit(0);
 }
 
