@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 	int total_blks;
 	unsigned int i;
 	struct file_ext ext;
-	__u32 start_lba;
+	__u32 start_lba = 0;
 	__u32 blknum;
 
 	if (argc != 2) {
