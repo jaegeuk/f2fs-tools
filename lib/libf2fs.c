@@ -953,7 +953,7 @@ int get_device_info(int i)
 	uint32_t total_sectors;
 #endif
 	struct stat *stat_buf;
-#ifdef HDIO_GETGIO
+#ifdef HDIO_GETGEO
 	struct hd_geometry geom;
 #endif
 #if !defined(WITH_ANDROID) && defined(__linux__)
@@ -1062,7 +1062,7 @@ int get_device_info(int i)
 		dev->total_sectors /= dev->sector_size;
 
 		if (i == 0) {
-#ifdef HDIO_GETGIO
+#ifdef HDIO_GETGEO
 			if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
 				c.start_sector = 0;
 			else

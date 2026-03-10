@@ -88,7 +88,7 @@ static void stat_bdev(struct stat *st, unsigned int *start_lba)
 #endif
 {
 	struct stat bdev_stat;
-#ifdef HDIO_GETGIO
+#ifdef HDIO_GETGEO
 	struct hd_geometry geom;
 #endif
 	char devname[32] = { 0, };
@@ -105,7 +105,7 @@ static void stat_bdev(struct stat *st, unsigned int *start_lba)
 		goto out;
 
 	if (S_ISBLK(bdev_stat.st_mode)) {
-#ifdef HDIO_GETGIO
+#ifdef HDIO_GETGEO
 		if (ioctl(fd, HDIO_GETGEO, &geom) < 0)
 			*start_lba = 0;
 		else
