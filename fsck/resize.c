@@ -257,48 +257,48 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	struct f2fs_super_block *sb = F2FS_RAW_SUPER(sbi);
 	block_t old_sum_blkaddr = get_sb(ssa_blkaddr);
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
-	unsigned int expand_segno = MAIN_SEGS(sbi) - offset;
-	unsigned int new_seg_total = get_newsb(main_blkaddr) - new_sum_blkaddr;
-	int new_segno;
+	unsigned int expand_sum_blocks = MAIN_SEGS(sbi) - offset;
+	unsigned int new_sum_blocks = get_newsb(main_blkaddr) - new_sum_blkaddr;
+	int new_sum_blkoff;
 	int ret = 0;
 	void *zero_block = calloc(F2FS_SUM_BLKSIZE, 1);
 	ASSERT(zero_block);
 
 	if (offset && new_sum_blkaddr <= (old_sum_blkaddr +
 				offset / SUMS_PER_BLOCK)) {
-		new_segno = 0;
-		while (new_segno < new_seg_total) {
-			if (new_segno < expand_segno)
-				move_ssa(sbi, new_sb, offset++, new_segno);
+		new_sum_blkoff = 0;
+		while (new_sum_blkoff < new_sum_blocks) {
+			if (new_sum_blkoff < expand_sum_blocks)
+				move_ssa(sbi, new_sb, offset++, new_sum_blkoff);
 			else if (c.feature & F2FS_FEATURE_PACKED_SSA)
 				ret = dev_write_4k_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_segno),
-					GET_SUM_NEW_BLKOFF(new_sb, new_segno),
+					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
+					GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
 					WRITE_LIFE_NONE);
 			else
 				ret = dev_write_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_segno),
+					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
 					WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
-			new_segno++;
+			new_sum_blkoff++;
 		}
 	} else {
-		new_segno = new_seg_total - 1;
+		new_sum_blkoff = new_sum_blocks - 1;
 		offset = MAIN_SEGS(sbi) - 1;
-		while (new_segno >= 0) {
-			if (new_segno < expand_segno)
-				move_ssa(sbi, new_sb, offset--, new_segno);
+		while (new_sum_blkoff >= 0) {
+			if (new_sum_blkoff < expand_sum_blocks)
+				move_ssa(sbi, new_sb, offset--, new_sum_blkoff);
 			else if (c.feature & F2FS_FEATURE_PACKED_SSA)
 				ret = dev_write_4k_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_segno),
-					GET_SUM_NEW_BLKOFF(new_sb, new_segno),
+					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
+					GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
 					WRITE_LIFE_NONE);
 			else
 				ret = dev_write_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_segno),
+					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
 					WRITE_LIFE_NONE);
 			ASSERT(ret >= 0);
-			new_segno--;
+			new_sum_blkoff--;
 		}
 	}
 
