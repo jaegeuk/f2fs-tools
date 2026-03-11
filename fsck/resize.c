@@ -258,7 +258,7 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	block_t old_sum_blkaddr = get_sb(ssa_blkaddr);
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
 	unsigned int expand_segno = MAIN_SEGS(sbi) - offset;
-	unsigned int new_seg_total = get_newsb(segment_count);
+	unsigned int new_seg_total = get_newsb(main_blkaddr) - new_sum_blkaddr;
 	int new_segno;
 	int ret = 0;
 	void *zero_block = calloc(F2FS_SUM_BLKSIZE, 1);
