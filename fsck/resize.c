@@ -259,6 +259,7 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 	block_t new_sum_blkaddr = get_newsb(ssa_blkaddr);
 	unsigned int expand_sum_blocks = MAIN_SEGS(sbi) - offset;
 	unsigned int new_sum_blocks = get_newsb(main_blkaddr) - new_sum_blkaddr;
+	block_t sum_blkaddr;
 	int new_sum_blkoff;
 	int ret = 0;
 	void *zero_block = calloc(F2FS_SUM_BLKSIZE, 1);
@@ -268,17 +269,21 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 				offset / SUMS_PER_BLOCK)) {
 		new_sum_blkoff = 0;
 		while (new_sum_blkoff < new_sum_blocks) {
-			if (new_sum_blkoff < expand_sum_blocks)
+			if (new_sum_blkoff < expand_sum_blocks) {
 				move_ssa(sbi, new_sb, offset++, new_sum_blkoff);
-			else if (c.feature & F2FS_FEATURE_PACKED_SSA)
-				ret = dev_write_4k_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
-					GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
-					WRITE_LIFE_NONE);
-			else
-				ret = dev_write_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
-					WRITE_LIFE_NONE);
+			} else {
+				sum_blkaddr = GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff);
+				if (c.feature & F2FS_FEATURE_PACKED_SSA)
+					ret = dev_write_4k_block(zero_block,
+						sum_blkaddr,
+						GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
+						WRITE_LIFE_NONE);
+				else
+					ret = dev_write_block(zero_block,
+						sum_blkaddr,
+						WRITE_LIFE_NONE);
+				DBG(1, "Zero summary block: %x\n", sum_blkaddr);
+			}
 			ASSERT(ret >= 0);
 			new_sum_blkoff++;
 		}
@@ -286,17 +291,22 @@ static void migrate_ssa(struct f2fs_sb_info *sbi,
 		new_sum_blkoff = new_sum_blocks - 1;
 		offset = MAIN_SEGS(sbi) - 1;
 		while (new_sum_blkoff >= 0) {
-			if (new_sum_blkoff < expand_sum_blocks)
+			if (new_sum_blkoff < expand_sum_blocks) {
 				move_ssa(sbi, new_sb, offset--, new_sum_blkoff);
-			else if (c.feature & F2FS_FEATURE_PACKED_SSA)
-				ret = dev_write_4k_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
-					GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
-					WRITE_LIFE_NONE);
-			else
-				ret = dev_write_block(zero_block,
-					GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff),
-					WRITE_LIFE_NONE);
+			} else {
+				sum_blkaddr = GET_SUM_NEW_BLKADDR(new_sb, new_sum_blkoff);
+				ASSERT(sum_blkaddr < get_newsb(main_blkaddr));
+				if (c.feature & F2FS_FEATURE_PACKED_SSA)
+					ret = dev_write_4k_block(zero_block,
+						sum_blkaddr,
+						GET_SUM_NEW_BLKOFF(new_sb, new_sum_blkoff),
+						WRITE_LIFE_NONE);
+				else
+					ret = dev_write_block(zero_block,
+						sum_blkaddr,
+						WRITE_LIFE_NONE);
+				DBG(1, "Zero summary block: %x\n", sum_blkaddr);
+			}
 			ASSERT(ret >= 0);
 			new_sum_blkoff--;
 		}
