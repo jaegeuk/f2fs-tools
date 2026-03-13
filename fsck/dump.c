@@ -464,9 +464,9 @@ static void dump_xattr(struct f2fs_sb_info *sbi, struct f2fs_node *node_blk, int
 					le16_to_cpu(ent->e_value_size), 0,
 					XATTR_CREATE);
 		} if (S_ISLNK(type) && c.preserve_symlinks) {
-			ret = lsetxattr(c.dump_symlink, xattr_name, value,
+			ret = setxattr(c.dump_symlink, xattr_name, value,
 					le16_to_cpu(ent->e_value_size), 0,
-					XATTR_CREATE);
+					XATTR_CREATE | XATTR_NOFOLLOW);
 		} else {
 			ret = fsetxattr(c.dump_fd, xattr_name, value,
 					le16_to_cpu(ent->e_value_size), 0,
