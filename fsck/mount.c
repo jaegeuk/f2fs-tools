@@ -733,6 +733,9 @@ static char *stop_reason_str[] = {
 	[STOP_CP_REASON_NO_SEGMENT]		= "no_segment",
 	[STOP_CP_REASON_CORRUPTED_FREE_BITMAP]	= "corrupted_free_bitmap",
 	[STOP_CP_REASON_CORRUPTED_NID]		= "corrupted nid",
+	[STOP_CP_REASON_READ_META]		= "read_meta_fail",
+	[STOP_CP_REASON_READ_NODE]		= "read_node_fail",
+	[STOP_CP_REASON_READ_DATA]		= "read_data_fail",
 };
 
 void print_sb_stop_reason(struct f2fs_super_block *sb)
