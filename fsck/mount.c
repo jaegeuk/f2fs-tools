@@ -2515,6 +2515,8 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 	int ret;
 
 	if (node_blk == NULL) {
+		struct seg_entry *se;
+
 		node_blk = (struct f2fs_node *)calloc(F2FS_BLKSIZE, 1);
 		ASSERT(node_blk);
 
@@ -2524,6 +2526,13 @@ void update_data_blkaddr(struct f2fs_sb_info *sbi, nid_t nid,
 		ret = dev_read_block(node_blk, ni.blk_addr);
 		ASSERT(ret >= 0);
 		node_blk_alloced = true;
+
+		se = get_seg_entry(sbi, GET_SEGNO(sbi, ni.blk_addr));
+		if (IS_DATASEG(se->type)) {
+			ERR_MSG("NAT and SIT is inconsistent: ino: %u, nid: %u, blkaddr: %u, segtype: %d",
+				ni.ino, ni.nid, ni.blk_addr, se->type);
+			ASSERT(0);
+		}
 	}
 
 	/* check its block address */
