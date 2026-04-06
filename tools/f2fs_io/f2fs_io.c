@@ -2084,6 +2084,7 @@ static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 	int ret, len;
 	char *value;
 	unsigned char tmp;
+	unsigned int tmp_u;
 
 	if (argc != 4) {
 		fputs("Excess arguments\n\n", stderr);
@@ -2095,6 +2096,10 @@ static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 		tmp = strtoul(argv[2], NULL, 0);
 		value = (char *)&tmp;
 		len = 1;
+	} else if (!strcmp(argv[1], F2FS_USER_FADVISE_NAME)) {
+		tmp_u = strtoul(argv[2], NULL, 0);
+		value = (char *)&tmp_u;
+		len = sizeof(unsigned int);
 	} else {
 		value = argv[2];
 		len = strlen(value);
@@ -2214,6 +2219,32 @@ static void do_get_advise(int argc, char **argv, const struct cmd_desc *cmd)
 		printf("verity ");
 	if (value & FADVISE_TRUNC_BIT)
 		printf("trunc ");
+	printf("\n");
+}
+
+#define get_fadvise_desc "get_fadvise"
+#define get_fadvise_help "f2fs_io get_fadvise [file_path]\n\n"
+
+static void do_get_fadvise(int argc, char **argv, const struct cmd_desc *cmd)
+{
+	int ret;
+	unsigned int value;
+
+	if (argc != 2) {
+		fputs("Excess arguments\n\n", stderr);
+		fputs(cmd->cmd_help, stderr);
+		exit(1);
+	}
+
+	ret = getxattr(argv[1], F2FS_USER_FADVISE_NAME, &value, sizeof(value));
+	if (ret != sizeof(value)) {
+		perror("getxattr");
+		exit(1);
+	}
+
+	printf("fadvise=0x%x, advise_type: ", value);
+	if (value & (1 << F2FS_XATTR_FADV_LARGEFOLIO))
+		printf("largefolio");
 	printf("\n");
 }
 
@@ -2626,6 +2657,7 @@ const struct cmd_desc cmd_list[] = {
 	CMD(removexattr),
 	CMD(lseek),
 	CMD(get_advise),
+	CMD(get_fadvise),
 	CMD(ioprio),
 	CMD(ftruncate),
 	CMD(test_create_perf),

@@ -53,9 +53,17 @@ going down with fsck mark
 \fBpinfile\fR \fI[get|set|unset] [file]\fR
 Get or set the pinning status on a file.
 .TP
+\fBsetxattr\fR \fI[name] [value] [file]\fR
+Call setxattr to the file. The supported
+.I name
+are system.advise and user.fadvise.
+.TP
 \fBfadvise\fR \fI[advice] [offset] [length] [file]\fR
 Pass an advice to the specified file. The advice can be willneed, dontneed,
 noreuse, sequential, random.
+.TP
+\fBget_fadvise\fR \fI[file]\fR
+Show the activated fadvise flags.
 .TP
 \fBfallocate\fR \fI[-c] [-i] [-p] [-z] [keep_size] [offset] [length] [file]\fR
 Request that space be allocated on a file.  The

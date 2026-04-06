@@ -186,6 +186,7 @@ struct fsverity_enable_arg {
 #define F2FS_IOC_FSSETXATTR		FS_IOC_FSSETXATTR
 
 #define F2FS_SYSTEM_ADVISE_NAME	"system.advise"
+#define F2FS_USER_FADVISE_NAME "user.fadvise"
 #define FADVISE_COLD_BIT	0x01
 #define FADVISE_LOST_PINO_BIT	0x02
 #define FADVISE_ENCRYPT_BIT	0x04
@@ -194,6 +195,11 @@ struct fsverity_enable_arg {
 #define FADVISE_HOT_BIT		0x20
 #define FADVISE_VERITY_BIT	0x40
 #define FADVISE_TRUNC_BIT	0x80
+
+/* used for F2FS_USER_FADVISE_NAME */
+enum {
+	F2FS_XATTR_FADV_LARGEFOLIO,
+};
 
 /* used for F2FS_IOC_IO_PRIO */
 enum {
