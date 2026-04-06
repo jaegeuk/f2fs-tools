@@ -2081,7 +2081,7 @@ static void do_listxattr(int argc, char **argv, const struct cmd_desc *cmd)
 
 static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 {
-	int ret;
+	int ret, len;
 	char *value;
 	unsigned char tmp;
 
@@ -2094,15 +2094,17 @@ static void do_setxattr(int argc, char **argv, const struct cmd_desc *cmd)
 	if (!strcmp(argv[1], F2FS_SYSTEM_ADVISE_NAME)) {
 		tmp = strtoul(argv[2], NULL, 0);
 		value = (char *)&tmp;
+		len = 1;
 	} else {
 		value = argv[2];
+		len = strlen(value);
 	}
 
-	ret = setxattr(argv[3], argv[1], value, strlen(argv[2]), XATTR_CREATE);
+	ret = setxattr(argv[3], argv[1], value, len, XATTR_CREATE);
 	printf("setxattr %s CREATE: name: %s, value: %s: ret=%d\n",
 			argv[3], argv[1], argv[2], ret);
 	if (ret < 0 && errno == EEXIST) {
-		ret = setxattr(argv[3], argv[1], value, strlen(argv[2]), XATTR_REPLACE);
+		ret = setxattr(argv[3], argv[1], value, len, XATTR_REPLACE);
 		printf("setxattr %s REPLACE: name: %s, value: %s: ret=%d\n",
 				argv[3], argv[1], argv[2], ret);
 	}
