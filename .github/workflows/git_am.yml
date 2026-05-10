@@ -34,6 +34,11 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
 
+      - name: Download get_patch.js
+        run: |
+          mkdir -p scripts
+          curl -sSL https://raw.githubusercontent.com/jaegeuk/lore-feeds/main/scripts/get_patch.js > scripts/get_patch.js
+
       - name: Get Patch
         env:
           GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
