@@ -20,7 +20,7 @@ jobs:
         with:
           ref: ${{ github.event.inputs.target_branch }}
           persist-credentials: true
-          fetch-depth: 0
+          fetch-depth: 100
 
       - name: Set up Git
         run: |
